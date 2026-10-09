@@ -1,0 +1,54 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+.ruff_cache/
+.mypy_cache/
+
+# Environment
+#
+# ⚠️ `.env` 里有真实凭据（LLM API Key、JWT 密钥、数据库口令）。
+# 模板见 `.env.example`。**绝不要**把 `.env` 提交上去。
+.env
+.env.*
+!.env.example
+
+# 上传的文件（含用户真实简历）
+#
+# ⚠️ 这是**用户数据**，不是代码。实测这里躺着真实简历 PDF
+# （含姓名、学校、专业、起止时间）。提交到公开仓库属于隐私泄露。
+# 目录内容由运行时产生，不需要版本控制。
+backend/uploads/
+
+# 数据库与向量库的本地数据
+*.sqlite3
+*.db
+
+# 评估产物
+#
+# **刻意不忽略**：计划 §15 要求"Evaluation Runner 的结果要版本化"，
+# §8.4 的 5 份基线报告与 §26 的基线指针都属于要留存的记录。
+# 报告总量约 6MB，换来的是"某个结论当时基于哪份数据"可追溯 —— 值得。
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# 日志与临时文件
+*.log
+logs/
+.tmp_*
+tmp/
+
+# IDE
+.idea/
+.vscode/
+!.vscode/extensions.json
+
+# OS
+.DS_Store
+Thumbs.db

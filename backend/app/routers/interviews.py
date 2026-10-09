@@ -1,0 +1,803 @@
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    status,
+)
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.dependencies import get_current_user
+from app.database.session import get_db
+from app.models.user import User
+from app.repositories.project_repository import ProjectRepository
+from app.schemas.interview.interview_qa import (
+    InterviewAnswerCreate,
+    InterviewAnswerResponse,
+    InterviewDetailResponse,
+    InterviewQuestionResponse,
+    InterviewStartRequest,
+    InterviewStartResponse,
+    InterviewStatusHistoryResponse,
+)
+from app.schemas.interview.interview_session import (
+    InterviewSessionCreate,
+    InterviewSessionResponse,
+    InterviewSessionTransition,
+)
+from app.services.interview.interview_flow_service import (
+    InterviewFlowService,
+)
+from app.services.interview.interview_state_machine import (
+    InvalidTransitionError,
+)
+from app.services.interview.interview_turn_service import (
+    InterviewTurnService,
+)
+from app.services.interview_session_service import InterviewSessionService
+from app.services.usage.usage_quota import (
+    QuotaExceeded,
+    UsageMetric,
+)
+from app.services.usage.usage_service import UsageService
+
+
+router = APIRouter(
+    prefix="/api/interviews",
+    tags=["Interviews"],
+)
+
+
+async def _load_owned_session(
+    interview_id: int,
+    db: AsyncSession,
+    current_user: User,
+):
+    """取会话并校验它属于当前用户。
+
+    同时检查两个来源（§5.4 / ADR-030）：
+    - `session.user_id`：会话创建者。历史面试记录归属于**当时**的
+      使用者，不随项目易主。
+    - `project.owner_id`：项目当前所有者。
+
+    为什么两个都要查：
+    只信 `user_id` 会漏掉"项目已易主但仍能访问旧会话"；
+    只信 `project.owner_id` 会漏掉"会话创建者已无权访问"。
+    两者都通过才算有权，宁可严一点 ——
+    面试记录里包含候选人简历的推导内容，越权代价高。
+    """
+
+    interview_service = InterviewSessionService(db)
+
+    interview_session = await interview_service.get_session(
+        interview_id=interview_id,
+    )
+
+    if not interview_session:
+        return None
+
+    if interview_session.user_id != current_user.id:
+        return None
+
+    project_repository = ProjectRepository(db)
+
+    project = await project_repository.get_by_id_and_owner(
+        project_id=interview_session.project_id,
+        owner_id=current_user.id,
+    )
+
+    if not project:
+        return None
+
+    return interview_session
+
+
+def _session_payload(interview_session) -> dict:
+    """会话的对外表示。
+
+    显式构造而不是直接返回 ORM 对象：
+    `InterviewSessionResponse` 用 from_attributes 也能工作，
+    但内联构造可以确保**暂停字段不会意外外泄**，
+    也便于将来增删字段时对照。
+    """
+
+    return {
+        "id": interview_session.id,
+        "user_id": interview_session.user_id,
+        "project_id": interview_session.project_id,
+        "status": interview_session.status,
+        "interview_type": interview_session.interview_type,
+        "target_role": interview_session.target_role,
+        "current_question_index": (
+            interview_session.current_question_index
+        ),
+        # 题目预算与终止信息必须暴露：
+        # 前端据此显示"第 3 题 / 共 8 题"，以及区分
+        # "额度用完"与"用户自己关了"。
+        "max_questions": interview_session.max_questions,
+        "questions_asked": interview_session.questions_asked,
+        "termination_reason": (
+            interview_session.termination_reason
+        ),
+        "resume_status": interview_session.resume_status,
+        "pause_reason": interview_session.pause_reason,
+        "paused_at": interview_session.paused_at,
+        "created_at": interview_session.created_at,
+        "updated_at": interview_session.updated_at,
+    }
+
+
+def _bad_transition(exc: Exception) -> HTTPException:
+    """非法转移统一映射为 409。
+
+    不静默忽略：调用方必须知道状态没变（ADR-010）。
+    """
+
+    return HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail=str(exc),
+    )
+
+
+# ============================================================
+# 会话
+# ============================================================
+
+
+@router.post(
+    "",
+    response_model=InterviewSessionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_interview_session(
+    data: InterviewSessionCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    创建面试会话。
+
+    初始状态为 draft（状态机起点）。
+    """
+
+    project_repository = ProjectRepository(db)
+
+    project = await project_repository.get_by_id_and_owner(
+        project_id=data.project_id,
+        owner_id=current_user.id,
+    )
+
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="项目不存在",
+        )
+
+    # 注意：这里**不**消费配额。
+    #
+    # 创建会话只是建了一个 draft 草稿，还没有产生任何 LLM 调用。
+    # 若在创建时扣额度，用户点了"新建面试"又没开始就损失一场 ——
+    # 额度应当只在**真正开始面试时**消费（见 start_interview）。
+    interview_service = InterviewSessionService(db)
+
+    try:
+        interview_session = await interview_service.create_session(
+            project_id=data.project_id,
+            user_id=current_user.id,
+            interview_type=data.interview_type,
+            target_role=data.target_role,
+            max_questions=data.max_questions,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+    return interview_session
+
+
+@router.get(
+    "/{interview_id}",
+    response_model=InterviewSessionResponse,
+)
+async def get_interview_session(
+    interview_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    获取面试会话详情。
+    """
+
+    interview_session = await _load_owned_session(
+        interview_id=interview_id,
+        db=db,
+        current_user=current_user,
+    )
+
+    if not interview_session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="面试会话不存在",
+        )
+
+    return interview_session
+
+
+@router.get(
+    "/{interview_id}/detail",
+    response_model=InterviewDetailResponse,
+)
+async def get_interview_detail(
+    interview_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    获取整场面试的完整可读状态：会话 + 全部问答 + 评价。
+
+    一次请求拿到全部内容，避免前端为每道题各发一次请求。
+    ``allowed_transitions`` 让前端不必自己实现状态机规则。
+    """
+
+    interview_session = await _load_owned_session(
+        interview_id=interview_id,
+        db=db,
+        current_user=current_user,
+    )
+
+    if not interview_session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="面试会话不存在",
+        )
+
+    flow = InterviewFlowService(db)
+    session_service = InterviewSessionService(db)
+
+    questions = await flow.get_questions_with_answers(
+        session_id=interview_id
+    )
+
+    return {
+        "session": _session_payload(interview_session),
+        "questions": questions,
+        "evaluation": await flow.get_latest_evaluation(
+            session_id=interview_id
+        ),
+        "allowed_transitions": await session_service.allowed_next_status(
+            interview_session
+        ),
+    }
+
+
+@router.get(
+    "/{interview_id}/allowed-transitions",
+    response_model=list[str],
+)
+async def get_allowed_transitions(
+    interview_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    查询当前会话可以转移到哪些状态。
+
+    对 paused 会话会结合 resume_status 动态计算，
+    避免前后端各写一份状态机规则、逐渐不一致。
+    """
+
+    interview_session = await _load_owned_session(
+        interview_id=interview_id,
+        db=db,
+        current_user=current_user,
+    )
+
+    if not interview_session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="面试会话不存在",
+        )
+
+    return await InterviewSessionService(db).allowed_next_status(
+        interview_session
+    )
+
+
+@router.post(
+    "/{interview_id}/transition",
+    response_model=InterviewSessionResponse,
+)
+async def transition_interview_session(
+    interview_id: int,
+    data: InterviewSessionTransition,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    把会话转移到目标状态。
+
+    非法转移返回 409 而不是静默忽略：
+    状态机要保证"可恢复、可审计"（ADR-010），
+    静默失败会让调用方以为状态已改，产生难以排查的不一致。
+    """
+
+    interview_session = await _load_owned_session(
+        interview_id=interview_id,
+        db=db,
+        current_user=current_user,
+    )
+
+    if not interview_session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="面试会话不存在",
+        )
+
+    interview_service = InterviewSessionService(db)
+
+    try:
+        updated = await interview_service.transition_status(
+            interview_id=interview_id,
+            target_status=data.target_status,
+        )
+    except InvalidTransitionError as exc:
+        raise _bad_transition(exc) from exc
+
+    return updated
+
+
+# ============================================================
+# 状态轨迹
+# ============================================================
+
+
+@router.get(
+    "/{interview_id}/history",
+    response_model=list[InterviewStatusHistoryResponse],
+)
+async def get_interview_history(
+    interview_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    查询会话的状态转移轨迹（正序）。
+
+    会话表只保存当前状态，轨迹是唯一能回答
+    "什么时候变成这样、由什么引起"的依据。
+    """
+
+    interview_session = await _load_owned_session(
+        interview_id=interview_id,
+        db=db,
+        current_user=current_user,
+    )
+
+    if not interview_session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="面试会话不存在",
+        )
+
+    return await InterviewFlowService(db).get_status_history(
+        session_id=interview_id
+    )
+
+
+# ============================================================
+# 开始面试 / 生成题目
+# ============================================================
+
+
+@router.post(
+    "/{interview_id}/start",
+    response_model=InterviewStartResponse,
+)
+async def start_interview(
+    interview_id: int,
+    data: InterviewStartRequest | None = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    开始面试：准备上下文 → 生成首题 → 进入 asking。
+
+    对调用方是一个动作，而不是三个状态转移 ——
+    暴露三个转移会让前端必须自己实现状态机规则，
+    并在中途失败时留下半开状态（停在 planned 但没题目）。
+
+    会话处于 paused（且暂停在开始前的状态）时会先自动恢复。
+    生成问题会调用 LLM 与向量检索，耗时较长。
+    """
+
+    interview_session = await _load_owned_session(
+        interview_id=interview_id,
+        db=db,
+        current_user=current_user,
+    )
+
+    if not interview_session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="面试会话不存在",
+        )
+
+    # 配额在这里消费，而不是在创建会话时。
+    #
+    # 理由是"什么时候真正开始花钱"：创建 draft 草稿不产生任何
+    # LLM 调用，开始面试才会（检索 + 生成首题）。
+    # 在创建时扣额度会让"点了新建又没开始"白损失一场。
+    #
+    # 先自增再判定（见 UsageService）：先判定后自增
+    # 会让并发请求一起通过校验。
+    usage_service = UsageService(db)
+
+    try:
+        await usage_service.consume(
+            user_id=current_user.id,
+            metric=UsageMetric.INTERVIEW_STARTED,
+            quota=current_user.interview_quota,
+        )
+    except QuotaExceeded as exc:
+        # 配额不足要回滚这次自增：否则"额度用完但还在涨"，
+        # 用户看到的剩余额度会变成负数。
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=str(exc),
+        ) from exc
+
+    try:
+        result = await InterviewFlowService(db).start_interview(
+            session_id=interview_id,
+            query=data.query if data else None,
+            question_type=(
+                data.question_type if data else "technical"
+            ),
+        )
+    except QuotaExceeded as exc:
+        # 题目额度不足。此时**业务数据尚未提交**
+        # （生成题目在扣额度之后才落库），因此可以安全回滚，
+        # 不会留下"题目已存但额度没扣"的不一致。
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=str(exc),
+        ) from exc
+    except ValueError as exc:
+        # 开始失败（状态不允许、项目异常）也要回滚配额，
+        # 否则一次失败会持续吃掉额度。
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
+
+    question = result["question"]
+    refreshed = result["session"]
+
+    return {
+        "session_status": refreshed.status,
+        "current_question_index": refreshed.current_question_index,
+        "question": {
+            "id": question.id,
+            "session_id": question.session_id,
+            "question": question.question,
+            "question_type": question.question_type,
+            "question_index": question.question_index,
+            "context": question.context,
+            "evidence_chunk_ids": list(
+                question.evidence_chunk_ids or []
+            ),
+            "is_general": question.is_general,
+            "created_at": question.created_at,
+            "answer": None,
+            "answered_at": None,
+        },
+    }
+
+
+# ============================================================
+# 暂停 / 恢复
+# ============================================================
+
+
+@router.post(
+    "/{interview_id}/pause",
+    response_model=InterviewSessionResponse,
+)
+async def pause_interview_session(
+    interview_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    暂停会话，并记住当前状态以便恢复。
+
+    用专门的端点而不是通用 transition：
+    暂停必须同时写入 resume_status，
+    否则会话会变成只能取消的死胡同。
+    """
+
+    interview_session = await _load_owned_session(
+        interview_id=interview_id,
+        db=db,
+        current_user=current_user,
+    )
+
+    if not interview_session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="面试会话不存在",
+        )
+
+    try:
+        return await InterviewSessionService(db).pause_session(
+            interview_id=interview_id,
+            reason="用户主动暂停",
+        )
+    except ValueError as exc:
+        raise _bad_transition(exc) from exc
+
+
+@router.post(
+    "/{interview_id}/resume",
+    response_model=InterviewSessionResponse,
+)
+async def resume_interview_session(
+    interview_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    从 paused 恢复到暂停前的状态。
+    """
+
+    interview_session = await _load_owned_session(
+        interview_id=interview_id,
+        db=db,
+        current_user=current_user,
+    )
+
+    if not interview_session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="面试会话不存在",
+        )
+
+    try:
+        return await InterviewSessionService(db).resume_session(
+            interview_id=interview_id,
+        )
+    except ValueError as exc:
+        raise _bad_transition(exc) from exc
+
+
+# ============================================================
+# 答题
+# ============================================================
+
+
+@router.post(
+    "/{interview_id}/answer",
+    response_model=InterviewAnswerResponse,
+)
+async def submit_answer(
+    interview_id: int,
+    data: InterviewAnswerCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    提交一道题的作答，并返回本轮生成的追问。
+
+    会调用 LLM 做回答分析，因此耗时较长（线上单次采样约数秒）。
+    """
+
+    interview_session = await _load_owned_session(
+        interview_id=interview_id,
+        db=db,
+        current_user=current_user,
+    )
+
+    if not interview_session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="面试会话不存在",
+        )
+
+    # 必须校验问题属于该会话。
+    # 只信任请求体里的 question_id 会让用户能对别人的题目作答 ——
+    # 所有权校验放在会话上，但题目与会话的从属关系必须在此确认。
+    flow = InterviewFlowService(db)
+    questions = await flow.get_questions_with_answers(
+        session_id=interview_id
+    )
+    known_ids = {item["id"] for item in questions}
+
+    if data.question_id not in known_ids:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="该问题不属于此面试会话",
+        )
+
+    try:
+        result = await InterviewTurnService(db).process_answer(
+            question_id=data.question_id,
+            answer=data.answer,
+        )
+    except QuotaExceeded as exc:
+        # 回答已落库、分析已完成，但追问生成时发现月度题目额度用尽。
+        # 此时**不能**回滚：回答与用量都已经提交，
+        # 回滚会丢掉用户已经产生的数据。直接返回 429。
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=str(exc),
+        ) from exc
+    except InvalidTransitionError as exc:
+        raise _bad_transition(exc) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+    analysis = result["analysis"]
+    follow_up = result["follow_up_question"]
+
+    # 预算耗尽时 follow_up 为 None，且带回了 evaluation。
+    evaluation = result.get("evaluation")
+
+    return {
+        "answer_id": result["answer"].id,
+        "question_id": data.question_id,
+        "answer": result["answer"].answer,
+        "answered_at": result["answer"].created_at,
+        "follow_up_question": (
+            {
+                "id": follow_up.id,
+                "session_id": follow_up.session_id,
+                "question": follow_up.question,
+                "question_type": follow_up.question_type,
+                "question_index": follow_up.question_index,
+                "context": follow_up.context,
+                "evidence_chunk_ids": list(
+                    follow_up.evidence_chunk_ids or []
+                ),
+                "is_general": follow_up.is_general,
+                "created_at": follow_up.created_at,
+                "answer": None,
+                "answered_at": None,
+            }
+            if follow_up is not None
+            else None
+        ),
+        "session_status": result["session_status"],
+        "finished": result.get("finished", False),
+        "termination_reason": result.get("termination_reason"),
+        "evaluation": (
+            {
+                "id": evaluation.id,
+                "overall_score": evaluation.overall_score,
+                "technical_score": evaluation.technical_score,
+                "project_score": evaluation.project_score,
+                "communication_score": (
+                    evaluation.communication_score
+                ),
+                "strengths": list(evaluation.strengths or []),
+                "weaknesses": list(evaluation.weaknesses or []),
+                "suggestions": list(evaluation.suggestions or []),
+                "feedback": evaluation.feedback,
+            }
+            if evaluation is not None
+            else None
+        ),
+        # 只回档位与缺口数量，不回完整分析。
+        # 面试过程中把"技术深度偏低"直接展示给候选人，
+        # 会干扰后续作答 —— 他还没答完。
+        "analysis_summary": {
+            "sample_count": analysis.sample_count,
+            "missing_points_count": len(analysis.missing_points),
+            "anchors": {
+                key: value.get("anchor")
+                for key, value in (
+                    analysis.anchor_summary().items()
+                )
+                if isinstance(value, dict)
+            },
+        },
+    }
+
+
+@router.get(
+    "/{interview_id}/questions",
+    response_model=list[InterviewQuestionResponse],
+)
+async def list_interview_questions(
+    interview_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    列出面试的全部题目及各自的回答。
+    """
+
+    interview_session = await _load_owned_session(
+        interview_id=interview_id,
+        db=db,
+        current_user=current_user,
+    )
+
+    if not interview_session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="面试会话不存在",
+        )
+
+    return await InterviewFlowService(
+        db
+    ).get_questions_with_answers(session_id=interview_id)
+
+
+# ============================================================
+# 结束
+# ============================================================
+
+
+@router.post("/{interview_id}/finish")
+async def finish_interview(
+    interview_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    结束面试并生成整场评价。
+
+    评价会调用 LLM，耗时较长。成功后会话进入 completed（终态）。
+    评价失败时会话停在 evaluating —— 该状态可**直接重试本端点**。
+    """
+
+    interview_session = await _load_owned_session(
+        interview_id=interview_id,
+        db=db,
+        current_user=current_user,
+    )
+
+    if not interview_session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="面试会话不存在",
+        )
+
+    try:
+        result = await InterviewFlowService(db).finish_interview(
+            session_id=interview_id
+        )
+    except InvalidTransitionError as exc:
+        raise _bad_transition(exc) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+    saved = result["saved_evaluation"]
+    refreshed = await InterviewSessionService(db).get_session(
+        interview_id
+    )
+
+    return {
+        "session_status": refreshed.status,
+        "evaluation": {
+            "id": saved.id,
+            "overall_score": saved.overall_score,
+            "technical_score": saved.technical_score,
+            "project_score": saved.project_score,
+            "communication_score": saved.communication_score,
+            "strengths": list(saved.strengths or []),
+            "weaknesses": list(saved.weaknesses or []),
+            "suggestions": list(saved.suggestions or []),
+            "feedback": saved.feedback,
+        },
+    }

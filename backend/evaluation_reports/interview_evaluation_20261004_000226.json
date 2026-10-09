@@ -1,0 +1,783 @@
+{
+  "evaluation": {
+    "kind": "interview_engine",
+    "version": "v1",
+    "dataset_version": "v1",
+    "created_at": "2026-10-04T00:02:26.580815",
+    "case_count": 4
+  },
+  "run_config": {
+    "llm_model": "deepseek-flash",
+    "llm_base_url": "https://api.deepseek.com",
+    "analyzer_temperature": 0.2,
+    "follow_up_temperature": 0.4,
+    "llm_calls_per_turn": 2
+  },
+  "summary": {
+    "case_count": 4,
+    "passed_case_count": 4,
+    "failed_case_count": 0,
+    "turn_count": 6,
+    "successful_turn_count": 6,
+    "errored_turn_count": 0,
+    "turn_pass_count": 6,
+    "turn_pass_rate": 1.0,
+    "rule_pass_rate": {
+      "R1_missing_point_coverage": 1.0,
+      "R2_no_false_missing": 1.0,
+      "R3_follow_up_targeting": 1.0,
+      "R4_analyzer_score_floor": 1.0
+    },
+    "r1_average_hit_rate": 0.3444,
+    "r3_average_hit_rate": 0.2762,
+    "r2_violated_keywords": [],
+    "vague_follow_up_turns": [],
+    "latency_ms": {
+      "average": 9504.3833,
+      "max": 18014.45
+    },
+    "failed_cases": []
+  },
+  "dataset": [
+    {
+      "id": "rag_backend_interview",
+      "title": "RAG 后端候选人面试",
+      "project_id": 3,
+      "direction": "考察候选人的后端开发能力和项目实践经验",
+      "turns": [
+        {
+          "question": "请结合 MindFlow AI 面试助手项目，说明你负责的后端架构设计，以及简历解析、向量检索、LLM 调用之间的数据流转过程。",
+          "answer": "我主要负责 MindFlow AI 面试助手的后端开发。用户上传简历后，FastAPI 接收文件并解析，文档内容保存到 PostgreSQL，然后进行 Chunk 切分。Chunk 通过 Embedding 模型转换成向量写入 Milvus。用户进入面试后，系统根据当前问题进行向量检索，从 Milvus 取回相关 Chunk，再按 Chunk ID 回 PostgreSQL 获取原始内容，最后把上下文交给大模型生成个性化面试问题。我负责文档上传、Chunk 切分、Embedding、Milvus 检索以及面试相关后端接口。",
+          "expected_missing_points": [],
+          "forbidden_missing_points": [
+            "未说明简历解析",
+            "没有提到简历解析",
+            "未说明向量检索",
+            "没有提到向量检索",
+            "未说明数据流转",
+            "没有说明数据流转",
+            "完全没有涉及技术"
+          ],
+          "expected_follow_up_keywords": [],
+          "min_analyzer_score": 45
+        },
+        {
+          "question": "Milvus 和 PostgreSQL 之间是如何关联的？",
+          "answer": "使用 Milvus 存储向量，PostgreSQL 保存文本。",
+          "expected_missing_points": [
+            "chunk_id",
+            "metadata",
+            "向量表关联",
+            "top-k",
+            "排序",
+            "过滤"
+          ],
+          "forbidden_missing_points": [
+            "未说明 Milvus 的作用",
+            "没有提到 Milvus 的作用",
+            "未说明 PostgreSQL 的作用",
+            "没有提到 PostgreSQL 的作用"
+          ],
+          "expected_follow_up_keywords": [
+            "chunk",
+            "关联",
+            "对应",
+            "标识",
+            "metadata",
+            "字段",
+            "映射",
+            "top-k",
+            "排序",
+            "过滤"
+          ],
+          "min_analyzer_score": 0
+        }
+      ]
+    },
+    {
+      "id": "rag_backend_senior_interview",
+      "title": "RAG 后端资深候选人面试（上界对照）",
+      "project_id": 3,
+      "direction": "深入考察后端架构、检索链路与数据一致性设计",
+      "turns": [
+        {
+          "question": "请详细说明你在 MindFlow 项目中负责的 RAG 检索链路，包括分块策略、Embedding 选型、向量索引与检索参数的取舍，以及 PostgreSQL 与 Milvus 之间的一致性如何保证。",
+          "answer": "我负责 MindFlow 的检索链路，分四层说明。\n\n第一层分块。文档解析后按 500 字符切块、overlap 100 字符，overlap 的目的是避免答案被切断在块边界。每个 chunk 写入 PostgreSQL 的 document_chunks 表，metadata 里带 document_id、project_id、document_type 和 chunk_index。\n\n第二层 Embedding。用 text-embedding-v4，1024 维，批量调用，按供应商限制分批并带指数退避。向量结果不落在 PostgreSQL，避免大字段拖慢事实源。\n\n第三层索引与检索。Milvus collection 是 mindflow_chunks_v2，主键直接用 PostgreSQL 的 chunk.id，不自动生成；索引 AUTOINDEX，距离度量用 COSINE。查询时先对 query 做同样模型的 embedding，过滤条件带上 project_id 和 document_type，top-k 取 5，按相似度降序返回 chunk_id，再按 chunk_id 批量回 PostgreSQL 取正文。过滤条件必须带 project_id，否则会跨项目泄露资料。\n\n第四层一致性。PostgreSQL 是事实源，Milvus 是可重建的派生索引，两边没有分布式事务。写入用 upsert，主键是 chunk.id，所以「向量已写入但 DB 状态未提交」时重试可以安全覆盖同一向量。流程是先写 Milvus，成功后再把 embedding_status 从 pending 改成 embedded。删除文档时先删 Milvus 向量再删 DB 记录，如果向量删除失败，由定时对账任务扫描孤儿向量并补偿。\n\n可观测性方面，每次检索记录耗时、命中数量和过滤条件，空结果率作为单独指标上报，方便区分「资料没上传」和「检索质量下降」这两种情况。",
+          "expected_missing_points": [],
+          "forbidden_missing_points": [
+            "未说明简历解析",
+            "未说明分块",
+            "未说明向量检索",
+            "没有提到向量检索",
+            "未说明数据一致性",
+            "完全没有涉及技术"
+          ],
+          "expected_follow_up_keywords": [],
+          "min_analyzer_score": 70
+        }
+      ]
+    },
+    {
+      "id": "evasive_answer_interview",
+      "title": "候选人回避问题的处理",
+      "project_id": 3,
+      "direction": "考察候选人对具体技术问题的回答能力",
+      "turns": [
+        {
+          "question": "你们的 chunk 切分是怎么设计的？为什么选择这个长度？overlap 取多少？",
+          "answer": "这个要看具体情况，不同项目不一样。我们团队技术氛围很好，大家都很努力，平时也会一起讨论方案。我觉得做技术最重要的是持续学习，遇到问题就去查资料、问同事。",
+          "expected_missing_points": [
+            "切分长度",
+            "overlap",
+            "切分依据",
+            "未回答",
+            "回避"
+          ],
+          "forbidden_missing_points": [
+            "未说明简历解析",
+            "没有提到向量检索"
+          ],
+          "expected_follow_up_keywords": [
+            "切分",
+            "chunk",
+            "长度",
+            "overlap",
+            "重叠",
+            "分块",
+            "参数"
+          ],
+          "min_analyzer_score": 0
+        }
+      ]
+    },
+    {
+      "id": "redis_cache_follow_up_interview",
+      "title": "Redis 缓存追问链",
+      "project_id": 3,
+      "direction": "考察候选人对缓存设计的理解深度",
+      "turns": [
+        {
+          "question": "你在项目里是怎么使用 Redis 的？",
+          "answer": "我用了 Redis 缓存高频访问的数据，这样接口响应会快很多。",
+          "expected_missing_points": [
+            "缓存对象",
+            "key",
+            "TTL",
+            "过期",
+            "一致性",
+            "失效",
+            "淘汰",
+            "穿透",
+            "雪崩"
+          ],
+          "forbidden_missing_points": [
+            "未说明简历解析",
+            "没有提到向量检索"
+          ],
+          "expected_follow_up_keywords": [
+            "缓存",
+            "key",
+            "键",
+            "过期",
+            "ttl",
+            "失效",
+            "一致性",
+            "更新",
+            "淘汰",
+            "穿透"
+          ],
+          "min_analyzer_score": 0
+        },
+        {
+          "question": "请具体说明你缓存的对象、key 的设计方式，以及数据更新时如何保证缓存与数据库一致。",
+          "answer": "缓存对象是简历的解析结果和面试题列表，这两类读多写少。key 设计成 resume:parse:{document_id} 和 interview:questions:{session_id}，用业务 ID 做后缀，方便精确失效。\n\n过期策略上，简历解析结果 TTL 设为 1 小时，面试题列表 TTL 10 分钟，因为面试题会随会话推进变化更快。\n\n一致性用 Cache-Aside：读的时候先查缓存，未命中回源数据库并回填；写的时候先更新数据库，再删除缓存，而不是更新缓存，避免并发写导致脏数据。\n\n删除失败的处理：把失效操作投递到消息队列重试，同时 TTL 作为兜底，保证最终一致。另外对空结果也缓存一个短 TTL 占位，防止缓存穿透。",
+          "expected_missing_points": [],
+          "forbidden_missing_points": [
+            "未说明缓存对象",
+            "没有提到 key",
+            "未说明一致性",
+            "完全没有涉及技术"
+          ],
+          "expected_follow_up_keywords": [],
+          "min_analyzer_score": 0
+        }
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "case_id": "rag_backend_interview",
+      "title": "RAG 后端候选人面试",
+      "project_id": 3,
+      "direction": "考察候选人的后端开发能力和项目实践经验",
+      "turn_count": 2,
+      "successful_turn_count": 2,
+      "failed_turn_count": 0,
+      "passed": true,
+      "turns": [
+        {
+          "turn_index": 1,
+          "question": "请结合 MindFlow AI 面试助手项目，说明你负责的后端架构设计，以及简历解析、向量检索、LLM 调用之间的数据流转过程。",
+          "answer": "我主要负责 MindFlow AI 面试助手的后端开发。用户上传简历后，FastAPI 接收文件并解析，文档内容保存到 PostgreSQL，然后进行 Chunk 切分。Chunk 通过 Embedding 模型转换成向量写入 Milvus。用户进入面试后，系统根据当前问题进行向量检索，从 Milvus 取回相关 Chunk，再按 Chunk ID 回 PostgreSQL 获取原始内容，最后把上下文交给大模型生成个性化面试问题。我负责文档上传、Chunk 切分、Embedding、Milvus 检索以及面试相关后端接口。",
+          "case_id": "rag_backend_interview",
+          "status": "success",
+          "latency_ms": 10656.27,
+          "passed": true,
+          "analysis": {
+            "answer_quality": 65,
+            "technical_depth": 45,
+            "completeness": 55,
+            "strengths": [
+              "清晰描述了从简历上传到LLM生成问题的核心数据流转过程",
+              "明确列出了FastAPI、PostgreSQL、Milvus、Embedding模型、大模型等技术组件",
+              "提到了通过Chunk ID回PostgreSQL获取原始内容的回表设计，体现了对向量检索与原文关联的考虑",
+              "明确了自己负责的模块范围，包括文档上传、切分、Embedding、检索及面试接口"
+            ],
+            "missing_points": [
+              "后端架构设计的具体分层、模块划分、服务间通信方式未说明",
+              "简历解析所用的库、解析格式、异常处理策略未提及",
+              "Chunk切分的具体策略（如长度、重叠、语义切分）未说明",
+              "Embedding模型选型、向量维度、生成方式未说明",
+              "Milvus的集合设计、索引类型、相似度度量、检索参数未说明",
+              "LLM调用的具体方式（同步/异步、模型选择、prompt构造、上下文长度管理）未说明",
+              "数据一致性、并发处理、性能优化、可扩展性等架构考量未涉及",
+              "面试相关后端接口的具体设计（如RESTful规范、鉴权、限流）未说明"
+            ],
+            "summary": "候选人基本说明了后端数据流转主链路，技术栈明确，但架构设计和技术细节深度不足，缺少解析、切分、向量检索、LLM调用等关键环节的具体实现与设计考量。"
+          },
+          "follow_up_question": "你提到从 Milvus 检索到相关 Chunk 后，会按 Chunk ID 回 PostgreSQL 获取原始内容，请具体说明这个回表设计的目的是什么？当用户重新上传或更新简历时，如何保证 Milvus 中的向量与 PostgreSQL 中的 Chunk 内容保持一致？",
+          "rules": {
+            "R1_missing_point_coverage": {
+              "passed": true,
+              "expected": [],
+              "matched": [],
+              "missed": [],
+              "hit_rate": 1.0
+            },
+            "R2_no_false_missing": {
+              "passed": true,
+              "forbidden": [
+                "未说明简历解析",
+                "没有提到简历解析",
+                "未说明向量检索",
+                "没有提到向量检索",
+                "未说明数据流转",
+                "没有说明数据流转",
+                "完全没有涉及技术"
+              ],
+              "violated": []
+            },
+            "R3_follow_up_targeting": {
+              "passed": true,
+              "expected_keywords": [],
+              "matched": [],
+              "missed": [],
+              "hit_rate": 1.0,
+              "vague_patterns": [],
+              "is_vague": false
+            },
+            "R4_analyzer_score_floor": {
+              "passed": true,
+              "min_score": 45,
+              "scores": {
+                "answer_quality": 65,
+                "technical_depth": 45,
+                "completeness": 55
+              },
+              "below_min_score": {}
+            }
+          }
+        },
+        {
+          "turn_index": 2,
+          "question": "Milvus 和 PostgreSQL 之间是如何关联的？",
+          "answer": "使用 Milvus 存储向量，PostgreSQL 保存文本。",
+          "case_id": "rag_backend_interview",
+          "status": "success",
+          "latency_ms": 4472.7,
+          "passed": true,
+          "analysis": {
+            "answer_quality": 25,
+            "technical_depth": 10,
+            "completeness": 10,
+            "strengths": [
+              "能够区分 Milvus 和 PostgreSQL 的基本存储职责",
+              "知道 Milvus 用于存储向量，PostgreSQL 用于保存文本"
+            ],
+            "missing_points": [
+              "未说明 Milvus 与 PostgreSQL 之间具体如何关联",
+              "未说明向量 ID 与文本记录 ID 如何映射",
+              "未说明应用层如何联合查询或组合结果",
+              "未说明数据同步、一致性或事务处理方式",
+              "未说明是否通过外键、中间表或业务逻辑进行关联",
+              "未说明联合检索的完整流程"
+            ],
+            "summary": "候选人只说明 Milvus 存向量、PostgreSQL 存文本，没有解释两者之间的关联方式、数据映射和查询协作流程，回答技术细节和完整性不足。"
+          },
+          "follow_up_question": "Milvus 返回向量检索结果后，你在应用层是如何把向量 ID 对应到 PostgreSQL 中的文本记录的？请具体说明这个映射关系是如何设计和实现的。",
+          "rules": {
+            "R1_missing_point_coverage": {
+              "passed": true,
+              "expected": [
+                "chunk_id",
+                "metadata",
+                "向量表关联",
+                "top-k",
+                "排序",
+                "过滤"
+              ],
+              "matched": [
+                "向量表关联"
+              ],
+              "missed": [
+                "chunk_id",
+                "metadata",
+                "top-k",
+                "排序",
+                "过滤"
+              ],
+              "hit_rate": 0.16666666666666666
+            },
+            "R2_no_false_missing": {
+              "passed": true,
+              "forbidden": [
+                "未说明 Milvus 的作用",
+                "没有提到 Milvus 的作用",
+                "未说明 PostgreSQL 的作用",
+                "没有提到 PostgreSQL 的作用"
+              ],
+              "violated": []
+            },
+            "R3_follow_up_targeting": {
+              "passed": true,
+              "expected_keywords": [
+                "chunk",
+                "关联",
+                "对应",
+                "标识",
+                "metadata",
+                "字段",
+                "映射",
+                "top-k",
+                "排序",
+                "过滤"
+              ],
+              "matched": [
+                "对应",
+                "映射"
+              ],
+              "missed": [
+                "chunk",
+                "关联",
+                "标识",
+                "metadata",
+                "字段",
+                "top-k",
+                "排序",
+                "过滤"
+              ],
+              "hit_rate": 0.2,
+              "vague_patterns": [],
+              "is_vague": false
+            },
+            "R4_analyzer_score_floor": {
+              "passed": true,
+              "min_score": 0,
+              "scores": {
+                "answer_quality": 25,
+                "technical_depth": 10,
+                "completeness": 10
+              },
+              "below_min_score": {}
+            }
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "rag_backend_senior_interview",
+      "title": "RAG 后端资深候选人面试（上界对照）",
+      "project_id": 3,
+      "direction": "深入考察后端架构、检索链路与数据一致性设计",
+      "turn_count": 1,
+      "successful_turn_count": 1,
+      "failed_turn_count": 0,
+      "passed": true,
+      "turns": [
+        {
+          "turn_index": 1,
+          "question": "请详细说明你在 MindFlow 项目中负责的 RAG 检索链路，包括分块策略、Embedding 选型、向量索引与检索参数的取舍，以及 PostgreSQL 与 Milvus 之间的一致性如何保证。",
+          "answer": "我负责 MindFlow 的检索链路，分四层说明。\n\n第一层分块。文档解析后按 500 字符切块、overlap 100 字符，overlap 的目的是避免答案被切断在块边界。每个 chunk 写入 PostgreSQL 的 document_chunks 表，metadata 里带 document_id、project_id、document_type 和 chunk_index。\n\n第二层 Embedding。用 text-embedding-v4，1024 维，批量调用，按供应商限制分批并带指数退避。向量结果不落在 PostgreSQL，避免大字段拖慢事实源。\n\n第三层索引与检索。Milvus collection 是 mindflow_chunks_v2，主键直接用 PostgreSQL 的 chunk.id，不自动生成；索引 AUTOINDEX，距离度量用 COSINE。查询时先对 query 做同样模型的 embedding，过滤条件带上 project_id 和 document_type，top-k 取 5，按相似度降序返回 chunk_id，再按 chunk_id 批量回 PostgreSQL 取正文。过滤条件必须带 project_id，否则会跨项目泄露资料。\n\n第四层一致性。PostgreSQL 是事实源，Milvus 是可重建的派生索引，两边没有分布式事务。写入用 upsert，主键是 chunk.id，所以「向量已写入但 DB 状态未提交」时重试可以安全覆盖同一向量。流程是先写 Milvus，成功后再把 embedding_status 从 pending 改成 embedded。删除文档时先删 Milvus 向量再删 DB 记录，如果向量删除失败，由定时对账任务扫描孤儿向量并补偿。\n\n可观测性方面，每次检索记录耗时、命中数量和过滤条件，空结果率作为单独指标上报，方便区分「资料没上传」和「检索质量下降」这两种情况。",
+          "case_id": "rag_backend_senior_interview",
+          "status": "success",
+          "latency_ms": 18014.45,
+          "passed": true,
+          "analysis": {
+            "answer_quality": 90,
+            "technical_depth": 86,
+            "completeness": 85,
+            "strengths": [
+              "按分块、Embedding、索引与检索、一致性四层组织，结构清晰，直接回应问题。",
+              "分块策略给出具体参数、overlap目的及metadata字段，具备可落地细节。",
+              "Embedding选型给出模型、维度、批量调用、限流分批和指数退避策略，并说明向量不落PostgreSQL的理由。",
+              "检索链路给出Milvus collection、主键复用chunk.id、AUTOINDEX、COSINE、top-k、过滤条件和回表PostgreSQL的完整流程。",
+              "强调project_id过滤避免跨项目资料泄露，体现安全隔离意识。",
+              "一致性设计明确PostgreSQL为事实源、Milvus为可重建派生索引，使用upsert幂等、写入/删除顺序和对账补偿。",
+              "补充可观测性指标，如耗时、命中数量、空结果率，并用于区分资料未上传和检索质量下降。"
+            ],
+            "missing_points": [
+              "分块参数500字符、overlap 100字符的选择依据未说明，也缺少不同文档类型或结构的差异化分块策略。",
+              "Embedding选型只给出text-embedding-v4，未对比其他模型、维度、成本、效果、语言或领域适配等取舍。",
+              "Milvus索引AUTOINDEX、COSINE距离度量、top-k=5等参数的调优依据和召回率、延迟、成本之间的权衡未展开。",
+              "一致性部分未覆盖更多故障场景，例如Milvus写入失败但PostgreSQL状态仍为pending时如何补偿、DB状态更新失败后的重试或对账机制。",
+              "删除链路中若Milvus删除成功但PostgreSQL删除失败，或PostgreSQL删除成功但Milvus删除失败，具体处理和对账方式未说明。",
+              "定时对账任务扫描孤儿向量的实现细节、执行频率、判定标准和补偿逻辑未说明。",
+              "除project_id外，是否还有多租户权限校验、文档级权限过滤等安全控制未提及。",
+              "检索质量评估、rerank、混合检索、查询改写等可能影响RAG效果的手段未提及。"
+            ],
+            "summary": "候选人完整描述了MindFlow RAG检索链路的四层设计，覆盖分块、Embedding、Milvus检索和PostgreSQL-Milvus一致性，细节具体，突出chunk.id复用、project_id过滤、upsert幂等和对账补偿。主要不足是关键参数取舍论证较少，部分故障补偿和检索质量优化细节不够深入。"
+          },
+          "follow_up_question": "你提到先写 Milvus，成功后再把 PostgreSQL 的 embedding_status 从 pending 改为 embedded，并用定时对账任务扫描孤儿向量。如果 Milvus 写入成功但 PostgreSQL 状态更新失败，导致向量已存在、但 DB 中该 chunk 状态仍是 pending，你的对账任务如何判定并修复这种不一致？具体判定标准和补偿逻辑是什么？",
+          "rules": {
+            "R1_missing_point_coverage": {
+              "passed": true,
+              "expected": [],
+              "matched": [],
+              "missed": [],
+              "hit_rate": 1.0
+            },
+            "R2_no_false_missing": {
+              "passed": true,
+              "forbidden": [
+                "未说明简历解析",
+                "未说明分块",
+                "未说明向量检索",
+                "没有提到向量检索",
+                "未说明数据一致性",
+                "完全没有涉及技术"
+              ],
+              "violated": []
+            },
+            "R3_follow_up_targeting": {
+              "passed": true,
+              "expected_keywords": [],
+              "matched": [],
+              "missed": [],
+              "hit_rate": 1.0,
+              "vague_patterns": [],
+              "is_vague": false
+            },
+            "R4_analyzer_score_floor": {
+              "passed": true,
+              "min_score": 70,
+              "scores": {
+                "answer_quality": 90,
+                "technical_depth": 86,
+                "completeness": 85
+              },
+              "below_min_score": {}
+            }
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "evasive_answer_interview",
+      "title": "候选人回避问题的处理",
+      "project_id": 3,
+      "direction": "考察候选人对具体技术问题的回答能力",
+      "turn_count": 1,
+      "successful_turn_count": 1,
+      "failed_turn_count": 0,
+      "passed": true,
+      "turns": [
+        {
+          "turn_index": 1,
+          "question": "你们的 chunk 切分是怎么设计的？为什么选择这个长度？overlap 取多少？",
+          "answer": "这个要看具体情况，不同项目不一样。我们团队技术氛围很好，大家都很努力，平时也会一起讨论方案。我觉得做技术最重要的是持续学习，遇到问题就去查资料、问同事。",
+          "case_id": "evasive_answer_interview",
+          "status": "success",
+          "latency_ms": 7334.31,
+          "passed": true,
+          "analysis": {
+            "answer_quality": 5,
+            "technical_depth": 0,
+            "completeness": 0,
+            "strengths": [
+              "意识到 chunk 切分方案可能因项目而异",
+              "表达了持续学习和团队协作的积极态度"
+            ],
+            "missing_points": [
+              "未说明 chunk 切分的具体策略，例如按字符、句子、段落、标题还是语义切分",
+              "未说明选择该 chunk 长度的依据和具体长度值",
+              "未说明 overlap 取多少以及为什么取该值",
+              "未说明 chunk 长度和 overlap 对检索效果、生成效果或 RAG 系统的影响",
+              "未说明不同文档类型、业务场景或模型上下文限制下的差异化设计",
+              "未说明如何评估和优化 chunk 切分方案"
+            ],
+            "summary": "候选人没有回答 chunk 切分设计、长度选择和 overlap 设置等核心问题，只给出了团队氛围和个人学习态度相关的泛泛表述，技术信息严重缺失，无法评估其相关技术能力。"
+          },
+          "follow_up_question": "你提到不同项目不一样，那能否举一个你亲自做过的 RAG 项目，说明当时文档类型和问答场景是什么、你最终选择的 chunk 长度和 overlap 分别是多少，以及如果把 chunk 长度调大或调小，检索结果会出现什么可观测的变化？",
+          "rules": {
+            "R1_missing_point_coverage": {
+              "passed": true,
+              "expected": [
+                "切分长度",
+                "overlap",
+                "切分依据",
+                "未回答",
+                "回避"
+              ],
+              "matched": [
+                "overlap"
+              ],
+              "missed": [
+                "切分长度",
+                "切分依据",
+                "未回答",
+                "回避"
+              ],
+              "hit_rate": 0.2
+            },
+            "R2_no_false_missing": {
+              "passed": true,
+              "forbidden": [
+                "未说明简历解析",
+                "没有提到向量检索"
+              ],
+              "violated": []
+            },
+            "R3_follow_up_targeting": {
+              "passed": true,
+              "expected_keywords": [
+                "切分",
+                "chunk",
+                "长度",
+                "overlap",
+                "重叠",
+                "分块",
+                "参数"
+              ],
+              "matched": [
+                "chunk",
+                "长度",
+                "overlap"
+              ],
+              "missed": [
+                "切分",
+                "重叠",
+                "分块",
+                "参数"
+              ],
+              "hit_rate": 0.42857142857142855,
+              "vague_patterns": [],
+              "is_vague": false
+            },
+            "R4_analyzer_score_floor": {
+              "passed": true,
+              "min_score": 0,
+              "scores": {
+                "answer_quality": 5,
+                "technical_depth": 0,
+                "completeness": 0
+              },
+              "below_min_score": {}
+            }
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "redis_cache_follow_up_interview",
+      "title": "Redis 缓存追问链",
+      "project_id": 3,
+      "direction": "考察候选人对缓存设计的理解深度",
+      "turn_count": 2,
+      "successful_turn_count": 2,
+      "failed_turn_count": 0,
+      "passed": true,
+      "turns": [
+        {
+          "turn_index": 1,
+          "question": "你在项目里是怎么使用 Redis 的？",
+          "answer": "我用了 Redis 缓存高频访问的数据，这样接口响应会快很多。",
+          "case_id": "redis_cache_follow_up_interview",
+          "status": "success",
+          "latency_ms": 6707.74,
+          "passed": true,
+          "analysis": {
+            "answer_quality": 35,
+            "technical_depth": 15,
+            "completeness": 20,
+            "strengths": [
+              "回答切题，明确提到使用 Redis 做缓存",
+              "说明缓存高频访问数据以提升接口响应速度",
+              "表达简洁直接"
+            ],
+            "missing_points": [
+              "未说明具体业务场景和缓存的数据类型",
+              "未说明 Redis 数据结构选型及原因",
+              "未说明 key 设计、过期时间和淘汰策略",
+              "未说明缓存更新和数据库一致性方案",
+              "未说明缓存穿透、击穿、雪崩的应对措施",
+              "未说明 Redis 部署架构和容灾方案",
+              "未说明实际性能收益或量化指标",
+              "未说明异常降级、容错或其他 Redis 使用场景"
+            ],
+            "summary": "候选人仅概括性表示用 Redis 缓存高频访问数据以提升接口响应速度，回答切题但过于简略，缺少具体实现、技术选型和问题处理等细节，技术深度和完整性不足。"
+          },
+          "follow_up_question": "你缓存的高频数据在数据库发生更新时，你是怎么保证Redis和数据库数据一致的？是更新缓存还是删除缓存？有没有考虑并发读写导致的不一致？请结合你实际项目中的一个例子具体说明。",
+          "rules": {
+            "R1_missing_point_coverage": {
+              "passed": true,
+              "expected": [
+                "缓存对象",
+                "key",
+                "TTL",
+                "过期",
+                "一致性",
+                "失效",
+                "淘汰",
+                "穿透",
+                "雪崩"
+              ],
+              "matched": [
+                "key",
+                "过期",
+                "一致性",
+                "淘汰",
+                "穿透",
+                "雪崩"
+              ],
+              "missed": [
+                "缓存对象",
+                "TTL",
+                "失效"
+              ],
+              "hit_rate": 0.6666666666666666
+            },
+            "R2_no_false_missing": {
+              "passed": true,
+              "forbidden": [
+                "未说明简历解析",
+                "没有提到向量检索"
+              ],
+              "violated": []
+            },
+            "R3_follow_up_targeting": {
+              "passed": true,
+              "expected_keywords": [
+                "缓存",
+                "key",
+                "键",
+                "过期",
+                "ttl",
+                "失效",
+                "一致性",
+                "更新",
+                "淘汰",
+                "穿透"
+              ],
+              "matched": [
+                "缓存",
+                "更新"
+              ],
+              "missed": [
+                "key",
+                "键",
+                "过期",
+                "ttl",
+                "失效",
+                "一致性",
+                "淘汰",
+                "穿透"
+              ],
+              "hit_rate": 0.2,
+              "vague_patterns": [],
+              "is_vague": false
+            },
+            "R4_analyzer_score_floor": {
+              "passed": true,
+              "min_score": 0,
+              "scores": {
+                "answer_quality": 35,
+                "technical_depth": 15,
+                "completeness": 20
+              },
+              "below_min_score": {}
+            }
+          }
+        },
+        {
+          "turn_index": 2,
+          "question": "请具体说明你缓存的对象、key 的设计方式，以及数据更新时如何保证缓存与数据库一致。",
+          "answer": "缓存对象是简历的解析结果和面试题列表，这两类读多写少。key 设计成 resume:parse:{document_id} 和 interview:questions:{session_id}，用业务 ID 做后缀，方便精确失效。\n\n过期策略上，简历解析结果 TTL 设为 1 小时，面试题列表 TTL 10 分钟，因为面试题会随会话推进变化更快。\n\n一致性用 Cache-Aside：读的时候先查缓存，未命中回源数据库并回填；写的时候先更新数据库，再删除缓存，而不是更新缓存，避免并发写导致脏数据。\n\n删除失败的处理：把失效操作投递到消息队列重试，同时 TTL 作为兜底，保证最终一致。另外对空结果也缓存一个短 TTL 占位，防止缓存穿透。",
+          "case_id": "redis_cache_follow_up_interview",
+          "status": "success",
+          "latency_ms": 9840.83,
+          "passed": true,
+          "analysis": {
+            "answer_quality": 90,
+            "technical_depth": 85,
+            "completeness": 85,
+            "strengths": [
+              "明确说明缓存对象为简历解析结果和面试题列表，并指出读多写少的业务特征",
+              "key 设计包含业务语义和业务 ID，如 resume:parse:{document_id}、interview:questions:{session_id}，便于精确失效",
+              "针对不同数据设置差异化 TTL，简历解析结果 1 小时、面试题列表 10 分钟",
+              "正确采用 Cache-Aside 模式，读时先查缓存、未命中回源并回填，写时先更新数据库再删除缓存",
+              "考虑了删除缓存失败的情况，提出通过消息队列重试并用 TTL 兜底实现最终一致",
+              "考虑了缓存穿透问题，对空结果缓存短 TTL 占位"
+            ],
+            "missing_points": [
+              "未说明写后删缓存在并发读写场景下仍可能产生旧数据回填缓存的问题，以及如何解决，例如延迟双删、版本号、binlog 订阅或加锁",
+              "消息队列重试机制的具体细节不足，如幂等、顺序性、失败告警、死信处理和重试次数",
+              "未提及缓存击穿、缓存雪崩、热点 key 等异常场景的应对措施",
+              "空结果缓存的 TTL 具体时长、缓存容量和降级策略未量化说明",
+              "未说明业务对强一致与最终一致的容忍边界，以及缓存不一致时的可观测性和修复手段"
+            ],
+            "summary": "候选人围绕缓存对象、key 设计、TTL 和 Cache-Aside 一致性策略进行了回答，核心方案正确且包含删除失败重试、TTL 兜底和空值防穿透；但对并发读写竞态、MQ 重试幂等与异常处理、热点/雪崩等边界情况说明不足。"
+          },
+          "follow_up_question": "你提到写时先更新数据库再删除缓存，并用消息队列重试删除失败。但在并发场景下，读请求可能在数据库更新前读到旧值并回填缓存，导致缓存中长期存在脏数据。针对这种旧数据回填，你会如何结合你设计的 `resume:parse:{document_id}` 这类 key 来避免或修复？请说明具体机制。",
+          "rules": {
+            "R1_missing_point_coverage": {
+              "passed": true,
+              "expected": [],
+              "matched": [],
+              "missed": [],
+              "hit_rate": 1.0
+            },
+            "R2_no_false_missing": {
+              "passed": true,
+              "forbidden": [
+                "未说明缓存对象",
+                "没有提到 key",
+                "未说明一致性",
+                "完全没有涉及技术"
+              ],
+              "violated": []
+            },
+            "R3_follow_up_targeting": {
+              "passed": true,
+              "expected_keywords": [],
+              "matched": [],
+              "missed": [],
+              "hit_rate": 1.0,
+              "vague_patterns": [],
+              "is_vague": false
+            },
+            "R4_analyzer_score_floor": {
+              "passed": true,
+              "min_score": 0,
+              "scores": {
+                "answer_quality": 90,
+                "technical_depth": 85,
+                "completeness": 85
+              },
+              "below_min_score": {}
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

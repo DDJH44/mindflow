@@ -1,0 +1,72 @@
+services:
+
+  postgres:
+    image: postgres:16
+    container_name: mindflow-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: mindflow
+      POSTGRES_USER: mindflow
+      POSTGRES_PASSWORD: mindflow_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - mindflow_postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    container_name: mindflow-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  etcd:
+    container_name: mindflow-etcd
+    image: quay.io/coreos/etcd:v3.5.5
+    environment:
+      ETCD_AUTO_COMPACTION_MODE: revision
+      ETCD_AUTO_COMPACTION_RETENTION: 1000
+      ETCD_QUOTA_BACKEND_BYTES: 4294967296
+      ETCD_SNAPSHOT_COUNT: 50000
+    command: >
+      etcd
+      --advertise-client-urls=http://0.0.0.0:2379
+      --listen-client-urls=http://0.0.0.0:2379
+      --data-dir=/etcd
+    volumes:
+      - mindflow_etcd_data:/etcd
+
+  minio:
+    container_name: mindflow-minio
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    command: minio server /minio_data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - mindflow_minio_data:/minio_data
+
+  milvus:
+    container_name: mindflow-milvus
+    image: milvusdb/milvus:v2.5.6
+    command: ["milvus", "run", "standalone"]
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+    depends_on:
+      - etcd
+      - minio
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    volumes:
+      - mindflow_milvus_data:/var/lib/milvus
+
+volumes:
+  mindflow_postgres_data:
+  mindflow_etcd_data:
+  mindflow_minio_data:
+  mindflow_milvus_data:

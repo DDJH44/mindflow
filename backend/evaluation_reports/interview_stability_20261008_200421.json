@@ -1,0 +1,265 @@
+{
+  "evaluation": {
+    "kind": "interview_stability",
+    "version": "v1",
+    "dataset_version": "v1",
+    "created_at": "2026-10-08T20:04:21.592245"
+  },
+  "config": {
+    "model": "agnes-3.0-flash",
+    "repeats": 3,
+    "max_range_threshold": 15,
+    "min_coverage": 0.8,
+    "analyzer_temperature": 0.2,
+    "follow_up_temperature": 0.4,
+    "seed": null,
+    "sampling": {
+      "used_in_this_report": "offline",
+      "offline_analysis_samples": 3,
+      "offline_evaluation_samples": 3,
+      "online_analysis_samples": 1,
+      "online_evaluation_samples": 1
+    }
+  },
+  "summary": {
+    "turn_count": 1,
+    "stable_turn_count": 0,
+    "unstable_turn_count": 1,
+    "inconclusive_turn_count": 0,
+    "unstable_turns": [
+      {
+        "case_id": "evasive_answer_interview",
+        "turn_index": 1,
+        "max_range": 25,
+        "score_statistics": {
+          "answer_quality": {
+            "values": [
+              40,
+              40,
+              40
+            ],
+            "min": 40,
+            "max": 40,
+            "range": 0,
+            "average": 40.0
+          },
+          "technical_depth": {
+            "values": [
+              15,
+              40,
+              40
+            ],
+            "min": 15,
+            "max": 40,
+            "range": 25,
+            "average": 31.67
+          },
+          "completeness": {
+            "values": [
+              15,
+              15,
+              15
+            ],
+            "min": 15,
+            "max": 15,
+            "range": 0,
+            "average": 15.0
+          }
+        }
+      }
+    ],
+    "inconclusive_turns": [],
+    "max_range_observed": 25,
+    "conclusive": true
+  },
+  "rank_correlations": [
+    {
+      "case_id": "evasive_answer_interview",
+      "turn_index": 1,
+      "quality_vs_depth": null
+    }
+  ],
+  "turns": [
+    {
+      "question": "你们的 chunk 切分是怎么设计的？为什么选择这个长度？overlap 取多少？",
+      "answer_length": 76,
+      "repeats": 3,
+      "analyzer_sample_counts": [
+        3
+      ],
+      "successful_repeats": 3,
+      "failed_repeats": 0,
+      "samples": [
+        {
+          "sample_index": 1,
+          "status": "success",
+          "latency_ms": 23728.23,
+          "scores": {
+            "answer_quality": 40,
+            "technical_depth": 15,
+            "completeness": 15
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "depth": {
+              "anchor": "D",
+              "label": "很差",
+              "adjusted": null,
+              "score": 15
+            },
+            "completeness": {
+              "anchor": "D",
+              "label": "很差",
+              "adjusted": null,
+              "score": 15
+            },
+            "anchor_reason": "回答中没有任何句子直接回应提问中关于chunk切分设计、长度选择依据或overlap取值的具体内容，仅包含通用的工作态度描述，因此定为C档；技术深度无体现定为C档；完全未覆盖问题要点定为D档。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未给出 chunk 长度的具体数值或取值依据",
+            "未说明具体的chunk切分策略或算法（如固定长度、语义切分等）",
+            "未说明 chunk 切分的具体策略（如按段落、标点或固定窗口）",
+            "未解释选择特定长度和overlap参数的依据或取舍理由",
+            "未提及切分对后续检索或生成的影响及取舍",
+            "未提及不同场景下策略的差异或取舍"
+          ],
+          "follow_up_question": "你提到不同项目不一样，那请具体说明一下在你们最近一个项目中，如果采用固定窗口策略，chunk 长度具体取多少、overlap 是多少？如果改用基于语义的切分，你又是如何定义切分边界并评估其对后续检索准确率影响的？"
+        },
+        {
+          "sample_index": 2,
+          "status": "success",
+          "latency_ms": 24892.59,
+          "scores": {
+            "answer_quality": 40,
+            "technical_depth": 40,
+            "completeness": 15
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "depth": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "completeness": {
+              "anchor": "D",
+              "label": "很差",
+              "adjusted": null,
+              "score": 15
+            },
+            "anchor_reason": "候选人回答中没有任何句子直接回应关于chunk长度、overlap取值或设计逻辑的提问，仅包含态度表达和套话，属于最高为C档的情况，且因完全没有可用技术信息，完整度判为D。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未提供chunk长度的具体数值及设定依据",
+            "未说明Overlap的具体取值或比例",
+            "未解释选择该长度和Overlap的依据（如语义完整性、检索效果等）",
+            "未描述具体的切分策略（如基于字符、句子、语义分段等）",
+            "未提及切分时的边界情况处理（如超长句、特殊符号）",
+            "未说明overlap的大小及其与长度的比例关系"
+          ],
+          "follow_up_question": "你刚才提到不同项目情况不同，那能否以你最近负责的一个具体项目为例，告诉我当时确定的 chunk 长度是多少？你选择这个数值的依据是什么，以及当时设定的 overlap 大小是多少？"
+        },
+        {
+          "sample_index": 3,
+          "status": "success",
+          "latency_ms": 49328.52,
+          "scores": {
+            "answer_quality": 40,
+            "technical_depth": 40,
+            "completeness": 15
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "depth": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "completeness": {
+              "anchor": "D",
+              "label": "很差",
+              "adjusted": null,
+              "score": 15
+            },
+            "anchor_reason": "候选人回答仅包含团队氛围和态度表述，没有任何句子直接回应 chunk 切分设计、长度选择依据或 overlap 取值，完全未提供技术细节。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未给出 chunk 长度的具体数值或选择依据",
+            "未说明具体的 chunk 切分逻辑或策略（如固定长度、递归分割等）",
+            "未说明 overlap（重叠部分）的具体数值",
+            "未解释选择该长度和 overlap 的技术理由或取舍考量",
+            "未解释边界情况或特殊文本（如长表格、代码块）的处理方式",
+            "未说明切分策略（如基于 token、字符或语义）"
+          ],
+          "follow_up_question": "你刚才提到团队会讨论方案，既然你们有技术氛围，能否具体说说你们在项目中最终选定的 chunk 长度数值是多少？如果是基于递归分割或语义边界切分，你们是如何处理那些会破坏代码块或表格结构的长文本边界的？"
+        }
+      ],
+      "score_statistics": {
+        "answer_quality": {
+          "values": [
+            40,
+            40,
+            40
+          ],
+          "min": 40,
+          "max": 40,
+          "range": 0,
+          "average": 40.0
+        },
+        "technical_depth": {
+          "values": [
+            15,
+            40,
+            40
+          ],
+          "min": 15,
+          "max": 40,
+          "range": 25,
+          "average": 31.67
+        },
+        "completeness": {
+          "values": [
+            15,
+            15,
+            15
+          ],
+          "min": 15,
+          "max": 15,
+          "range": 0,
+          "average": 15.0
+        }
+      },
+      "max_range": 25,
+      "missing_points_count_range": 0,
+      "turn_index": 1,
+      "case_id": "evasive_answer_interview",
+      "sample_coverage": 1.0,
+      "coverage_sufficient": true,
+      "verdict": "unstable",
+      "stable": false
+    }
+  ]
+}

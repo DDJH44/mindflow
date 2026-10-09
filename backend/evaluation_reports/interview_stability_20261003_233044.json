@@ -1,0 +1,359 @@
+{
+  "evaluation": {
+    "kind": "interview_stability",
+    "version": "v1",
+    "dataset_version": "v1",
+    "created_at": "2026-10-03T23:30:44.695155"
+  },
+  "config": {
+    "model": "deepseek-flash",
+    "repeats": 5,
+    "max_range_threshold": 15,
+    "analyzer_temperature": 0.2,
+    "follow_up_temperature": 0.4,
+    "seed": null
+  },
+  "summary": {
+    "turn_count": 2,
+    "stable_turn_count": 2,
+    "unstable_turn_count": 0,
+    "unstable_turns": [],
+    "max_range_observed": 15
+  },
+  "rank_correlations": [
+    {
+      "case_id": "rag_backend_interview",
+      "turn_index": 1,
+      "quality_vs_depth": 0.7632
+    },
+    {
+      "case_id": "rag_backend_interview",
+      "turn_index": 2,
+      "quality_vs_depth": 0.8885
+    }
+  ],
+  "turns": [
+    {
+      "question": "请结合 MindFlow AI 面试助手项目，说明你负责的后端架构设计，以及简历解析、向量检索、LLM 调用之间的数据流转过程。",
+      "answer_length": 264,
+      "repeats": 5,
+      "successful_repeats": 5,
+      "failed_repeats": 0,
+      "samples": [
+        {
+          "sample_index": 1,
+          "status": "success",
+          "latency_ms": 11232.64,
+          "scores": {
+            "answer_quality": 80,
+            "technical_depth": 60,
+            "completeness": 65
+          },
+          "missing_points_count": 8,
+          "missing_points": [
+            "未展开后端架构设计，如模块划分、服务边界、接口设计、异步/任务队列、扩展性与容错机制。",
+            "未说明简历解析的具体实现，如支持格式、解析库、结构化字段提取与清洗逻辑。",
+            "未说明 Chunk 切分策略，如大小、重叠、元数据设计。",
+            "未说明 Embedding 模型选型、向量维度及生成方式。",
+            "未说明 Milvus 的 collection schema、索引类型、相似度度量、top-k 等检索参数。",
+            "未说明 LLM 调用的具体细节，如模型选型、Prompt 模板、上下文拼接、token 限制、流式输出和异常处理。",
+            "未说明 PostgreSQL 与 Milvus 的数据一致性、回查失败处理、性能与并发考量。",
+            "未说明权限、安全、部署、监控等工程化内容。"
+          ],
+          "follow_up_question": "你提到 Chunk 切分后通过 Embedding 写入 Milvus，检索时再按 Chunk ID 回 PostgreSQL 获取原始内容。请具体说明你的 Chunk 切分策略（如大小、重叠、是否按段落或语义），以及 Chunk ID 是如何生成并保证 Milvus 与 PostgreSQL 中数据一致性的？"
+        },
+        {
+          "sample_index": 2,
+          "status": "success",
+          "latency_ms": 13425.24,
+          "scores": {
+            "answer_quality": 78,
+            "technical_depth": 48,
+            "completeness": 55
+          },
+          "missing_points_count": 8,
+          "missing_points": [
+            "后端架构设计说明不足，未提及服务分层、模块划分、接口设计、异步任务、部署或扩展方式。",
+            "简历解析细节不明确，例如支持的文件格式、解析库、结构化字段抽取、异常处理等。",
+            "Chunk 切分策略未说明，例如切分大小、重叠长度、元数据设计和边界处理。",
+            "Embedding 环节缺少模型选型、向量维度、批处理、失败重试等细节。",
+            "Milvus 使用细节未展开，例如集合 Schema、索引类型、相似度度量、TopK、过滤和重排策略。",
+            "向量检索的 Query 构造方式未说明，例如如何根据当前面试问题生成查询向量。",
+            "LLM 调用细节不足，例如模型选型、Prompt 模板、上下文拼接方式、Token 管理、流式输出、重试和降级策略。",
+            "未说明数据一致性、事务边界、缓存、并发性能、安全权限、监控和可观测性等工程问题。"
+          ],
+          "follow_up_question": "你提到系统根据当前面试问题进行向量检索，从 Milvus 取回相关 Chunk。请具体说明：这个查询向量是如何构造的——是直接用面试问题原文做 Embedding，还是结合了简历摘要、岗位 JD 或历史对话做 Query 改写？同时，你在 Milvus 中使用的相似度度量、索引类型和 TopK 分别是多少，如何判断检索回来的 Chunk 确实与当前问题相关？"
+        },
+        {
+          "sample_index": 3,
+          "status": "success",
+          "latency_ms": 10599.39,
+          "scores": {
+            "answer_quality": 72,
+            "technical_depth": 55,
+            "completeness": 60
+          },
+          "missing_points_count": 7,
+          "missing_points": [
+            "后端架构设计没有展开，缺少分层设计、模块划分、服务边界、异步任务/消息队列等说明。",
+            "简历解析细节不足，例如支持的文件格式、解析库、解析失败处理、结构化字段抽取等。",
+            "Chunk 切分策略不明确，例如切分大小、重叠长度、按段落/语义切分、元数据设计等。",
+            "Embedding 与向量检索细节不足，例如 Embedding 模型、向量维度、Milvus 索引类型、相似度度量、top-k、阈值、过滤和 rerank。",
+            "LLM 调用流程不完整，例如模型选型、Prompt 组装、上下文拼接、调用方式、流式输出、失败重试、限流和成本控制。",
+            "PostgreSQL 与 Milvus 的数据一致性、同步机制、更新删除策略没有说明。",
+            "缺少性能、并发、错误处理、安全、权限和监控等方面的设计说明。"
+          ],
+          "follow_up_question": "你提到 Chunk 会同时存到 PostgreSQL 和 Milvus，并通过 Chunk ID 关联。如果用户更新或删除了一份已解析的简历，你如何保证 PostgreSQL 中的 Chunk 数据和 Milvus 中的向量数据保持一致？请具体说明更新和删除时的处理流程，以及如果其中一步失败会如何补偿。"
+        },
+        {
+          "sample_index": 4,
+          "status": "success",
+          "latency_ms": 10807.03,
+          "scores": {
+            "answer_quality": 68,
+            "technical_depth": 45,
+            "completeness": 55
+          },
+          "missing_points_count": 9,
+          "missing_points": [
+            "后端架构设计不够具体，缺少分层设计、模块划分、服务边界、接口设计和部署架构说明。",
+            "简历解析的具体实现未说明，例如支持的文件格式、解析库、OCR、版面还原、异常文件处理等。",
+            "Chunk 切分策略未说明，例如按长度、语义、段落、重叠窗口及元数据设计。",
+            "Embedding 模型选择、向量维度、批处理、幂等和更新机制未说明。",
+            "Milvus 的集合设计、索引类型、距离度量、top-k、相似度阈值和 rerank 策略未说明。",
+            "PostgreSQL 中简历、Chunk、面试记录等表结构及与 Milvus 数据一致性方案未说明。",
+            "LLM 调用细节不足，包括模型选择、Prompt 设计、上下文拼接、token 限制、流式输出、重试与降级。",
+            "缺少异步任务、消息队列、性能优化、并发控制、缓存、监控日志和安全权限等方面的说明。",
+            "没有说明检索结果如何筛选、排序、去重，以及如何避免无关上下文影响 LLM 生成质量。"
+          ],
+          "follow_up_question": "在你描述的“Milvus 检索相关 Chunk → 按 Chunk ID 回 PostgreSQL 取原始内容 → 交给 LLM 生成问题”链路中，请具体说明你如何对检索结果做筛选、排序或去重，以及当召回内容相关度不高时，如何避免它影响 LLM 生成质量？"
+        },
+        {
+          "sample_index": 5,
+          "status": "success",
+          "latency_ms": 11924.49,
+          "scores": {
+            "answer_quality": 72,
+            "technical_depth": 45,
+            "completeness": 55
+          },
+          "missing_points_count": 11,
+          "missing_points": [
+            "后端架构设计细节不足，未说明服务分层、模块边界、接口设计、部署形态或关键依赖。",
+            "简历解析的具体实现不清晰，例如支持的文件格式、解析库、结构化字段提取、异常处理和解析失败重试。",
+            "Chunk 切分策略未说明，例如切分粒度、重叠长度、按段落/语义切分还是固定长度切分。",
+            "Embedding 模型选型、向量维度、生成方式、批量处理和更新策略未说明。",
+            "Milvus 使用细节不足，例如 collection/schema 设计、索引类型、相似度度量、topK 和阈值设置。",
+            "向量检索策略不完整，例如 query 如何由当前问题构造、是否过滤、如何排序和截断上下文。",
+            "PostgreSQL 表结构及 Chunk 与简历、面试会话之间的关联关系未说明。",
+            "LLM 调用细节缺失，例如模型选择、Prompt 设计、上下文拼接方式、token 限制、流式输出、重试与降级。",
+            "未说明异步任务、性能优化、并发处理、缓存、数据一致性和可扩展性设计。",
+            "未说明权限、安全、隐私以及多用户简历数据隔离等工程问题。",
+            "未说明面试问题生成逻辑如何与当前问题、历史对话和简历内容结合。"
+          ],
+          "follow_up_question": "你提到面试时根据当前问题进行向量检索，请具体说明：这个检索的 query 是如何从当前问题构造的？在 Milvus 中设置的 topK、相似度阈值和过滤条件是什么？检索结果如何排序、去重并截断后拼接到 LLM 上下文中？如果检索为空或相似度都很低，系统会怎么处理？"
+        }
+      ],
+      "score_statistics": {
+        "answer_quality": {
+          "values": [
+            80,
+            78,
+            72,
+            68,
+            72
+          ],
+          "min": 68,
+          "max": 80,
+          "range": 12,
+          "average": 74.0
+        },
+        "technical_depth": {
+          "values": [
+            60,
+            48,
+            55,
+            45,
+            45
+          ],
+          "min": 45,
+          "max": 60,
+          "range": 15,
+          "average": 50.6
+        },
+        "completeness": {
+          "values": [
+            65,
+            55,
+            60,
+            55,
+            55
+          ],
+          "min": 55,
+          "max": 65,
+          "range": 10,
+          "average": 58.0
+        }
+      },
+      "max_range": 15,
+      "missing_points_count_range": 4,
+      "turn_index": 1,
+      "case_id": "rag_backend_interview",
+      "stable": true
+    },
+    {
+      "question": "Milvus 和 PostgreSQL 之间是如何关联的？",
+      "answer_length": 31,
+      "repeats": 5,
+      "successful_repeats": 5,
+      "failed_repeats": 0,
+      "samples": [
+        {
+          "sample_index": 1,
+          "status": "success",
+          "latency_ms": 7282.14,
+          "scores": {
+            "answer_quality": 40,
+            "technical_depth": 20,
+            "completeness": 20
+          },
+          "missing_points_count": 5,
+          "missing_points": [
+            "未说明 Milvus 与 PostgreSQL 之间如何通过主键、ID 或其他字段建立关联",
+            "未说明数据写入时如何同步到 Milvus 和 PostgreSQL",
+            "未说明查询时如何联合使用向量检索结果与文本数据",
+            "未说明采用该架构的原因、适用场景或优缺点",
+            "未说明一致性、事务、性能、运维等方面的考虑"
+          ],
+          "follow_up_question": "你提到 Milvus 存向量、PostgreSQL 存文本，那么当你在 Milvus 中完成向量检索后，是如何根据返回的结果到 PostgreSQL 中获取对应文本的？具体通过什么字段进行关联，以及这个查询流程是怎样的？"
+        },
+        {
+          "sample_index": 2,
+          "status": "success",
+          "latency_ms": 5037.37,
+          "scores": {
+            "answer_quality": 40,
+            "technical_depth": 20,
+            "completeness": 20
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明 Milvus 与 PostgreSQL 之间通过什么字段或 ID 建立关联",
+            "未说明向量检索结果如何与 PostgreSQL 中的文本数据联合查询",
+            "未说明数据写入、更新、删除时两者如何同步或保持一致性",
+            "未说明是否使用统一主键、外键映射或中间表进行关联",
+            "未说明典型查询流程，例如先查 Milvus 再回查 PostgreSQL，还是先查 PostgreSQL 再查 Milvus",
+            "未说明是否涉及混合检索、事务、缓存、消息队列等集成机制"
+          ],
+          "follow_up_question": "在向量检索场景中，Milvus 返回相似向量结果后，你如何根据这些结果从 PostgreSQL 中获取对应的文本数据？两个存储之间是通过什么字段或 ID 关联的？"
+        },
+        {
+          "sample_index": 3,
+          "status": "success",
+          "latency_ms": 6137.08,
+          "scores": {
+            "answer_quality": 30,
+            "technical_depth": 10,
+            "completeness": 10
+          },
+          "missing_points_count": 5,
+          "missing_points": [
+            "未说明 Milvus 与 PostgreSQL 之间具体如何关联",
+            "未说明向量数据和文本数据是否通过 ID、主键或业务实体关联",
+            "未说明数据写入、同步或更新流程",
+            "未说明查询时如何联合使用向量检索结果和文本数据",
+            "未说明一致性、事务或应用层集成方式"
+          ],
+          "follow_up_question": "在查询时，Milvus 返回的向量检索结果是如何与 PostgreSQL 中保存的文本记录对应起来的？两者之间具体通过哪个字段或主键进行关联和拼接？"
+        },
+        {
+          "sample_index": 4,
+          "status": "success",
+          "latency_ms": 7149.51,
+          "scores": {
+            "answer_quality": 35,
+            "technical_depth": 10,
+            "completeness": 15
+          },
+          "missing_points_count": 7,
+          "missing_points": [
+            "没有说明 Milvus 与 PostgreSQL 之间具体如何关联，例如通过唯一 ID 或主键进行映射。",
+            "没有说明业务查询时如何同时使用两者，例如先查 Milvus 再回 PostgreSQL 取原文，或先查 PostgreSQL 再查 Milvus。",
+            "没有说明数据写入、更新、删除时如何保持两边同步。",
+            "没有说明是否涉及事务、一致性、失败重试或异步同步机制。",
+            "没有说明是否在应用层进行关联，还是通过数据库外部表、ETL、消息队列等方式集成。",
+            "没有说明向量与文本元数据之间的对应关系、字段设计或数据模型。",
+            "没有说明这种架构的适用场景，例如语义检索、推荐、RAG 等。"
+          ],
+          "follow_up_question": "在你描述的 Milvus 存向量、PostgreSQL 存文本的架构中，当用户进行一次语义检索时，从 Milvus 拿到相似向量结果后，你如何定位到 PostgreSQL 中对应的文本记录？两边是通过什么字段关联的？"
+        },
+        {
+          "sample_index": 5,
+          "status": "success",
+          "latency_ms": 4726.61,
+          "scores": {
+            "answer_quality": 45,
+            "technical_depth": 20,
+            "completeness": 20
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "没有说明 Milvus 与 PostgreSQL 之间具体如何关联，例如通过主键、业务 ID 或外键进行映射",
+            "没有说明二者之间的数据同步机制，例如应用层双写、异步同步或消息队列",
+            "没有说明一致性、事务和故障处理方式",
+            "没有说明查询时如何联合使用二者，例如先在 Milvus 检索向量，再用 PostgreSQL 获取文本详情",
+            "没有提及是否由应用层统一协调两个数据库",
+            "没有说明这种架构的优缺点或适用场景"
+          ],
+          "follow_up_question": "你提到 Milvus 存向量、PostgreSQL 存文本，那在实际检索时，Milvus 返回相似向量后，你是通过什么字段或 ID 去 PostgreSQL 中获取对应文本的？这个映射关系是怎么维护的？"
+        }
+      ],
+      "score_statistics": {
+        "answer_quality": {
+          "values": [
+            40,
+            40,
+            30,
+            35,
+            45
+          ],
+          "min": 30,
+          "max": 45,
+          "range": 15,
+          "average": 38.0
+        },
+        "technical_depth": {
+          "values": [
+            20,
+            20,
+            10,
+            10,
+            20
+          ],
+          "min": 10,
+          "max": 20,
+          "range": 10,
+          "average": 16.0
+        },
+        "completeness": {
+          "values": [
+            20,
+            20,
+            10,
+            15,
+            20
+          ],
+          "min": 10,
+          "max": 20,
+          "range": 10,
+          "average": 17.0
+        }
+      },
+      "max_range": 15,
+      "missing_points_count_range": 2,
+      "turn_index": 2,
+      "case_id": "rag_backend_interview",
+      "stable": true
+    }
+  ]
+}

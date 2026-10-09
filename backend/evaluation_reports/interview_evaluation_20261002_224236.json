@@ -1,0 +1,289 @@
+{
+  "evaluation": {
+    "kind": "interview_engine",
+    "version": "v1",
+    "dataset_version": "v1",
+    "created_at": "2026-10-02T22:42:36.659491",
+    "case_count": 1
+  },
+  "run_config": {
+    "llm_model": "deepseek-flash",
+    "llm_base_url": "https://api.deepseek.com",
+    "analyzer_temperature": 0.2,
+    "follow_up_temperature": 0.4,
+    "llm_calls_per_turn": 2
+  },
+  "summary": {
+    "case_count": 1,
+    "passed_case_count": 1,
+    "failed_case_count": 0,
+    "turn_count": 2,
+    "successful_turn_count": 2,
+    "errored_turn_count": 0,
+    "turn_pass_count": 2,
+    "turn_pass_rate": 1.0,
+    "rule_pass_rate": {
+      "R1_missing_point_coverage": 1.0,
+      "R2_no_false_missing": 1.0,
+      "R3_follow_up_targeting": 1.0,
+      "R4_analyzer_score_floor": 1.0
+    },
+    "r1_average_hit_rate": 0.1667,
+    "r3_average_hit_rate": 0.4,
+    "r2_violated_keywords": [],
+    "vague_follow_up_turns": [],
+    "latency_ms": {
+      "average": 10019.15,
+      "max": 14123.23
+    },
+    "failed_cases": []
+  },
+  "dataset": [
+    {
+      "id": "rag_backend_interview",
+      "title": "RAG 后端候选人面试",
+      "project_id": 3,
+      "direction": "考察候选人的后端开发能力和项目实践经验",
+      "turns": [
+        {
+          "question": "请结合 MindFlow AI 面试助手项目，说明你负责的后端架构设计，以及简历解析、向量检索、LLM 调用之间的数据流转过程。",
+          "answer": "我主要负责 MindFlow AI 面试助手的后端开发。用户上传简历后，FastAPI 接收文件并解析，文档内容保存到 PostgreSQL，然后进行 Chunk 切分。Chunk 通过 Embedding 模型转换成向量写入 Milvus。用户进入面试后，系统根据当前问题进行向量检索，从 Milvus 取回相关 Chunk，再按 Chunk ID 回 PostgreSQL 获取原始内容，最后把上下文交给大模型生成个性化面试问题。我负责文档上传、Chunk 切分、Embedding、Milvus 检索以及面试相关后端接口。",
+          "expected_missing_points": [],
+          "forbidden_missing_points": [
+            "未说明简历解析",
+            "没有提到简历解析",
+            "未说明向量检索",
+            "没有提到向量检索",
+            "未说明数据流转",
+            "没有说明数据流转",
+            "完全没有涉及技术"
+          ],
+          "expected_follow_up_keywords": [],
+          "min_analyzer_score": 45
+        },
+        {
+          "question": "Milvus 和 PostgreSQL 之间是如何关联的？",
+          "answer": "使用 Milvus 存储向量，PostgreSQL 保存文本。",
+          "expected_missing_points": [
+            "chunk_id",
+            "metadata",
+            "向量表关联",
+            "top-k",
+            "排序",
+            "过滤"
+          ],
+          "forbidden_missing_points": [
+            "未说明 Milvus 的作用",
+            "没有提到 Milvus 的作用",
+            "未说明 PostgreSQL 的作用",
+            "没有提到 PostgreSQL 的作用"
+          ],
+          "expected_follow_up_keywords": [
+            "chunk",
+            "关联",
+            "对应",
+            "标识",
+            "metadata",
+            "字段",
+            "映射",
+            "top-k",
+            "排序",
+            "过滤"
+          ],
+          "min_analyzer_score": 0
+        }
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "case_id": "rag_backend_interview",
+      "title": "RAG 后端候选人面试",
+      "project_id": 3,
+      "direction": "考察候选人的后端开发能力和项目实践经验",
+      "turn_count": 2,
+      "successful_turn_count": 2,
+      "failed_turn_count": 0,
+      "passed": true,
+      "turns": [
+        {
+          "turn_index": 1,
+          "question": "请结合 MindFlow AI 面试助手项目，说明你负责的后端架构设计，以及简历解析、向量检索、LLM 调用之间的数据流转过程。",
+          "answer": "我主要负责 MindFlow AI 面试助手的后端开发。用户上传简历后，FastAPI 接收文件并解析，文档内容保存到 PostgreSQL，然后进行 Chunk 切分。Chunk 通过 Embedding 模型转换成向量写入 Milvus。用户进入面试后，系统根据当前问题进行向量检索，从 Milvus 取回相关 Chunk，再按 Chunk ID 回 PostgreSQL 获取原始内容，最后把上下文交给大模型生成个性化面试问题。我负责文档上传、Chunk 切分、Embedding、Milvus 检索以及面试相关后端接口。",
+          "case_id": "rag_backend_interview",
+          "status": "success",
+          "latency_ms": 14123.23,
+          "passed": true,
+          "analysis": {
+            "answer_quality": 75,
+            "technical_depth": 55,
+            "completeness": 60,
+            "strengths": [
+              "能够围绕项目说明端到端的数据流转过程",
+              "明确提到 FastAPI、PostgreSQL、Milvus、Embedding 模型和 LLM 等关键组件",
+              "说明向量检索后按 Chunk ID 回 PostgreSQL 获取原始内容，体现对原文与向量存储分工的理解",
+              "明确列出个人负责文档上传、Chunk 切分、Embedding、Milvus 检索和面试相关后端接口"
+            ],
+            "missing_points": [
+              "后端架构设计未展开，如分层设计、服务边界、模块职责、同步/异步处理等",
+              "简历解析的具体实现未说明，如解析库、格式支持、异常处理和字段抽取",
+              "Chunk 切分策略未说明，如切分粒度、重叠、元数据保留和长文档处理",
+              "Embedding 细节未说明，如模型选型、向量维度、批量生成和更新策略",
+              "Milvus 使用细节未说明，如集合 schema、索引类型、相似度度量、TopK 或阈值",
+              "检索流程未说明 query 如何构造、过滤条件、召回后排序或重排策略",
+              "LLM 调用细节未说明，如模型选择、Prompt 模板、上下文拼接、截断和降级策略",
+              "数据一致性与异常处理未说明，如保存失败、Embedding 失败、Milvus 写入失败时的回滚或重试",
+              "性能、并发、鉴权、隐私安全和监控等工程化问题未说明"
+            ],
+            "summary": "候选人能够概述从简历上传、解析、切分、Embedding、Milvus 检索、回表取原文到 LLM 生成面试问题的端到端流程，并明确个人负责模块。但回答偏流程概述，后端架构设计和关键技术实现细节不足，技术深度与完整性一般。"
+          },
+          "follow_up_question": "你提到系统根据当前问题进行向量检索，从 Milvus 取回相关 Chunk。请具体说明：当前面试问题是如何转换成查询向量的？Milvus 检索时你使用了哪种相似度度量、TopK 和相似度阈值，以及是否对召回结果做了重排或过滤？",
+          "rules": {
+            "R1_missing_point_coverage": {
+              "passed": true,
+              "expected": [],
+              "matched": [],
+              "missed": [],
+              "hit_rate": 1.0
+            },
+            "R2_no_false_missing": {
+              "passed": true,
+              "forbidden": [
+                "未说明简历解析",
+                "没有提到简历解析",
+                "未说明向量检索",
+                "没有提到向量检索",
+                "未说明数据流转",
+                "没有说明数据流转",
+                "完全没有涉及技术"
+              ],
+              "violated": []
+            },
+            "R3_follow_up_targeting": {
+              "passed": true,
+              "expected_keywords": [],
+              "matched": [],
+              "missed": [],
+              "hit_rate": 1.0,
+              "vague_patterns": [],
+              "is_vague": false
+            },
+            "R4_analyzer_score_floor": {
+              "passed": true,
+              "min_score": 45,
+              "scores": {
+                "answer_quality": 75,
+                "technical_depth": 55,
+                "completeness": 60
+              },
+              "below_min_score": {}
+            }
+          }
+        },
+        {
+          "turn_index": 2,
+          "question": "Milvus 和 PostgreSQL 之间是如何关联的？",
+          "answer": "使用 Milvus 存储向量，PostgreSQL 保存文本。",
+          "case_id": "rag_backend_interview",
+          "status": "success",
+          "latency_ms": 5915.07,
+          "passed": true,
+          "analysis": {
+            "answer_quality": 25,
+            "technical_depth": 15,
+            "completeness": 20,
+            "strengths": [
+              "正确指出 Milvus 用于存储向量、PostgreSQL 用于保存文本",
+              "回答简洁直接，没有无关内容"
+            ],
+            "missing_points": [
+              "没有说明 Milvus 和 PostgreSQL 之间通过什么字段或 ID 进行关联",
+              "没有说明数据写入和查询时应用层如何协调两者",
+              "没有说明向量检索结果如何映射回 PostgreSQL 中的文本或业务数据",
+              "没有说明数据同步、一致性或更新删除时的处理方式",
+              "没有结合典型 RAG 或向量检索架构说明两者协作流程"
+            ],
+            "summary": "候选人只说明了 Milvus 存向量、PostgreSQL 存文本的基本分工，但没有解释两者如何关联、如何通过 ID 映射、查询流程和应用层协调，因此回答不完整，技术深度不足。"
+          },
+          "follow_up_question": "你提到 Milvus 存储向量、PostgreSQL 保存文本，那么在实际查询时，Milvus 返回的向量检索结果是如何映射回 PostgreSQL 中对应的文本记录的？两者之间具体通过什么字段或 ID 建立关联？",
+          "rules": {
+            "R1_missing_point_coverage": {
+              "passed": true,
+              "expected": [
+                "chunk_id",
+                "metadata",
+                "向量表关联",
+                "top-k",
+                "排序",
+                "过滤"
+              ],
+              "matched": [
+                "向量表关联"
+              ],
+              "missed": [
+                "chunk_id",
+                "metadata",
+                "top-k",
+                "排序",
+                "过滤"
+              ],
+              "hit_rate": 0.16666666666666666
+            },
+            "R2_no_false_missing": {
+              "passed": true,
+              "forbidden": [
+                "未说明 Milvus 的作用",
+                "没有提到 Milvus 的作用",
+                "未说明 PostgreSQL 的作用",
+                "没有提到 PostgreSQL 的作用"
+              ],
+              "violated": []
+            },
+            "R3_follow_up_targeting": {
+              "passed": true,
+              "expected_keywords": [
+                "chunk",
+                "关联",
+                "对应",
+                "标识",
+                "metadata",
+                "字段",
+                "映射",
+                "top-k",
+                "排序",
+                "过滤"
+              ],
+              "matched": [
+                "关联",
+                "对应",
+                "字段",
+                "映射"
+              ],
+              "missed": [
+                "chunk",
+                "标识",
+                "metadata",
+                "top-k",
+                "排序",
+                "过滤"
+              ],
+              "hit_rate": 0.4,
+              "vague_patterns": [],
+              "is_vague": false
+            },
+            "R4_analyzer_score_floor": {
+              "passed": true,
+              "min_score": 0,
+              "scores": {
+                "answer_quality": 25,
+                "technical_depth": 15,
+                "completeness": 20
+              },
+              "below_min_score": {}
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,198 @@
+{
+  "evaluation": {
+    "version": "v1",
+    "created_at": "2026-09-23T13:21:43.069319",
+    "case_count": 4
+  },
+  "summary": {
+    "case_count": 4,
+    "chunk_metrics": {
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    "document_metrics": {
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0
+    },
+    "filter_accuracy": 1.0,
+    "latency_ms": {
+      "average": 413.03,
+      "min": 229.74,
+      "max": 899.01
+    }
+  },
+  "cases": [
+    {
+      "case_id": "resume_backend_stack",
+      "query": "我使用了哪些后端技术？",
+      "expected_chunk_ids": [
+        4
+      ],
+      "expected_document_ids": [
+        8
+      ],
+      "retrieved_chunk_ids": [
+        4
+      ],
+      "retrieved_document_ids": [
+        8
+      ],
+      "project_id": 3,
+      "document_type": "resume",
+      "latency_ms": 899.01,
+      "filter_accuracy": 1.0,
+      "chunk_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      },
+      "document_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      },
+      "results": [
+        {
+          "chunk_id": 4,
+          "document_id": 8,
+          "project_id": 3,
+          "document_type": "resume",
+          "content": "我是一名后端开发工程师。\n\n我参与开发了 MindFlow AI 面试助手项目。\n项目使用 FastAPI、PostgreSQL、Redis 和 Milvus。\n系统通过 RAG 检索简历和项目经历，用于生成个性化面试问题。",
+          "score": 0.5473890900611877
+        }
+      ]
+    },
+    {
+      "case_id": "resume_mindflow_project",
+      "query": "我参与开发过什么项目？",
+      "expected_chunk_ids": [
+        4
+      ],
+      "expected_document_ids": [
+        8
+      ],
+      "retrieved_chunk_ids": [
+        4
+      ],
+      "retrieved_document_ids": [
+        8
+      ],
+      "project_id": 3,
+      "document_type": "resume",
+      "latency_ms": 261.32,
+      "filter_accuracy": 1.0,
+      "chunk_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      },
+      "document_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      },
+      "results": [
+        {
+          "chunk_id": 4,
+          "document_id": 8,
+          "project_id": 3,
+          "document_type": "resume",
+          "content": "我是一名后端开发工程师。\n\n我参与开发了 MindFlow AI 面试助手项目。\n项目使用 FastAPI、PostgreSQL、Redis 和 Milvus。\n系统通过 RAG 检索简历和项目经历，用于生成个性化面试问题。",
+          "score": 0.49708259105682373
+        }
+      ]
+    },
+    {
+      "case_id": "resume_rag",
+      "query": "这个项目使用了什么技术来实现知识检索？",
+      "expected_chunk_ids": [
+        4
+      ],
+      "expected_document_ids": [
+        8
+      ],
+      "retrieved_chunk_ids": [
+        4
+      ],
+      "retrieved_document_ids": [
+        8
+      ],
+      "project_id": 3,
+      "document_type": "resume",
+      "latency_ms": 262.07,
+      "filter_accuracy": 1.0,
+      "chunk_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      },
+      "document_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      },
+      "results": [
+        {
+          "chunk_id": 4,
+          "document_id": 8,
+          "project_id": 3,
+          "document_type": "resume",
+          "content": "我是一名后端开发工程师。\n\n我参与开发了 MindFlow AI 面试助手项目。\n项目使用 FastAPI、PostgreSQL、Redis 和 Milvus。\n系统通过 RAG 检索简历和项目经历，用于生成个性化面试问题。",
+          "score": 0.5467644333839417
+        }
+      ]
+    },
+    {
+      "case_id": "resume_backend_role",
+      "query": "我的技术岗位方向是什么？",
+      "expected_chunk_ids": [
+        4
+      ],
+      "expected_document_ids": [
+        8
+      ],
+      "retrieved_chunk_ids": [
+        4
+      ],
+      "retrieved_document_ids": [
+        8
+      ],
+      "project_id": 3,
+      "document_type": "resume",
+      "latency_ms": 229.74,
+      "filter_accuracy": 1.0,
+      "chunk_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      },
+      "document_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      },
+      "results": [
+        {
+          "chunk_id": 4,
+          "document_id": 8,
+          "project_id": 3,
+          "document_type": "resume",
+          "content": "我是一名后端开发工程师。\n\n我参与开发了 MindFlow AI 面试助手项目。\n项目使用 FastAPI、PostgreSQL、Redis 和 Milvus。\n系统通过 RAG 检索简历和项目经历，用于生成个性化面试问题。",
+          "score": 0.4365236759185791
+        }
+      ]
+    }
+  ]
+}

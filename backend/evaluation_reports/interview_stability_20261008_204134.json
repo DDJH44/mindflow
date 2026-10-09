@@ -1,0 +1,3288 @@
+{
+  "evaluation": {
+    "kind": "interview_stability",
+    "version": "v1",
+    "dataset_version": "v1",
+    "created_at": "2026-10-08T20:41:34.374318"
+  },
+  "config": {
+    "model": "agnes-3.0-flash",
+    "repeats": 10,
+    "max_range_threshold": 15,
+    "min_coverage": 0.8,
+    "analyzer_temperature": 0.2,
+    "follow_up_temperature": 0.4,
+    "seed": null,
+    "sampling": {
+      "used_in_this_report": "offline",
+      "offline_analysis_samples": 3,
+      "offline_evaluation_samples": 3,
+      "online_analysis_samples": 1,
+      "online_evaluation_samples": 1
+    }
+  },
+  "summary": {
+    "turn_count": 6,
+    "stable_turn_count": 2,
+    "unstable_turn_count": 4,
+    "inconclusive_turn_count": 0,
+    "unstable_turns": [
+      {
+        "case_id": "rag_backend_interview",
+        "turn_index": 2,
+        "max_range": 30,
+        "score_statistics": {
+          "answer_quality": {
+            "values": [
+              40,
+              40,
+              70,
+              40,
+              40,
+              70,
+              40,
+              70,
+              40,
+              40
+            ],
+            "min": 40,
+            "max": 70,
+            "range": 30,
+            "average": 49.0
+          },
+          "technical_depth": {
+            "values": [
+              40,
+              40,
+              40,
+              40,
+              40,
+              40,
+              40,
+              40,
+              40,
+              40
+            ],
+            "min": 40,
+            "max": 40,
+            "range": 0,
+            "average": 40.0
+          },
+          "completeness": {
+            "values": [
+              40,
+              40,
+              40,
+              40,
+              40,
+              40,
+              40,
+              40,
+              40,
+              40
+            ],
+            "min": 40,
+            "max": 40,
+            "range": 0,
+            "average": 40.0
+          }
+        }
+      },
+      {
+        "case_id": "evasive_answer_interview",
+        "turn_index": 1,
+        "max_range": 25,
+        "score_statistics": {
+          "answer_quality": {
+            "values": [
+              40,
+              40,
+              40,
+              40,
+              40,
+              40,
+              40,
+              40,
+              40,
+              40
+            ],
+            "min": 40,
+            "max": 40,
+            "range": 0,
+            "average": 40.0
+          },
+          "technical_depth": {
+            "values": [
+              15,
+              40,
+              15,
+              40,
+              40,
+              15,
+              40,
+              40,
+              40,
+              40
+            ],
+            "min": 15,
+            "max": 40,
+            "range": 25,
+            "average": 32.5
+          },
+          "completeness": {
+            "values": [
+              15,
+              15,
+              15,
+              15,
+              15,
+              15,
+              15,
+              15,
+              15,
+              15
+            ],
+            "min": 15,
+            "max": 15,
+            "range": 0,
+            "average": 15.0
+          }
+        }
+      },
+      {
+        "case_id": "redis_cache_follow_up_interview",
+        "turn_index": 1,
+        "max_range": 30,
+        "score_statistics": {
+          "answer_quality": {
+            "values": [
+              40,
+              40,
+              70,
+              40,
+              70,
+              70,
+              70,
+              70,
+              70,
+              40
+            ],
+            "min": 40,
+            "max": 70,
+            "range": 30,
+            "average": 58.0
+          },
+          "technical_depth": {
+            "values": [
+              40,
+              40,
+              40,
+              40,
+              40,
+              40,
+              40,
+              40,
+              40,
+              40
+            ],
+            "min": 40,
+            "max": 40,
+            "range": 0,
+            "average": 40.0
+          },
+          "completeness": {
+            "values": [
+              40,
+              40,
+              40,
+              40,
+              40,
+              40,
+              40,
+              40,
+              40,
+              40
+            ],
+            "min": 40,
+            "max": 40,
+            "range": 0,
+            "average": 40.0
+          }
+        }
+      },
+      {
+        "case_id": "redis_cache_follow_up_interview",
+        "turn_index": 2,
+        "max_range": 20,
+        "score_statistics": {
+          "answer_quality": {
+            "values": [
+              90,
+              90,
+              90,
+              90,
+              90,
+              90,
+              90,
+              90,
+              90,
+              90
+            ],
+            "min": 90,
+            "max": 90,
+            "range": 0,
+            "average": 90.0
+          },
+          "technical_depth": {
+            "values": [
+              90,
+              90,
+              90,
+              90,
+              90,
+              90,
+              90,
+              90,
+              90,
+              90
+            ],
+            "min": 90,
+            "max": 90,
+            "range": 0,
+            "average": 90.0
+          },
+          "completeness": {
+            "values": [
+              70,
+              90,
+              90,
+              90,
+              90,
+              90,
+              90,
+              90,
+              90,
+              90
+            ],
+            "min": 70,
+            "max": 90,
+            "range": 20,
+            "average": 88.0
+          }
+        }
+      }
+    ],
+    "inconclusive_turns": [],
+    "max_range_observed": 30,
+    "conclusive": true
+  },
+  "rank_correlations": [
+    {
+      "case_id": "rag_backend_interview",
+      "turn_index": 1,
+      "quality_vs_depth": null
+    },
+    {
+      "case_id": "rag_backend_interview",
+      "turn_index": 2,
+      "quality_vs_depth": null
+    },
+    {
+      "case_id": "rag_backend_senior_interview",
+      "turn_index": 1,
+      "quality_vs_depth": null
+    },
+    {
+      "case_id": "evasive_answer_interview",
+      "turn_index": 1,
+      "quality_vs_depth": null
+    },
+    {
+      "case_id": "redis_cache_follow_up_interview",
+      "turn_index": 1,
+      "quality_vs_depth": null
+    },
+    {
+      "case_id": "redis_cache_follow_up_interview",
+      "turn_index": 2,
+      "quality_vs_depth": null
+    }
+  ],
+  "turns": [
+    {
+      "question": "请结合 MindFlow AI 面试助手项目，说明你负责的后端架构设计，以及简历解析、向量检索、LLM 调用之间的数据流转过程。",
+      "answer_length": 264,
+      "repeats": 10,
+      "analyzer_sample_counts": [
+        3
+      ],
+      "successful_repeats": 10,
+      "failed_repeats": 0,
+      "samples": [
+        {
+          "sample_index": 1,
+          "status": "success",
+          "latency_ms": 57189.27,
+          "scores": {
+            "answer_quality": 70,
+            "technical_depth": 70,
+            "completeness": 70
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "depth": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "completeness": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "anchor_reason": "回答直接描述了数据流转的主干路径（PostgreSQL -> Chunk -> Milvus -> LLM），符合B档“有直接回应但具体参数/机制细节较少”的特征；深度上说明了流程但缺乏取值和取舍理由；完整度覆盖了简历解析、检索、LLM调用三大块，但缺少架构设计的细节。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明Embedding模型的具体选型及向量维度选择理由",
+            "未说明Chunk切分的具体策略（如固定长度、语义切分、重叠窗口大小等）",
+            "未说明Milvus索引类型及检索参数（如Top-K、距离度量方式）",
+            "Chunk切分策略的具体参数（如chunk_size, overlap）及依据未说明。",
+            "未说明LLM调用的上下文组装策略（如提示词工程、上下文窗口限制处理）",
+            "上下文窗口管理机制（如何截断或总结以适应LLM限制）未提及。"
+          ],
+          "follow_up_question": "你提到Chunk通过Embedding模型转换成向量，请问具体选用了哪个Embedding模型？其向量维度是如何确定的，以及为什么没有采用其他维度更低的模型以优化存储和检索效率？"
+        },
+        {
+          "sample_index": 2,
+          "status": "success",
+          "latency_ms": 30362.63,
+          "scores": {
+            "answer_quality": 70,
+            "technical_depth": 70,
+            "completeness": 70
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "depth": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "completeness": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "anchor_reason": "候选人直接回应了架构设计与数据流转问题，描述了核心步骤（FastAPI->PG->Milvus->LLM），但缺乏具体参数（如Chunk大小、Embedding模型、向量维度）和取舍理由，属于有直接回应但细节不足。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "Embedding 模型的选择及向量维度等具体参数。",
+            "Chunk 切分的具体策略（如按语义、固定长度或重叠率等参数设置）。",
+            "LLM 调用时 Prompt 的组装结构或上下文长度控制策略。",
+            "未说明向量检索的Top-K取值或相似度阈值",
+            "Milvus 向量检索的具体参数（如 topK 值、相似度度量方式）及性能优化手段。",
+            "未说明简历解析的具体工具或策略（如PDF解析器、OCR依赖）"
+          ],
+          "follow_up_question": "你提到 Chunk 切分后生成向量，请问具体采用了什么切分策略（如固定长度还是基于语义/分隔符），以及 Chunk 的重叠率（Overlap）是如何设定的？如果两个相邻的 Chunk 被切分在不同语义边界，你是如何处理以检索时上下文完整性的？"
+        },
+        {
+          "sample_index": 3,
+          "status": "success",
+          "latency_ms": 37428.19,
+          "scores": {
+            "answer_quality": 70,
+            "technical_depth": 70,
+            "completeness": 70
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "depth": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "completeness": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "anchor_reason": "回答直接回应了架构与数据流转，列出了FastAPI、PostgreSQL、Milvus等关键组件和步骤，符合有直接回应且有一到两处具体信息（如存储库名称、流程步骤），但缺乏参数、取舍等深层细节，故定为B档；覆盖了大部分要点但缺少细节，完整性亦为B。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明Chunk切分的策略（如固定长度、滑动窗口、语义分段）及具体的参数设置（chunk size, overlap）",
+            "未说明Embedding模型的选择依据、向量维度以及写入Milvus时的索引类型",
+            "未说明向量检索时的具体参数（如top-k值、相似度阈值）及召回后的重排序策略",
+            "未说明LLM调用的上下文拼接策略（如如何组织检索到的Chunk）及提示词工程细节",
+            "未说明简历解析的具体方式（是OCR、PDF文本提取还是结构化解析）及处理不同格式的策略",
+            "未说明简历解析的具体方法（如使用什么库或模型处理PDF/Word）"
+          ],
+          "follow_up_question": "你提到使用 Milvus 进行向量检索，请问在写入 Milvus 时，你们选择了哪种索引类型（如 HNSW 或 IVF 系列）？在检索阶段，具体设置的 top-k 值是多少，又是如何平衡召回率与精度的？"
+        },
+        {
+          "sample_index": 4,
+          "status": "success",
+          "latency_ms": 30474.21,
+          "scores": {
+            "answer_quality": 70,
+            "technical_depth": 70,
+            "completeness": 70
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "depth": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "completeness": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "anchor_reason": "回答直接切题，清晰描述了从简历上传到LLM调用的核心数据流转，符合B档'直接回应但具体信息较少'的定义；技术深度上说明了机制流程，但缺少参数、取舍等细节，停留在B档；完整度上覆盖了后端架构和数据流转两个核心要点，遗漏了细节实现，属于B档'覆盖大部分要点'。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明Chunk切分的策略、块大小（chunk size）及重叠度（overlap）参数",
+            "未说明向量检索的具体策略（如top-k数值、相似度算法）及Milvus索引类型",
+            "未提及使用的Embedding模型名称及其向量维度",
+            "未解释为何选择Milvus而非其他向量数据库，或PostgreSQL存储内容的具体结构",
+            "未描述LLM调用的具体模型、Prompt工程细节或上下文窗口管理方式",
+            "未说明文档解析使用的具体库或工具（如pdfplumber, unstructured等）"
+          ],
+          "follow_up_question": "在你的数据流转过程中，简历解析后的 Chunk 具体采用了什么样的切分策略（例如块大小和重叠度），以及为什么在向量检索时选择了 Milvus 而不是其他方案？"
+        },
+        {
+          "sample_index": 5,
+          "status": "success",
+          "latency_ms": 23723.38,
+          "scores": {
+            "answer_quality": 70,
+            "technical_depth": 70,
+            "completeness": 70
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "depth": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "completeness": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "anchor_reason": "候选人直接回应了后端架构和数据流转的问题，列出了具体的技术栈（FastAPI, PostgreSQL, Milvus）和流程步骤，但缺乏参数取值、性能取舍或边界处理的细节，因此定为B档。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明Chunk切分的具体策略（如固定长度、重叠率、按语义切分等）及参数选择。",
+            "未说明 Embedding 模型的具体选型及向量维度参数",
+            "未说明向量检索时的Top-K设置、相似度阈值或召回策略。",
+            "未说明数据一致性或并发更新时的处理方案。",
+            "系统异常处理机制（如Embedding失败、检索无结果时的降级策略）",
+            "Milvus向量检索的参数配置（如top_k大小、距离度量方式）"
+          ],
+          "follow_up_question": "在简历 Chunk 切分环节，你具体采用了什么策略（比如是按固定字符数、语义段落还是滑动窗口）以及重叠率（Overlap）是如何设定的？这样做的目的是为了保证检索召回的上下文连贯性吗？"
+        },
+        {
+          "sample_index": 6,
+          "status": "success",
+          "latency_ms": 64497.93,
+          "scores": {
+            "answer_quality": 70,
+            "technical_depth": 70,
+            "completeness": 70
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "depth": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "completeness": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "anchor_reason": "回答直接回应了架构设计与数据流转的核心流程，提及了具体组件（FastAPI, PostgreSQL, Milvus, Embedding, LLM）和步骤，但缺乏具体的实现参数（如Chunk大小、模型选型、向量维度）及取舍理由，符合B档'有直接回应但仅一到两处具体信息，其余为概述'的定义。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明Chunk切分的具体策略（如固定长度、滑动窗口、基于语义切分）及参数取值。",
+            "未提及Embedding模型的具体选型及其向量维度，也未说明选择该模型的依据。",
+            "未描述向量检索时的Top-K参数设定、相似度计算方式（如余弦相似度）及阈值过滤机制。",
+            "缺乏对LLM调用上下文的构造细节（如Prompt模板结构、上下文长度限制）及处理长文本的策略。",
+            "未说明LLM调用的具体实现（如提示词工程、参数temperature等）",
+            "未说明Milvus向量检索的指标（如余弦/欧氏距离）及Top-K取值"
+          ],
+          "follow_up_question": "关于 Chunk 切分策略，你们具体是采用了固定长度切分、基于语义的滑动窗口，还是其他方法？请说明一下选择的依据以及切分粒度的具体参数设定。"
+        },
+        {
+          "sample_index": 7,
+          "status": "success",
+          "latency_ms": 26831.63,
+          "scores": {
+            "answer_quality": 70,
+            "technical_depth": 70,
+            "completeness": 70
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "depth": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "completeness": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "anchor_reason": "候选人直接回应了架构和数据流转问题，提到了具体的技术组件（FastAPI, PostgreSQL, Milvus, LLM）和流程步骤，但缺乏参数取值、切片策略、索引类型等深层实现细节，属于“说明了机制或流程，但缺少取值、取舍比较与边界情况”。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明文档Chunk切分的具体策略（如固定长度、语义切分）及参数（如chunk_size, overlap）",
+            "未说明LLM调用的具体模型选择、Prompt工程策略或上下文窗口管理方式",
+            "未说明向量检索时的TopK取值、相似度阈值或重排序（Rerank）机制",
+            "未提及向量检索的具体实现细节（如Milvus的索引类型、距离度量方式、top-k取值）",
+            "未提及异常处理机制（如向量检索无结果、LLM超时或格式错误的降级策略）",
+            "未说明文档解析的具体技术栈（如PDF/Word解析库）及处理失败的情况"
+          ],
+          "follow_up_question": "你提到根据当前问题进行向量检索，请问在 Milvus 中具体设置的 TopK 是多少？如果检索出的 Chunk 相似度较低或者没有召回结果，系统采用了怎样的重排序（Rerank）机制或降级策略来保证送给 LLM 的上下文质量？"
+        },
+        {
+          "sample_index": 8,
+          "status": "success",
+          "latency_ms": 35470.94,
+          "scores": {
+            "answer_quality": 70,
+            "technical_depth": 70,
+            "completeness": 70
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "depth": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "completeness": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "anchor_reason": "候选人直接回应了架构和数据流转问题，清晰描述了FastAPI、PostgreSQL、Milvus和LLM的串联逻辑，但缺乏具体的参数取值（如Chunk大小、Embedding维度）、取舍理由及异常处理细节，整体处于有流程但缺深度的水平。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未提及使用的Embedding模型具体名称、向量维度及选择理由",
+            "未说明Chunk切分的具体策略、大小参数及重叠机制",
+            "未说明数据流转过程中的异常处理机制，如文件解析失败、向量写入失败或模型调用超时",
+            "未提及后端接口的高并发支持或异步处理机制（如是否使用Celery等任务队列）",
+            "未描述LLM调用时的Prompt构造细节，如上下文窗口管理、提示词模板结构",
+            "未说明Chunk切分策略，如切片大小、重叠率或基于语义/长度的切分依据"
+          ],
+          "follow_up_question": "你提到 Chunk 切分后会进行 Embedding 并写入 Milvus，具体采用了什么样的切分策略（例如固定长度、语义分段或基于标题结构）？在确定切片大小和重叠率（Overlap）时，是如何权衡检索精度与 Token 消耗成本的？"
+        },
+        {
+          "sample_index": 9,
+          "status": "success",
+          "latency_ms": 72849.45,
+          "scores": {
+            "answer_quality": 70,
+            "technical_depth": 70,
+            "completeness": 70
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "depth": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "completeness": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "anchor_reason": "候选人直接回应了架构设计和数据流转，给出了清晰的步骤（FastAPI->PostgreSQL->Chunk->Embedding->Milvus->LLM），属于具体信息，但缺乏参数取值、取舍理由和异常处理等深度细节，因此质量和深度均为B档；覆盖了主要流程但缺少关键实现细节，完整性为B档。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明Chunk切分的具体策略（如固定长度、语义切分）及参数（如chunk_size, overlap）",
+            "Embedding模型选择及向量维度未提及，无法判断技术选型合理性",
+            "LLM调用细节未说明：使用哪个模型、prompt结构、上下文窗口管理策略",
+            "未说明向量检索的具体策略（如TopK值、相似度阈值、是否混合检索）",
+            "Milvus检索参数缺失：如top_k数量、相似度阈值、是否使用混合检索等",
+            "错误处理机制未提及：如文档解析失败、检索无结果、LLM调用超时等边界情况"
+          ],
+          "follow_up_question": "你提到将 Chunk 写入 Milvus 后，在检索时会通过 Chunk ID 回查 PostgreSQL 获取原文。请具体说明在将上下文发送给 LLM 前，你是如何确定从 Milvus 检索出的 Top-K 数量以及相似度的阈值（score cutoff）？如果检索结果得分过低或数量不足，你采取了什么具体的降级策略或补充手段来保证生成面试问题的相关性？"
+        },
+        {
+          "sample_index": 10,
+          "status": "success",
+          "latency_ms": 63980.5,
+          "scores": {
+            "answer_quality": 70,
+            "technical_depth": 70,
+            "completeness": 70
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "depth": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "completeness": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "anchor_reason": "候选人直接回应了架构设计和数据流转，列出了FastAPI、PostgreSQL、Milvus等具体组件及数据流向，但缺乏具体的参数取值、Chunk切分策略细节及取舍理由，属于有直接回应但细节不足的B档。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明Chunk切分的具体策略（如按段落、固定长度或语义切分）及参数（如chunk_size, overlap）",
+            "未提及Embedding模型的具体选型及其向量维度",
+            "未阐述LLM调用的具体Prompt工程细节或上下文窗口管理策略",
+            "未说明向量检索的召回参数（如Top-K、相似度阈值）及排序逻辑",
+            "未提及高并发场景下的架构设计考量或异步处理机制",
+            "未涉及LLM调用的具体细节（如Prompt结构、温度参数、流式处理）"
+          ],
+          "follow_up_question": "你提到向量检索后是通过 Chunk ID 回查 PostgreSQL 获取原始内容，具体是如何设计 PostgreSQL 与 Milvus 之间的 ID 关联机制的？在向量检索的 Top-K 和相似度阈值设定上，你们又是如何平衡召回率与相关性的？"
+        }
+      ],
+      "score_statistics": {
+        "answer_quality": {
+          "values": [
+            70,
+            70,
+            70,
+            70,
+            70,
+            70,
+            70,
+            70,
+            70,
+            70
+          ],
+          "min": 70,
+          "max": 70,
+          "range": 0,
+          "average": 70.0
+        },
+        "technical_depth": {
+          "values": [
+            70,
+            70,
+            70,
+            70,
+            70,
+            70,
+            70,
+            70,
+            70,
+            70
+          ],
+          "min": 70,
+          "max": 70,
+          "range": 0,
+          "average": 70.0
+        },
+        "completeness": {
+          "values": [
+            70,
+            70,
+            70,
+            70,
+            70,
+            70,
+            70,
+            70,
+            70,
+            70
+          ],
+          "min": 70,
+          "max": 70,
+          "range": 0,
+          "average": 70.0
+        }
+      },
+      "max_range": 0,
+      "missing_points_count_range": 0,
+      "turn_index": 1,
+      "case_id": "rag_backend_interview",
+      "sample_coverage": 1.0,
+      "coverage_sufficient": true,
+      "verdict": "stable",
+      "stable": true
+    },
+    {
+      "question": "Milvus 和 PostgreSQL 之间是如何关联的？",
+      "answer_length": 31,
+      "repeats": 10,
+      "analyzer_sample_counts": [
+        3
+      ],
+      "successful_repeats": 10,
+      "failed_repeats": 0,
+      "samples": [
+        {
+          "sample_index": 1,
+          "status": "success",
+          "latency_ms": 44372.3,
+          "scores": {
+            "answer_quality": 40,
+            "technical_depth": 40,
+            "completeness": 40
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "depth": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "completeness": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "anchor_reason": "回答直接指出了两者的存储分工（向量存Milvus，文本存PostgreSQL），符合B档直接回应的标准，但仅提及名词，无具体关联机制（如ID映射）细节，且未覆盖关联逻辑要点。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明两个数据库之间通过什么字段建立关联（如外部业务ID、主键映射关系）",
+            "未提及具体的工具或中间件（如Debezium、Flink或自定义脚本）",
+            "未说明查询时的联动方式（如先查向量ID再查PostgreSQL，或联合查询）",
+            "未描述应用层或服务层如何协调这两个数据库（如事务一致性、并发读写策略）",
+            "未说明如何通过唯一标识符（如UUID或业务ID）将向量与文本记录关联",
+            "未说明当向量检索结果需要补充文本详情时，具体的查询流程是怎样的"
+          ],
+          "follow_up_question": "既然你提到 Milvus 存储向量而 PostgreSQL 保存文本，那么在应用层进行查询时，你是如何通过向量检索结果（Vector ID）去 PostgreSQL 中关联并获取具体的文本详情的？"
+        },
+        {
+          "sample_index": 2,
+          "status": "success",
+          "latency_ms": 30354.84,
+          "scores": {
+            "answer_quality": 40,
+            "technical_depth": 40,
+            "completeness": 40
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "depth": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "completeness": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "anchor_reason": "回答仅陈述了两者各自存储的数据类型，未解释两者之间如何通过ID关联、一致性保证或查询流程等机制进行交互，属于只有方向性表述而无具体机制说明，最高为C档。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未解释数据一致性是如何保证的（如同步策略、事务处理或最终一致性方案）",
+            "未提及ID映射关系的具体实现方式（如在Milvus的标量字段中存储PostgreSQL的主键）",
+            "未提及查询时的关联检索流程（如先从Milvus取ID再到PostgreSQL查详情，或反之）",
+            "未描述具体的查询流程（如先用Milvus召回向量ID，再去PostgreSQL获取详情）",
+            "未说明Milvus向量ID与PostgreSQL记录ID之间的映射关系或同步机制",
+            "未说明两系统之间数据关联的具体实现方式（如ID映射、外键关系或应用层胶水代码）"
+          ],
+          "follow_up_question": "你在混合检索场景中，Milvus 返回的向量 ID 与 PostgreSQL 中的主键是如何建立映射关系的？请具体说明在数据写入和查询阶段，你是如何通过这两个 ID 来实现数据关联的，以及采用了什么机制来保证两边数据的一致性？"
+        },
+        {
+          "sample_index": 3,
+          "status": "success",
+          "latency_ms": 26929.28,
+          "scores": {
+            "answer_quality": 70,
+            "technical_depth": 40,
+            "completeness": 40
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "depth": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "completeness": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "anchor_reason": "回答指出了两者存储数据的类型差异（向量vs文本），直接回应了“如何关联”中的数据存储部分，但缺乏任何实现细节、参数或机制描述，故质量定为B；深度仅停留在名词层面，故定为C；未说明具体的关联机制（如ID映射、触发器等），完整度低，故定为C。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明两个数据库之间通过什么字段或机制进行关联（例如PostgreSQL中的id映射到Milvus中的primary key）。",
+            "未说明检索时的查询路径（是先查PostgreSQL获取ID列表再查Milvus，还是直接在Milvus中通过标量字段过滤）。",
+            "未提及数据一致性问题的处理方式（如Milvus异步索引导致的查询延迟与PostgreSQL事务一致性的矛盾）。",
+            "未说明Milvus与PostgreSQL之间具体的数据关联机制（如通过ID对应、外键或API实时同步）",
+            "未描述数据写入、更新或删除时的同步流程（是应用层双写、消息队列还是数据库触发器？）。",
+            "未解释数据一致性是如何保证的（如双写、CDC、定时同步或最终一致性策略）"
+          ],
+          "follow_up_question": "你提到Milvus存储向量而PostgreSQL保存文本，那在实际查询时，你是如何在这两个数据库之间建立关联的？具体来说，检索路径是先在PostgreSQL中通过标量条件筛选出ID列表再拿这些ID去Milvus做向量检索，还是直接在Milvus内部使用标量字段进行过滤？如果采用了应用层双写或数据同步机制，你又是如何保证两边数据在更新或删除时的一致性的？"
+        },
+        {
+          "sample_index": 4,
+          "status": "success",
+          "latency_ms": 28284.88,
+          "scores": {
+            "answer_quality": 40,
+            "technical_depth": 40,
+            "completeness": 40
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "depth": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "completeness": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "anchor_reason": "回答直接回应了两者分工（向量存Milvus，文本存Postgres），符合B档‘有直接回应’但信息极少；未解释关联机制，深度仅停留在名词层面（C）；未覆盖如何同步、外键、ID映射等关键要点，完整度低（C）。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明两者之间如何通过ID（如document_id或primary key）进行关联或同步。",
+            "未提及数据一致性策略（如事务、最终一致性、定时同步任务等）。",
+            "未说明在PostgreSQL中是否保存向量ID，或在Milvus中是否冗余文本ID。",
+            "未说明是否使用PostgreSQL作为Milvus的底层存储或仅作为应用层关联数据库",
+            "未说明Milvus与PostgreSQL之间的数据同步机制或一致性保证策略",
+            "未说明具体的技术组件（如CDC、消息队列、应用代码逻辑）如何实现这种关联"
+          ],
+          "follow_up_question": "你提到用 Milvus 存向量、PostgreSQL 存文本，那么当用户通过 PostgreSQL 查到某条记录的 document_id 后，你是如何精确关联到 Milvus 中对应的向量记录的？具体是在 PostgreSQL 中冗余存储了 Milvus 的向量 ID，还是两边共用同一套 ID 体系？"
+        },
+        {
+          "sample_index": 5,
+          "status": "success",
+          "latency_ms": 31113.29,
+          "scores": {
+            "answer_quality": 40,
+            "technical_depth": 40,
+            "completeness": 40
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "depth": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "completeness": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "anchor_reason": "回答仅陈述了“Milvus存向量，PostgreSQL存文本”这一存储分工，未说明两者之间通过什么字段（如ID）、什么机制（如外键、应用层映射、同步工具）进行关联，属于只提到技术名词而没有解释运作方式，且未直接回应“如何关联”的核心机制。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未解释数据写入时的同步或一致性机制（如是否双写、如何保证ID匹配）",
+            "未说明查询时的联合逻辑（是先查向量再回查PostgreSQL获取文本，还是其他方式）",
+            "未说明为什么选择这种分离架构而非单一数据库（如Pgvector等替代方案的取舍理由）",
+            "未说明两系统之间具体的数据同步或关联机制（如ID映射、外键约束、消息队列解耦等）",
+            "未说明两个数据库之间如何通过ID（如primary key或外键）进行数据关联",
+            "未涉及系统架构层面的集成细节（如是否使用中间件、API网关或直接数据库连接）"
+          ],
+          "follow_up_question": "在你描述的这种架构中，Milvus 存储向量而 PostgreSQL 存储文本，当执行一次向量检索时，你是如何利用检索到的向量 ID 去 PostgreSQL 中匹配并返回完整文本数据的？"
+        },
+        {
+          "sample_index": 6,
+          "status": "success",
+          "latency_ms": 25710.81,
+          "scores": {
+            "answer_quality": 70,
+            "technical_depth": 40,
+            "completeness": 40
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "depth": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "completeness": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "anchor_reason": "回答仅陈述了各自存储的内容，未说明两者之间的具体关联机制（如主键映射、外键关系或联合查询方式），属于空泛的方向性表述，未直接回应‘如何关联’的核心提问。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未解释为何选择这种分离架构而非其他方案（如纯PostgreSQL扩展）",
+            "未提及数据一致性保障策略（如事务处理或最终一致性）",
+            "未说明两者之间通过什么字段或ID进行关联（如通过PostgreSQL中的record_id关联Milvus中的vector_id）",
+            "未说明查询流程（如先查PostgreSQL过滤再查Milvus，或先Milvus召回再PostgreSQL补全详情）",
+            "未说明Milvus与PostgreSQL之间建立关联的具体机制（如通过ID字段映射或业务键）",
+            "未提及数据同步或清理机制（如PostgreSQL删除记录时如何处理Milvus中的向量）"
+          ],
+          "follow_up_question": "你提到用 PostgreSQL 保存文本、Milvus 存储向量，那么在具体的业务场景中，你是通过什么字段（例如 ID 或业务主键）将这两套数据关联起来的？在查询时，是先通过 PostgreSQL 过滤条件筛选出 ID 列表再去 Milvus 检索，还是先通过 Milvus 召回向量 ID 再去 PostgreSQL 补全详情？"
+        },
+        {
+          "sample_index": 7,
+          "status": "success",
+          "latency_ms": 23732.26,
+          "scores": {
+            "answer_quality": 40,
+            "technical_depth": 40,
+            "completeness": 40
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "depth": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "completeness": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "anchor_reason": "候选人仅指出了各自存储的数据类型（向量与文本），属于方向性陈述，未说明两者如何具体关联（如外键、同步机制、ID映射等），没有直接回应'如何关联'这一机制性问题。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明两者之间的具体关联机制（如是否通过PostgreSQL存储向量ID作为外键，或在应用层通过共享业务ID进行逻辑关联）",
+            "未说明 Milvus 与 PostgreSQL 之间具体的关联机制（如基于 ID 映射、双写策略或 ETL 管道）。",
+            "未说明在查询时如何协调两个数据库（如先查向量获取 ID，再查文本的详细流程）。",
+            "未阐述数据同步或一致性的处理方式（例如事务一致性、延迟同步策略或最终一致性）",
+            "未提及关联查询的具体实现流程（如先查PG获取ID，再查Milvus，或反之）",
+            "未提供实现关联的具体技术手段（如代码逻辑、中间件使用或架构模式）。"
+          ],
+          "follow_up_question": "你提到通过共享业务 ID 进行逻辑关联，那么在具体实现时，当应用层执行一次混合查询（先向量检索后获取文本详情）时，是如何协调这两个数据库的读写操作的？如果 Milvus 中某个 ID 对应的向量已删除但 PostgreSQL 中的文本记录还在，或者反过来，你是如何处理这种数据不一致的情况的？"
+        },
+        {
+          "sample_index": 8,
+          "status": "success",
+          "latency_ms": 24496.14,
+          "scores": {
+            "answer_quality": 70,
+            "technical_depth": 40,
+            "completeness": 40
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "depth": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "completeness": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "anchor_reason": "回答直接说明了数据分布（向量在Milvus，文本在PostgreSQL），符合B档‘有句子直接回应’，但缺乏具体实现细节（如ID关联机制），故深度为C，覆盖度为C。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明Milvus与PostgreSQL之间的具体关联方式（如通过ID外键、应用层映射或数据库扩展插件）",
+            "未解释为什么选择这种拆分架构而非将向量存入PostgreSQL的pgvector等扩展",
+            "未说明两个数据库之间通过什么字段进行关联（例如Milvus的ID是否与PostgreSQL的主键对应）",
+            "未说明在查询时如何组合两个系统的数据（如先查向量库获取ID，再查PostgreSQL获取详情）",
+            "未说明查询时的流程（是先查Milvus再查PostgreSQL，还是其他混合查询方式）",
+            "未说明在实际场景中为何选择PostgreSQL作为元数据存储而非Milvus自身存储"
+          ],
+          "follow_up_question": "你提到在查询时需要组合两个系统的数据，能具体描述一下在实际项目中，你是如何利用 Milvus 返回的 ID 去 PostgreSQL 中检索关联文本信息的吗？"
+        },
+        {
+          "sample_index": 9,
+          "status": "success",
+          "latency_ms": 50177.22,
+          "scores": {
+            "answer_quality": 40,
+            "technical_depth": 40,
+            "completeness": 40
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "depth": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "completeness": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "anchor_reason": "回答仅陈述了各自存储的数据类型（向量vs文本），属于背景性描述，未解释两者之间如何关联（如ID映射、同步机制、外键关系等），没有直接回应‘如何关联’这一核心提问。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未提及数据同步或一致性保证的方法（如双写、CDC、定时同步）",
+            "未说明 Milvus 与 PostgreSQL 之间的具体关联方式（如通过唯一ID关联、外键约束或应用层双写）",
+            "未解释为什么需要两个数据库（取舍理由，如文本检索效率vs向量检索性能）。",
+            "未说明两者之间建立关联的具体机制（如通过共享主键ID进行映射）",
+            "未解释在查询时如何结合两者的结果（如先向量检索再回查文本详情）",
+            "未提及具体的实现细节，如是通过API调用还是数据库触发器同步。"
+          ],
+          "follow_up_question": "既然 Milvus 存储的是向量而 PostgreSQL 存储的是文本，在实际应用层是如何将两者关联起来的？具体来说，当通过 Milvus 检索出 Top-K 个向量 ID 后，你是如何利用这些 ID 从 PostgreSQL 中批量获取对应的完整文本数据的？"
+        },
+        {
+          "sample_index": 10,
+          "status": "success",
+          "latency_ms": 19983.62,
+          "scores": {
+            "answer_quality": 40,
+            "technical_depth": 40,
+            "completeness": 40
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "depth": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "completeness": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "anchor_reason": "候选人仅陈述了数据分布，未说明两者之间具体的关联机制（如外键、API调用或双写策略），属于方向性表述，未直接回答‘如何关联’的核心机制。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明两者之间如何通过ID建立逻辑关联（如PostgreSQL的主键对应Milvus的vector id）",
+            "未提及一致性保证（当数据更新或删除时，两个系统间如何保证数据最终一致或强一致）",
+            "未解释查询流程（是先在Milvus召回向量ID再回表查询PostgreSQL，还是其他混合检索方式）",
+            "未说明两者之间的具体关联方式（如通过共同ID进行应用层逻辑关联，还是通过数据库层面的外键/视图）。",
+            "未说明处理边界情况（如Milvus中存在向量但PostgreSQL中记录缺失时的处理逻辑）",
+            "未解释为何采用这种解耦架构（如查询性能、Schema灵活性等取舍理由）"
+          ],
+          "follow_up_question": "假设我在应用层通过ID将Milvus的向量结果与PostgreSQL的文本数据关联，那么当PostgreSQL中的某条记录被删除时，Milvus中对应的向量数据应该如何处理？你们是如何保证两个系统间数据一致性的？"
+        }
+      ],
+      "score_statistics": {
+        "answer_quality": {
+          "values": [
+            40,
+            40,
+            70,
+            40,
+            40,
+            70,
+            40,
+            70,
+            40,
+            40
+          ],
+          "min": 40,
+          "max": 70,
+          "range": 30,
+          "average": 49.0
+        },
+        "technical_depth": {
+          "values": [
+            40,
+            40,
+            40,
+            40,
+            40,
+            40,
+            40,
+            40,
+            40,
+            40
+          ],
+          "min": 40,
+          "max": 40,
+          "range": 0,
+          "average": 40.0
+        },
+        "completeness": {
+          "values": [
+            40,
+            40,
+            40,
+            40,
+            40,
+            40,
+            40,
+            40,
+            40,
+            40
+          ],
+          "min": 40,
+          "max": 40,
+          "range": 0,
+          "average": 40.0
+        }
+      },
+      "max_range": 30,
+      "missing_points_count_range": 0,
+      "turn_index": 2,
+      "case_id": "rag_backend_interview",
+      "sample_coverage": 1.0,
+      "coverage_sufficient": true,
+      "verdict": "unstable",
+      "stable": false
+    },
+    {
+      "question": "请详细说明你在 MindFlow 项目中负责的 RAG 检索链路，包括分块策略、Embedding 选型、向量索引与检索参数的取舍，以及 PostgreSQL 与 Milvus 之间的一致性如何保证。",
+      "answer_length": 835,
+      "repeats": 10,
+      "analyzer_sample_counts": [
+        3
+      ],
+      "successful_repeats": 10,
+      "failed_repeats": 0,
+      "samples": [
+        {
+          "sample_index": 1,
+          "status": "success",
+          "latency_ms": 40445.69,
+          "scores": {
+            "answer_quality": 90,
+            "technical_depth": 90,
+            "completeness": 90
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "depth": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "completeness": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "anchor_reason": "候选人直接回应了提问的所有核心要求，并给出了多处可验证的具体参数（如500字符、1024维、COSINE）和详细的机制设计（如upsert、对账补偿），技术深度达到A档；但缺少向量索引具体参数（如nlist/metric 配置细节）及一致性方案的完整边界情况，完整度为B档。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明定时对账任务的具体执行频率或触发条件",
+            "未说明Milvus向量索引的具体参数配置（如IVF_PQ的nlist、m值等），仅提及使用了AUTOINDEX",
+            "未提及Embedding模型选型（text-embedding-v4）与其他备选模型的对比或选择依据",
+            "未说明Milvus中向量更新时（非新建）处理embedding_status状态的具体逻辑",
+            "未说明分块策略是否根据文档类型（如代码、PDF、Word）进行了差异化处理或自适应调整",
+            "未说明检索阶段是否包含重排（Re-ranking）逻辑，还是仅依赖向量相似度排序"
+          ],
+          "follow_up_question": "你提到在删除文档时会先删 Milvus 向量再删 DB 记录，并依靠定时对账任务扫描孤儿向量。请问这个对账任务的具体执行频率是多少？它是基于全量扫描比对，还是基于变更日志（如 CDC）触发的增量比对？如果孤儿向量在下次对账前被错误地检索到，你们有什么机制能立刻将其隔离或标记为不可用？"
+        },
+        {
+          "sample_index": 2,
+          "status": "success",
+          "latency_ms": 27662.42,
+          "scores": {
+            "answer_quality": 90,
+            "technical_depth": 90,
+            "completeness": 90
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "depth": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "completeness": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "anchor_reason": "回答直接回应了分块、Embedding、索引、一致性四个核心问题，并提供了大量可验证的具体参数（500/100 overlap、text-embedding-v4、1024维、COSINE、top-k=5）、机制名称（AUTOINDEX、upsert）及具体的故障处理流程（先写向量后更新状态、孤儿向量补偿），深度和完整度均达到最高档。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明 Milvus 中 AUTOINDEX 的具体底层算法（如 HNSW/IVF_FLAT）及其参数（如 M, efConstruction）",
+            "未说明当 PostgreSQL 删除记录成功但 Milvus 删除失败且对账任务未及时运行期间，检索是否会返回脏数据及其具体应对措施",
+            "未提及当PostgreSQL记录被逻辑删除但未物理删除时，Milvus中对应向量的具体清理频率或触发机制。",
+            "未提及检索链路中的重排(Rerank)环节，仅提到了向量召回后的Top-5，是否包含交叉编码器重排未交代。",
+            "未说明Milvus中AUTOINDEX在数据量级较大时的性能表现及是否考虑过切换为HNSW等更高级索引。",
+            "未说明 Embedding 模型选型（text-embedding-v4）与其他备选模型对比的考量依据"
+          ],
+          "follow_up_question": "你提到 Milvus 索引使用的是 AUTOINDEX，当数据量级增长到千万级时，AUTOINDEX 默认会退化成 HNSW 还是 IVF 系列？如果此时召回延迟不达标，你会具体调整哪些参数（例如 M、efConstruction、ef 搜索深度）来平衡内存占用与查询速度？"
+        },
+        {
+          "sample_index": 3,
+          "status": "success",
+          "latency_ms": 38770.03,
+          "scores": {
+            "answer_quality": 90,
+            "technical_depth": 90,
+            "completeness": 90
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "depth": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "completeness": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "anchor_reason": "回答直接回应了分块、Embedding、索引参数及一致性机制四个核心问题，且提供了具体的参数值（500/100, 1024维, top-k=5）、字段名（chunk.id, embedding_status）及具体的故障处理流程（定时对账），完全符合A档定义。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明选择 text-embedding-v4 而非其他模型（如 BGE、M3E）的对比取舍理由",
+            "未提及查询时的具体过滤语法或是否使用了Milvus的内置过滤功能（如Scalar Search）而非应用层过滤，影响性能评估。",
+            "未说明Milvus中index AUTOINDEX的具体性能表现或与其他索引类型如HNSW的权衡分析",
+            "未说明当Milvus不可用时的降级策略（例如是否直接查PostgreSQL或返回错误）。",
+            "未说明具体的Milvus集群规模或硬件配置，难以评估高并发下的实际性能瓶颈。",
+            "未说明 Milvus 集群的副本数配置或高可用性保障机制"
+          ],
+          "follow_up_question": "你提到在 Milvus 查询时使用了 project_id 和 document_type 作为过滤条件，但未说明这些过滤是在应用层实现还是利用了 Milvus 的内置标量索引功能。请具体解释：如果数据量达到千万级 chunk，你如何评估在 Milvus 侧启用 Scalar Search 与在应用层后置过滤的性能差异？如果选择应用层过滤，你会如何优化以减少高并发下的数据库回源压力？"
+        },
+        {
+          "sample_index": 4,
+          "status": "success",
+          "latency_ms": 57891.43,
+          "scores": {
+            "answer_quality": 90,
+            "technical_depth": 90,
+            "completeness": 90
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "depth": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "completeness": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "anchor_reason": "回答直接回应了所有提问要点，提供了具体的参数值（500/100/1024维/top-5）、具体的技术组件名称（Milvus/PostgreSQL/text-embedding-v4）以及明确的失败处理机制（对账任务/状态机），符合A档定义。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明为什么选择 Milvus 而非其他向量数据库（如 pgvector 或 Elasticsearch）的对比取舍理由",
+            "未说明 PostgreSQL 与 Milvus 之间同步机制的具体实现方式（如 CDC、消息队列或同步脚本频率）",
+            "未说明 text-embedding-v4 相比其他模型（如 v3 或开源模型）的具体选型依据或性能对比",
+            "缺乏对Embedding模型选型（为何选择v4及1024维）的取舍理由或对比说明。",
+            "未提及检索阶段是否采用了重排（Re-ranking）机制来进一步优化排序质量。",
+            "未提及对查询词（query）是否进行了改写、扩展或 Rerank 排序优化"
+          ],
+          "follow_up_question": "你提到 Milvus 使用了 AUTOINDEX，请问为什么没有选择 HNSW 或 IVF 等其他索引类型？在实际业务中，你们是如何通过对比测试来确定 AUTOINDEX 能够满足当前数据规模下的召回率与延迟要求的？"
+        },
+        {
+          "sample_index": 5,
+          "status": "success",
+          "latency_ms": 31518.61,
+          "scores": {
+            "answer_quality": 90,
+            "technical_depth": 90,
+            "completeness": 90
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "depth": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "completeness": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "anchor_reason": "回答直接回应了提问中的分块、Embedding、索引与一致性四个核心要点，并提供了具体的参数值（500/100字符、1024维、top-k 5）、实现机制（upsert、对账任务）及取舍理由（避免跨项目泄露、避免大字段拖慢DB），远超B档标准。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明为何选择COSINE距离度量而非IP或L2，也未说明Milvus中是否使用了HNSW等高级索引参数（如ef_search）来平衡召回率与延迟。",
+            "未提及检索阶段的查询优化细节，如是否使用了混合检索（Hybrid Search）或重排序（Rerank）步骤来提升准确性。",
+            "未说明Embedding模型（text-embedding-v4）选型的具体依据，例如为何选择该模型而非其他开源或商业模型，对比了哪些指标。",
+            "未提及向量检索召回后的重排（Rerank）策略，例如是否引入Cross-encoder模型提升精度，还是仅依赖相似度分数。",
+            "未解释分块策略是否动态调整，例如对于代码或表格等结构化数据是否有特殊的分块处理逻辑，500字符是否适用于所有文档类型。",
+            "未提及向量检索的准确率评估方法，如是否有离线评测集（Golden Set）来持续监控RAG链路效果。"
+          ],
+          "follow_up_question": "你提到 Milvus 使用 COSINE 距离度量且未深入展开索引参数，在检索阶段是否引入了重排序（Rerank）机制来提升相关性？如果有，具体采用了什么模型或策略，以及如何权衡 COSINE 相似度分数与 Rerank 分数在最终排序中的权重？"
+        },
+        {
+          "sample_index": 6,
+          "status": "success",
+          "latency_ms": 30328.13,
+          "scores": {
+            "answer_quality": 90,
+            "technical_depth": 90,
+            "completeness": 90
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "depth": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "completeness": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "anchor_reason": "回答直接回应了所有提问点，并提供了具体的参数（500字符/100重叠、1024维、top-k 5）、机制（AUTOINDEX/COSINE、Upsert）及一致性策略（先写Milvus后更DB、孤儿向量补偿），符合A档标准。"
+          },
+          "missing_points_count": 5,
+          "missing_points": [
+            "未说明text-embedding-v4模型选型的具体理由或与其他模型的对比取舍",
+            "未说明PostgreSQL与Milvus之间数据同步的具体触发方式（是CDC、消息队列还是同步服务调用）。",
+            "未提及 Milvus 中是否使用了量化（如 PQ）或 HNSW 参数调优。",
+            "未提及检索后的重排序（Re-rank）机制或是否对候选集进行了二次排序",
+            "未解释定时对账任务的具体频率及如何判定‘孤儿向量’的清理逻辑细节。"
+          ],
+          "follow_up_question": "你提到在 Milvus 中使用了 AUTOINDEX，但未说明具体的索引参数配置。请问在检索质量（Recall）和性能（QPS/延迟）之间进行权衡时，是如何调整 HNSW 等索引的参数（例如 M 和 ef 值）来优化检索效果的？"
+        },
+        {
+          "sample_index": 7,
+          "status": "success",
+          "latency_ms": 29435.25,
+          "scores": {
+            "answer_quality": 90,
+            "technical_depth": 90,
+            "completeness": 90
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "depth": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "completeness": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "anchor_reason": "候选人直接回应了提问中所有关键部分（分块策略、Embedding、索引、一致性），并且提供了大量具体的数值（500字符/100重叠，1024维，top-k 5）、具体的配置（COSINE, AUTOINDEX）、具体的机制名称（upsert，对账任务，embedding_status状态流转）和清晰的选择理由（不将向量存在PostgreSQL以防止拖慢事实源，project_id过滤以防止数据泄露，主键同步等），细节非常充实，符合A档要求。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未提及Milvus向量索引的具体参数（如IVF_FLAT的nlist/nprobe等），仅说明使用AUTOINDEX。",
+            "未提及Milvus的分布式部署模式（单机/集群）及Shard/Replica的具体配置，仅提到AUTOINDEX。",
+            "未说明为何选择text-embedding-v4而非其他竞品（如BGE或OpenAI）的具体对比理由。",
+            "未说明在查询层是否结合了全文检索或混合检索（Hybrid Search）来弥补纯向量语义匹配的不足。",
+            "未说明采用 AUTOINDEX 而非 HNSW/IVF 等特定索引的具体取舍理由及召回率对比。",
+            "未涉及混合检索（Hybrid Search，如BM25+向量）是否被采用或为何未采用的理由。"
+          ],
+          "follow_up_question": "你提到在 Milvus 中使用了 AUTOINDEX，但没有具体说明是否结合全文检索或混合检索来弥补纯向量语义匹配的不足；如果当前确实只依赖向量检索，面对那些关键词强相关但语义距离较远的查询（例如具体型号或专有名词），你们的检索效果具体表现如何？有没有考虑过引入 BM25 进行混合检索的取舍？"
+        },
+        {
+          "sample_index": 8,
+          "status": "success",
+          "latency_ms": 33478.74,
+          "scores": {
+            "answer_quality": 90,
+            "technical_depth": 90,
+            "completeness": 90
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "depth": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "completeness": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "anchor_reason": "候选人直接回应了分块、Embedding、索引检索及一致性四个核心要求，并提供了具体的参数（500字符/100重叠）、模型名（text-embedding-v4/1024维）、索引细节（COSINE/AUTOINDEX）及一致性处理机制（主键对齐/孤儿向量对账），体现了实现细节、参数取值及取舍理由。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明Milvus的AUTOINDEX底层实际选用的具体算法（如HNSW）及其关键参数（如M、efConstruction）",
+            "未说明选择text-embedding-v4而非其他模型（如BGE等开源模型）的具体取舍理由",
+            "未说明在Milvus中对元数据（如project_id）建立倒排索引的具体策略或性能考量。",
+            "未解释Milvus与PostgreSQL主键关联在数据重建（Reindex）时的完整流程",
+            "未提及查询阶段是否使用了混合检索（Hybrid Search）或重排（Rerank）机制",
+            "未提及文档预处理阶段（如HTML标签清理、结构化数据提取）对分块质量的影响。"
+          ],
+          "follow_up_question": "你提到删除文档时如果 Milvus 向量删除失败，依赖定时对账任务清理孤儿向量，请问这个对账任务具体是如何实现高效比对全量数据和差集计算的？"
+        },
+        {
+          "sample_index": 9,
+          "status": "success",
+          "latency_ms": 22060.55,
+          "scores": {
+            "answer_quality": 90,
+            "technical_depth": 90,
+            "completeness": 90
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "depth": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "completeness": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "anchor_reason": "候选人直接回应了分块、Embedding、索引及一致性四个核心问题，提供了500字符分块、1024维模型、AUTOINDEX及Cosine距离等具体参数，并详细阐述了基于主键复用和状态机的最终一致性保障机制，包含失败补偿逻辑。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明 Embedding 模型选型（text-embedding-v4）与其他候选模型（如 BGE, Cohere）的具体对比或取舍理由",
+            "未提及对稀疏向量（Keyword/Boolean 检索）或混合检索（Hybrid Search）的考虑，仅覆盖了纯向量检索",
+            "未具体说明定时对账任务的执行频率、实现技术栈（如是否使用Cron Job）及处理延迟的SLO",
+            "未提及Milvus的shards或nlist等索引构建参数（若使用AUTOINDEX则无此参数，但可提及默认行为）。",
+            "未说明 Milvus 集合的分区策略（Partitioning）或分片策略，对于大规模数据这会影响检索性能",
+            "未提及向量检索的过滤逻辑是否使用Milvus内置filter还是应用层后过滤，以及性能影响。"
+          ],
+          "follow_up_question": "你提到使用 Milvus 的 AUTOINDEX，请具体说明当数据量级达到百万级 chunk 时，如何利用 Milvus 的分区键（Partition Key）或标量字段（如 project_id）优化带有过滤条件的向量检索性能？如果过滤条件无法下推，应用层后过滤会带来什么具体的性能瓶颈？"
+        },
+        {
+          "sample_index": 10,
+          "status": "success",
+          "latency_ms": 31319.63,
+          "scores": {
+            "answer_quality": 90,
+            "technical_depth": 90,
+            "completeness": 90
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "depth": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "completeness": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "anchor_reason": "回答直接回应了分块、Embedding、索引、一致性等所有提问点，并提供了具体的参数值（500/100字符、1024维、top-k=5）、具体机制（AUTOINDEX、COSINE、upsert流程、对账任务）以及明确的取舍理由（避免跨项目泄露、向量不存PostgreSQL、先写向量后改状态），符合A档关于直接回应且多处可验证具体信息的要求。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明为何选择 Milvus AUTOINDEX 而非 HNSW 等具体参数可调的索引类型及其性能预期",
+            "未说明检索阶段的具体Rerank（重排序）策略或是否使用混合检索（Keyword+Vector）",
+            "未提及向量检索是否结合全文检索（Hybrid Search）以弥补纯向量检索在专有名词上的不足。",
+            "未说明针对多租户或高并发场景下Milvus的分区策略（Partitioning）或负载均衡。",
+            "未说明 query 侧是否有重排（Rerank）或其他优化手段，仅提到 top-k=5",
+            "未解释针对Milvus查询延迟高时的降级策略或缓存机制（如Redis缓存热门向量）。"
+          ],
+          "follow_up_question": "你提到 top-k 取 5 并按相似度排序后直接回查数据库获取正文，但未提及重排序（Rerank）或混合检索机制。请具体说明：如果用户查询中包含大量专有名词或长尾关键词，纯向量检索容易因语义泛化而漏召回，你是仅依赖 Milvus 的 COSINE 相似度，还是引入了基于 BGE 等模型的交叉编码器进行二阶段 Rerank？若未引入，你是如何评估并解决这种场景下的召回率瓶颈的？"
+        }
+      ],
+      "score_statistics": {
+        "answer_quality": {
+          "values": [
+            90,
+            90,
+            90,
+            90,
+            90,
+            90,
+            90,
+            90,
+            90,
+            90
+          ],
+          "min": 90,
+          "max": 90,
+          "range": 0,
+          "average": 90.0
+        },
+        "technical_depth": {
+          "values": [
+            90,
+            90,
+            90,
+            90,
+            90,
+            90,
+            90,
+            90,
+            90,
+            90
+          ],
+          "min": 90,
+          "max": 90,
+          "range": 0,
+          "average": 90.0
+        },
+        "completeness": {
+          "values": [
+            90,
+            90,
+            90,
+            90,
+            90,
+            90,
+            90,
+            90,
+            90,
+            90
+          ],
+          "min": 90,
+          "max": 90,
+          "range": 0,
+          "average": 90.0
+        }
+      },
+      "max_range": 0,
+      "missing_points_count_range": 1,
+      "turn_index": 1,
+      "case_id": "rag_backend_senior_interview",
+      "sample_coverage": 1.0,
+      "coverage_sufficient": true,
+      "verdict": "stable",
+      "stable": true
+    },
+    {
+      "question": "你们的 chunk 切分是怎么设计的？为什么选择这个长度？overlap 取多少？",
+      "answer_length": 76,
+      "repeats": 10,
+      "analyzer_sample_counts": [
+        3
+      ],
+      "successful_repeats": 10,
+      "failed_repeats": 0,
+      "samples": [
+        {
+          "sample_index": 1,
+          "status": "success",
+          "latency_ms": 23121.41,
+          "scores": {
+            "answer_quality": 40,
+            "technical_depth": 15,
+            "completeness": 15
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "depth": {
+              "anchor": "D",
+              "label": "很差",
+              "adjusted": null,
+              "score": 15
+            },
+            "completeness": {
+              "anchor": "D",
+              "label": "很差",
+              "adjusted": null,
+              "score": 15
+            },
+            "anchor_reason": "回答仅包含通用的团队文化套话，未包含任何关于 chunk 切分长度、设计逻辑或 overlap 取值的技术性描述，完全未回应提问核心。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明 overlap 的具体数值及设置依据",
+            "未说明具体的 chunk 切分策略（如按语义、固定长度或混合策略）",
+            "未提及切分过程中对特殊符号或边界情况的处理",
+            "未解释选择该长度和 overlap 的技术理由或实验依据",
+            "未给出具体的 chunk 长度数值及选择理由",
+            "未提及对不同文档类型或场景的处理差异"
+          ],
+          "follow_up_question": "你刚才提到 chunk 切分要看具体情况，能具体讲讲在你们最近的一个实际项目中，针对长文档是采用了固定长度还是基于语义边界（如段落或标题）的切分策略？如果选择固定长度，当时设定的具体数值是多少，又是通过什么实验指标或评估结果来确定这个长度和对应的 overlap 大小的？"
+        },
+        {
+          "sample_index": 2,
+          "status": "success",
+          "latency_ms": 29122.83,
+          "scores": {
+            "answer_quality": 40,
+            "technical_depth": 40,
+            "completeness": 15
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "depth": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "completeness": {
+              "anchor": "D",
+              "label": "很差",
+              "adjusted": null,
+              "score": 15
+            },
+            "anchor_reason": "回答中没有任何句子直接回应chunk切分长度、overlap取值等提问核心，仅包含团队氛围和个人态度等无关背景信息，且未提及任何具体技术参数。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "Chunk切分的具体策略或实现方式（如基于句子、段落或固定字符数）",
+            "未说明选择特定 chunk 长度的依据或参数取值",
+            "未说明 overlap 的具体数值及设置理由",
+            "未说明切分后的数据处理流程（如向量化或索引）",
+            "Overlap（重叠部分）的具体长度或比例",
+            "不同文档类型对切分策略影响的实际处理机制"
+          ],
+          "follow_up_question": "既然你提到不同项目情况不一样，假设我们要处理一份包含大量表格和密集技术参数的长文档，你会具体选择基于什么切分策略（比如语义段落还是固定字符数）？在这种情况下，你确定的 chunk 长度和 overlap 数值分别是多少，为什么这样设置能更好地保留上下文关联？"
+        },
+        {
+          "sample_index": 3,
+          "status": "success",
+          "latency_ms": 25248.51,
+          "scores": {
+            "answer_quality": 40,
+            "technical_depth": 15,
+            "completeness": 15
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "depth": {
+              "anchor": "D",
+              "label": "很差",
+              "adjusted": null,
+              "score": 15
+            },
+            "completeness": {
+              "anchor": "D",
+              "label": "很差",
+              "adjusted": null,
+              "score": 15
+            },
+            "anchor_reason": "候选人未对 chunk 切分设计、长度选择依据及 overlap 取值进行任何实质性回应，仅回答了通用态度和背景信息，完全未触及问题核心。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未给出 chunk 长度的具体数值或设置依据（如模型上下文限制、检索效果权衡）。",
+            "未说明 chunk 切分的具体策略（如固定长度、基于语义或结构切分）。",
+            "未提供 overlap 的具体数值或设定理由（如防止信息截断、控制冗余度）。",
+            "未说明切分后对 embedding 或检索效果产生的影响及优化手段。",
+            "未提及切分过程中对特殊内容（如代码块、表格、长对话）的处理逻辑。",
+            "未提及在实际项目场景中针对不同数据源采用的差异化切分参数。"
+          ],
+          "follow_up_question": "你刚才提到切分策略需要看具体情况，但在实际项目中，你们是如何确定具体的 chunk 长度数值以及 overlap 大小的？例如，在权衡向量嵌入的语义完整性和检索精度时，你们依据什么指标或实验数据来制定这些参数，并如何处理像代码块或长表格这类特殊结构以防止信息被截断？"
+        },
+        {
+          "sample_index": 4,
+          "status": "success",
+          "latency_ms": 34401.53,
+          "scores": {
+            "answer_quality": 40,
+            "technical_depth": 40,
+            "completeness": 15
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "depth": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "completeness": {
+              "anchor": "D",
+              "label": "很差",
+              "adjusted": null,
+              "score": 15
+            },
+            "anchor_reason": "候选人回答未包含任何关于 chunk 切分设计、长度选择依据或 overlap 取值的直接信息，仅陈述了团队协作态度和学习习惯，属于答非所问且无技术细节。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明具体的 chunk 切分策略（如按语义、按段落或固定长度）",
+            "未描述切分过程中的边界情况处理（如代码块、表格、长文档）",
+            "未说明 overlap 的具体数值及其对检索效果的影响",
+            "未给出 chunk 长度的具体数值或选择依据",
+            "未解释选择特定 chunk 长度的依据（如上下文窗口、语义完整性等）",
+            "未说明切分实现的技术细节（如按token、按字符或语义切分）"
+          ],
+          "follow_up_question": "你刚才提到 chunk 切分的具体策略因项目而异，假设我们要处理一份包含大量代码块和表格的技术文档，你会如何调整切分逻辑来避免破坏代码或表格的完整性？在这种情况下，你设定的 overlap 比例是多少，以及你是通过什么指标来验证这种切分方式对检索召回率的具体影响的？"
+        },
+        {
+          "sample_index": 5,
+          "status": "success",
+          "latency_ms": 23893.51,
+          "scores": {
+            "answer_quality": 40,
+            "technical_depth": 40,
+            "completeness": 15
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "depth": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "completeness": {
+              "anchor": "D",
+              "label": "很差",
+              "adjusted": null,
+              "score": 15
+            },
+            "anchor_reason": "回答中没有任何句子直接回应提问要求的'切分设计'、'长度选择理由'及'overlap取值'，仅包含无关的团队文化和个人态度套话，符合C档定义。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未给出 chunk 长度的具体数值及选择该长度的依据",
+            "未说明具体的Chunk切分策略（如固定长度、语义分割或递归字符分割）",
+            "未解释选择该长度和overlap的取舍理由（如上下文连贯性与token限制平衡）",
+            "未解释该设计对下游检索效果或模型上下文窗口的具体影响",
+            "未描述处理边界情况（如长文本截断或特殊格式）的方法",
+            "未提供具体的Chunk长度数值及其选择依据"
+          ],
+          "follow_up_question": "你刚才提到“不同项目不一样”，能否具体举例说明：在你们最近的一个实际项目中，最终确定的 chunk 长度是多少？你当时是如何权衡上下文连贯性与模型 Token 限制的，并据此确定 Overlap 的？"
+        },
+        {
+          "sample_index": 6,
+          "status": "success",
+          "latency_ms": 133766.03,
+          "scores": {
+            "answer_quality": 40,
+            "technical_depth": 15,
+            "completeness": 15
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "depth": {
+              "anchor": "D",
+              "label": "很差",
+              "adjusted": null,
+              "score": 15
+            },
+            "completeness": {
+              "anchor": "D",
+              "label": "很差",
+              "adjusted": null,
+              "score": 15
+            },
+            "anchor_reason": "候选人未提及任何 chunk 切分的具体策略、长度或 overlap 数值，仅回答工作态度和团队氛围，属于典型的答非所问/空泛套话，未直接回应提问内容。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明 chunk 切分的具体策略（如基于语义、标点或固定字符）",
+            "未说明 overlap 的具体取值及其对效果的影响",
+            "未给出选择特定 chunk 长度的依据或实验数据",
+            "未描述切分过程中对特殊结构（如标题、代码块）的处理方式",
+            "未描述切分流程中使用的工具、算法或边界处理逻辑",
+            "针对长文本或特殊格式（代码、表格）的处理机制"
+          ],
+          "follow_up_question": "你刚才提到切分策略要看具体情况，那你能具体说说在你们最近一个实际项目中，是基于固定字符长度、标点符号还是语义边界来切分 chunk 的吗？"
+        },
+        {
+          "sample_index": 7,
+          "status": "success",
+          "latency_ms": 46572.99,
+          "scores": {
+            "answer_quality": 40,
+            "technical_depth": 40,
+            "completeness": 15
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "depth": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "completeness": {
+              "anchor": "D",
+              "label": "很差",
+              "adjusted": null,
+              "score": 15
+            },
+            "anchor_reason": "候选人回答中没有任何句子直接回应chunk切分设计、长度选择依据或overlap取值，仅涉及团队氛围与学习态度，属于完全未回答问题本身且无技术信息。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明具体的chunk切分策略或算法（如固定长度、按语义、按标点等）",
+            "未说明overlap（重叠部分）的具体数值或比例",
+            "未给出具体的chunk长度数值或选择依据",
+            "未解释选择该chunk长度的依据或取舍理由",
+            "未提及切分过程中对特殊标记（如代码块、表格）的处理逻辑",
+            "未提及切分过程中可能遇到的边界情况处理机制"
+          ],
+          "follow_up_question": "你刚才提到 chunk 切分策略因项目而异，请具体谈谈在你们最近一个实际项目中，你是如何确定 chunk 长度的数值以及 overlap 的比例的？如果文档中出现代码块或表格，你的切分逻辑会如何处理以避免破坏上下文完整性？"
+        },
+        {
+          "sample_index": 8,
+          "status": "success",
+          "latency_ms": 59260.26,
+          "scores": {
+            "answer_quality": 40,
+            "technical_depth": 40,
+            "completeness": 15
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "depth": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "completeness": {
+              "anchor": "D",
+              "label": "很差",
+              "adjusted": null,
+              "score": 15
+            },
+            "anchor_reason": "回答仅提及“不同项目不一样”和团队态度，未包含任何关于chunk长度、overlap取值或切分逻辑的直接技术回应，属于空泛套话，故质量判为C，深度判为C，因完全未覆盖提问核心要素故完整度判为D。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明overlap的具体数值及其对检索效果的影响",
+            "未说明chunk切分的具体实现策略（如按语义、固定长度或混合）",
+            "未提及处理长文本或特殊结构（如代码、表格）时的边界情况处理",
+            "未说明Chunk切分的具体长度数值及选择依据",
+            "未解释切分策略是固定长度、语义截断还是其他机制",
+            "未给出选择特定chunk长度的参数取值及理由"
+          ],
+          "follow_up_question": "你提到团队会讨论方案，那在 RAG 场景中，如果你们发现固定长度切分导致关键语义被截断，你们具体是如何调整 overlap 比例，或者是否引入了基于语义的边界检测来优化的？请给出具体的参数调整范围或实现逻辑。"
+        },
+        {
+          "sample_index": 9,
+          "status": "success",
+          "latency_ms": 53129.44,
+          "scores": {
+            "answer_quality": 40,
+            "technical_depth": 40,
+            "completeness": 15
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "depth": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "completeness": {
+              "anchor": "D",
+              "label": "很差",
+              "adjusted": null,
+              "score": 15
+            },
+            "anchor_reason": "候选人未回答任何具体的技术细节，仅表述了态度和背景，没有切中提问要求的切分长度、overlap取值等核心要点，符合C档（空泛/套话）及D档（未覆盖要点）的定义。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明 chunk 切分的具体长度及选择理由",
+            "未说明具体的chunk切分策略（如按字符、语义或结构）",
+            "未提及处理边界情况（如超长文档或特殊符号）的方法",
+            "未说明切分策略的实现细节（如按语义、固定长度或正则切分）",
+            "未解释选择该长度和 overlap 的技术理由或取舍",
+            "未提供选择的 chunk 长度数值"
+          ],
+          "follow_up_question": "你刚才提到“不同项目不一样”，那能否具体讲一下你在最近一个实际项目中，针对长文档处理时，是如何确定具体的 chunk 长度数值（例如是 512 tokens 还是其他）以及 overlap 参数的？如果该策略遇到了导致上下文语义断裂的情况，你是通过什么具体的手段来修复或缓解这个问题的？"
+        },
+        {
+          "sample_index": 10,
+          "status": "success",
+          "latency_ms": 27824.89,
+          "scores": {
+            "answer_quality": 40,
+            "technical_depth": 40,
+            "completeness": 15
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "depth": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "completeness": {
+              "anchor": "D",
+              "label": "很差",
+              "adjusted": null,
+              "score": 15
+            },
+            "anchor_reason": "候选人未提及任何关于切分长度、overlap 数值或策略的具体细节，仅涉及团队氛围和通用态度，属于答非所问/空泛套话。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明 chunk 长度的具体数值及选择依据",
+            "未提及针对不同类型文档的差异化切分处理",
+            "overlap（重叠）的具体数值设置",
+            "chunk 切分策略的具体实现逻辑（如按词、段落或语义）",
+            "针对不同场景（如代码、PDF、对话）的差异化处理方案",
+            "切分策略的技术实现细节（如按语义、符号或固定长度）"
+          ],
+          "follow_up_question": "既然你提到“不同项目不一样”，请具体说说你在处理非结构化文本（如PDF或长文档）时，实际选定的 chunk 长度数值是多少？如果是按语义切分，你是如何定义“语义完整性”的，又该如何确定具体的 overlap 数值来避免上下文断裂？"
+        }
+      ],
+      "score_statistics": {
+        "answer_quality": {
+          "values": [
+            40,
+            40,
+            40,
+            40,
+            40,
+            40,
+            40,
+            40,
+            40,
+            40
+          ],
+          "min": 40,
+          "max": 40,
+          "range": 0,
+          "average": 40.0
+        },
+        "technical_depth": {
+          "values": [
+            15,
+            40,
+            15,
+            40,
+            40,
+            15,
+            40,
+            40,
+            40,
+            40
+          ],
+          "min": 15,
+          "max": 40,
+          "range": 25,
+          "average": 32.5
+        },
+        "completeness": {
+          "values": [
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15,
+            15
+          ],
+          "min": 15,
+          "max": 15,
+          "range": 0,
+          "average": 15.0
+        }
+      },
+      "max_range": 25,
+      "missing_points_count_range": 0,
+      "turn_index": 1,
+      "case_id": "evasive_answer_interview",
+      "sample_coverage": 1.0,
+      "coverage_sufficient": true,
+      "verdict": "unstable",
+      "stable": false
+    },
+    {
+      "question": "你在项目里是怎么使用 Redis 的？",
+      "answer_length": 31,
+      "repeats": 10,
+      "analyzer_sample_counts": [
+        3
+      ],
+      "successful_repeats": 10,
+      "failed_repeats": 0,
+      "samples": [
+        {
+          "sample_index": 1,
+          "status": "success",
+          "latency_ms": 35089.5,
+          "scores": {
+            "answer_quality": 40,
+            "technical_depth": 40,
+            "completeness": 40
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "depth": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "completeness": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "anchor_reason": "候选人仅提到“使用Redis缓存高频数据”这一方向性结论，没有给出具体的数据结构、实现细节、参数配置、失效策略或异常处理，内容空泛，缺乏对“怎么使用”的具体解释。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未提及针对缓存穿透、击穿、雪崩等常见问题的处理措施",
+            "未说明具体缓存了哪些数据（如用户信息、配置项、商品详情等）及对应的数据结构（String, Hash, List等）",
+            "未提及缓存与数据库的一致性方案（如Cache Aside, Read Through）及更新策略",
+            "未说明缓存过期时间（TTL）的设置依据及是否存在动态调整",
+            "未涉及缓存一致性处理机制（如Cache-Aside、TTL策略、双写等）及失效场景处理",
+            "未说明使用了哪种Redis数据结构（如String, Hash, List等）"
+          ],
+          "follow_up_question": "你刚才提到用 Redis 缓存高频数据，那当缓存中的数据被修改或失效时，你是如何保证 Redis 里的数据和数据库里的数据最终一致的？具体采用了哪种更新策略？"
+        },
+        {
+          "sample_index": 2,
+          "status": "success",
+          "latency_ms": 27774.78,
+          "scores": {
+            "answer_quality": 40,
+            "technical_depth": 40,
+            "completeness": 40
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "depth": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "completeness": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "anchor_reason": "候选人提到了使用Redis缓存高频数据以加快响应，直接回应了问题，但仅提供了这一项具体信息，其余部分停留在概述，因此质量为B；技术深度仅提到名词未解释机制，为C；覆盖度仅涉及缓存用途，未涵盖数据结构、策略等要点，为C。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明具体缓存了哪些数据或使用的Redis数据结构（如String, Hash, List等）",
+            "未说明数据过期时间（TTL）的设置依据或具体数值",
+            "未说明缓存穿透、击穿或雪崩等边界情况的处理机制",
+            "未说明Cache Key的设计规范及命名策略",
+            "未说明缓存的具体数据结构类型（如String, Hash, List等）及选择理由",
+            "未说明Redis与数据库之间的数据一致性保证机制（如双写、延迟双删等）"
+          ],
+          "follow_up_question": "你刚才提到缓存了高频访问的数据，能具体说说你选择的 Redis 数据结构是什么？当时为什么选择这种结构而不是其他的？"
+        },
+        {
+          "sample_index": 3,
+          "status": "success",
+          "latency_ms": 21395.63,
+          "scores": {
+            "answer_quality": 70,
+            "technical_depth": 40,
+            "completeness": 40
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "depth": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "completeness": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "anchor_reason": "回答直接回应了Redis的使用场景（缓存高频数据），但仅停留在方向性描述，未涉及具体实现细节、数据结构或机制，属于有直接回应但缺乏具体信息的B档质量，C档深度，C档完整度。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明具体缓存的数据类型或数据结构（如String, Hash, List等）",
+            "缓存Key的设计规范（如命名空间、TTL策略）",
+            "未提及缓存与数据库数据一致性的处理方案",
+            "未说明如何应对缓存穿透、击穿或雪崩问题",
+            "具体使用Redis缓存了哪些数据结构或业务场景（如Session、商品详情、配置项）",
+            "未提及Redis集群部署方式（如Sentinel, Cluster）或单点问题"
+          ],
+          "follow_up_question": "你刚才提到用 Redis 缓存高频数据以保证接口响应速度，那么当后端数据库的数据发生变更时，你是如何保证 Redis 中的缓存与数据库数据一致性的？请具体描述一下你采用的策略（例如先更新 DB 还是先删缓存，以及是否存在并发竞争问题）和实际处理逻辑。"
+        },
+        {
+          "sample_index": 4,
+          "status": "success",
+          "latency_ms": 43636.23,
+          "scores": {
+            "answer_quality": 40,
+            "technical_depth": 40,
+            "completeness": 40
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "depth": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "completeness": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "anchor_reason": "回答仅概括了使用Redis的场景和目的（缓存高频数据以提速），未提供具体的实现细节、数据键值设计、过期策略或一致性方案等可验证信息，属于方向性表述而非具体落地细节。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明具体缓存了哪些类型的数据（如用户信息、订单详情、热点配置等）",
+            "未说明缓存策略（如：Cache-Aside、TTL过期时间、刷新机制等）",
+            "未说明是否处理了缓存穿透、击穿或雪崩场景",
+            "未描述数据的写入和读取流程（是Cache-Aside、Read-Through还是其他模式）",
+            "未提及如何处理缓存与数据库的一致性（如双写、延迟双删等）",
+            "未提及数据过期策略（TTL设置）及如何避免缓存雪崩/穿透"
+          ],
+          "follow_up_question": "你提到使用 Redis 缓存高频数据，那么在缓存过期或数据库数据更新时，你是如何保证缓存与数据库之间的一致性的？"
+        },
+        {
+          "sample_index": 5,
+          "status": "success",
+          "latency_ms": 37755.44,
+          "scores": {
+            "answer_quality": 70,
+            "technical_depth": 40,
+            "completeness": 40
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "depth": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "completeness": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "anchor_reason": "回答直接回应了提问（使用了Redis缓存），但仅提到‘缓存高频数据’这一方向，缺乏具体实现细节（如数据结构、过期策略、一致性方案等），属于‘有句子直接回应提问，但只有一到两处具体信息（此处甚至少于两处，仅泛泛而谈）’，故quality为B；depth因缺乏运作机制解释定为C；completeness因未覆盖Redis使用的关键要点（键设计、防穿透/击穿/雪崩、持久化等）定为C。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未提及缓存更新策略（如Cache Aside、Read Through等）及数据一致性保障机制",
+            "未说明具体使用了Redis的哪种数据结构（如String, Hash, Set, List等）",
+            "未描述如何处理缓存穿透、击穿或雪崩等边界情况。",
+            "未说明缓存失效策略（TTL设置、更新机制）及如何防止缓存穿透/雪崩/击穿",
+            "未说明选择Redis而非其他缓存中间件或数据库的具体技术权衡理由。",
+            "未说明具体缓存了什么数据（如用户信息、热点内容等）及其数据结构。"
+          ],
+          "follow_up_question": "你刚才提到用 Redis 缓存高频数据以提升接口速度，请问你具体是选择哪种数据结构（如 String 或 Hash）来存储这些数据的？并且在业务数据更新时，你是采用什么策略（比如先更新数据库再删缓存，还是其他模式）来保证缓存与数据库之间的一致性，以避免读到脏数据？"
+        },
+        {
+          "sample_index": 6,
+          "status": "success",
+          "latency_ms": 20470.51,
+          "scores": {
+            "answer_quality": 70,
+            "technical_depth": 40,
+            "completeness": 40
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "depth": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "completeness": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "anchor_reason": "候选人直接回答了使用Redis缓存高频数据这一核心场景，切题故质量为B；但仅提到技术名词和效果，未解释具体实现机制（如数据结构、过期策略），深度为C；缺乏具体参数、字段或步骤细节，完整性为C。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明使用的Redis数据结构（String, Hash, List等）及选择理由。",
+            "未涉及缓存穿透/击穿/雪崩的防护措施",
+            "未描述缓存的更新策略（如读写策略：Cache Aside, Read/Write Through）或一致性处理。",
+            "未提及缓存穿透、击穿、雪崩等问题的防范措施或具体参数（如TTL设置）。",
+            "未说明具体缓存了哪些数据或接口（如用户信息、配置、热点商品等）。",
+            "未说明使用何种Redis特性（如Hash、Set等）存储数据"
+          ],
+          "follow_up_question": "你提到缓存了高频访问的数据，请问针对这种场景，你是如何设置数据的过期时间（TTL）的？如果业务数据发生变化，你是采用先更新数据库还是先更新缓存的策略来保证一致性？"
+        },
+        {
+          "sample_index": 7,
+          "status": "success",
+          "latency_ms": 29897.77,
+          "scores": {
+            "answer_quality": 70,
+            "technical_depth": 40,
+            "completeness": 40
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "depth": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "completeness": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "anchor_reason": "回答直接回应了“如何使用Redis”（缓存高频数据），但仅停留在“使用场景”这一宏观层面，缺乏具体的技术实现细节（如数据结构、过期策略、一致性方案等），属于方向性表述，因此质量判定为B档下限，深度和完整度较低。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "缓存与数据库的一致性保障方案（如 Cache-Aside, Write-Through 等）",
+            "具体使用了 Redis 的哪种数据结构（String, Hash, List等）",
+            "未提及如何应对缓存穿透、击穿或雪崩问题",
+            "缓存策略的细节（如何设置过期时间、更新机制、缓存穿透/击穿/雪崩的处理）",
+            "未说明缓存键（Key）的设计规范与过期时间设置",
+            "是否处理了连接池配置或网络超时等具体参数设置"
+          ],
+          "follow_up_question": "你提到用Redis缓存高频数据，那当业务数据在数据库中被更新后，你是如何保证缓存与数据库之间的一致性？具体采用了哪种模式（如Cache-Aside、Write-Through等），以及如何处理高并发场景下可能出现的并发读写冲突？"
+        },
+        {
+          "sample_index": 8,
+          "status": "success",
+          "latency_ms": 31989.13,
+          "scores": {
+            "answer_quality": 70,
+            "technical_depth": 40,
+            "completeness": 40
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "depth": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "completeness": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "anchor_reason": "候选人仅提到使用了Redis进行缓存，未提供具体的数据结构、键设计、过期策略、缓存击穿/雪崩处理等任何可验证的实现细节，内容空泛，不符合A或B档关于'直接回应并给出具体信息'的要求。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明Redis的数据结构选择（String, Hash, List, Set等）。",
+            "未说明缓存失效策略、过期时间(TTL)或更新机制",
+            "未提及缓存穿透、击穿或雪崩等边界情况的处理策略",
+            "未提及高可用或性能相关的配置细节（如持久化策略、集群模式等）。",
+            "未说明数据从Redis到MySQL的同步机制及一致性保障措施",
+            "未区分不同数据类型（如String, Hash）的使用场景"
+          ],
+          "follow_up_question": "你刚才提到用 Redis 缓存高频数据以提升响应速度，请问在具体实现时，你是如何设置缓存的过期时间（TTL）以及处理缓存与数据库数据一致性的？如果发生缓存击穿的情况，你们采取了什么具体措施来防止数据库被打挂？"
+        },
+        {
+          "sample_index": 9,
+          "status": "success",
+          "latency_ms": 31197.27,
+          "scores": {
+            "answer_quality": 70,
+            "technical_depth": 40,
+            "completeness": 40
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "depth": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "completeness": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "anchor_reason": "候选人直接回应了使用场景（缓存高频数据）和目的（提速），属于有效回答而非套话，故质量定为B；但未提供任何具体技术细节（如数据模型、TTL、序列化等），技术深度仅停留在名词层面定为C；对“怎么使用”这一开放性问题仅覆盖极少部分，完整度定为C。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明具体缓存了什么类型的数据及数据结构设计（如 Key 设计、Hash/List 选型）",
+            "未描述缓存穿透、击穿、雪崩的预防措施或是否实施",
+            "未提及数据一致性策略或缓存失效机制（如 TTL 设置、更新策略）",
+            "未说明设置TTL（过期时间）的具体取值及理由",
+            "未说明缓存与数据库双写时的一致性保障机制",
+            "未提及高并发场景下的实际QPS或性能指标"
+          ],
+          "follow_up_question": "你提到用 Redis 缓存高频访问的数据以提升接口响应速度，那当数据库中的数据发生变更时，你是如何保证缓存与数据库之间的一致性？具体采用了什么更新策略（比如先更新数据库再删除缓存，还是其他方案）？"
+        },
+        {
+          "sample_index": 10,
+          "status": "success",
+          "latency_ms": 39157.1,
+          "scores": {
+            "answer_quality": 40,
+            "technical_depth": 40,
+            "completeness": 40
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "depth": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "completeness": {
+              "anchor": "C",
+              "label": "偏弱",
+              "adjusted": null,
+              "score": 40
+            },
+            "anchor_reason": "候选人仅提到“使用Redis缓存高频数据”这一方向性描述，未包含任何可验证的具体实现细节、参数、结构或机制，属于只有套话与方向性表述，符合C档定义。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明缓存穿透、击穿、雪崩等边界情况的预防措施",
+            "未说明Redis的数据结构选型（如String, Hash, Set等）及理由",
+            "未说明具体缓存了哪些业务数据（如用户信息、配置、商品等）",
+            "缓存与数据库的一致性保障方案（如先删后写、延迟双删等）",
+            "具体缓存的数据结构及键（Key）设计规范",
+            "未提及Key的设计规范或过期时间策略"
+          ],
+          "follow_up_question": "你提到用 Redis 缓存高频数据，当数据库里某个 Key 对应的数据实际不存在时，你的缓存机制会怎么处理？具体是采用了空值缓存、布隆过滤器还是其他手段来防止缓存穿透？"
+        }
+      ],
+      "score_statistics": {
+        "answer_quality": {
+          "values": [
+            40,
+            40,
+            70,
+            40,
+            70,
+            70,
+            70,
+            70,
+            70,
+            40
+          ],
+          "min": 40,
+          "max": 70,
+          "range": 30,
+          "average": 58.0
+        },
+        "technical_depth": {
+          "values": [
+            40,
+            40,
+            40,
+            40,
+            40,
+            40,
+            40,
+            40,
+            40,
+            40
+          ],
+          "min": 40,
+          "max": 40,
+          "range": 0,
+          "average": 40.0
+        },
+        "completeness": {
+          "values": [
+            40,
+            40,
+            40,
+            40,
+            40,
+            40,
+            40,
+            40,
+            40,
+            40
+          ],
+          "min": 40,
+          "max": 40,
+          "range": 0,
+          "average": 40.0
+        }
+      },
+      "max_range": 30,
+      "missing_points_count_range": 0,
+      "turn_index": 1,
+      "case_id": "redis_cache_follow_up_interview",
+      "sample_coverage": 1.0,
+      "coverage_sufficient": true,
+      "verdict": "unstable",
+      "stable": false
+    },
+    {
+      "question": "请具体说明你缓存的对象、key 的设计方式，以及数据更新时如何保证缓存与数据库一致。",
+      "answer_length": 321,
+      "repeats": 10,
+      "analyzer_sample_counts": [
+        3
+      ],
+      "successful_repeats": 10,
+      "failed_repeats": 0,
+      "samples": [
+        {
+          "sample_index": 1,
+          "status": "success",
+          "latency_ms": 22367.64,
+          "scores": {
+            "answer_quality": 90,
+            "technical_depth": 90,
+            "completeness": 70
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "depth": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "completeness": {
+              "anchor": "B",
+              "label": "良好",
+              "adjusted": null,
+              "score": 70
+            },
+            "anchor_reason": "回答直接回应了缓存对象、key设计及一致性策略，提供了TTL取值、Cache-Aside流程、MQ重试及防穿透等至少三处具体细节，但缺少对高并发下删缓存失败的具体监控指标或代码级补偿逻辑描述，完整性上略有遗漏。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明删除缓存失败投递MQ的具体实现细节（如是否使用Redis Pub/Sub或Kafka，以及重试次数与死信队列处理）",
+            "未说明在极高并发下，'先更DB再删缓存'期间读请求可能回填旧数据的具体解决手段（如延迟双删或基于Binlog异步删除）",
+            "未说明在并发高读场景下，针对热点Key的回源击穿问题是否有处理（如互斥锁、逻辑过期等）",
+            "未明确MQ重试的具体实现细节，如重试次数、间隔策略或死信队列的处理方式",
+            "未说明缓存击穿（热点Key失效）的防护措施（如互斥锁或逻辑过期）",
+            "未说明并发场景下‘先更新数据库’可能导致的其他脏读边界情况"
+          ],
+          "follow_up_question": "你提到用“先更库后删缓存”并配合 MQ 重试来处理删除失败，但在高并发读场景下，更新数据库后、删除缓存前，读线程可能回填旧数据导致一致性延迟。针对这个边界情况，你实际采用什么具体策略（如延迟双删或基于 Binlog 的异步删除）来避免旧数据重新回填？"
+        },
+        {
+          "sample_index": 2,
+          "status": "success",
+          "latency_ms": 94036.7,
+          "scores": {
+            "answer_quality": 90,
+            "technical_depth": 90,
+            "completeness": 90
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "depth": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "completeness": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "anchor_reason": "回答直接回应了所有提问关键词，提供了具体的Key设计、TTL取值、Cache-Aside流程及MQ重试机制等可验证细节，但在数据库唯一约束等边界一致性场景上略有缺失。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明在极端高并发下，写操作“先更新DB再删缓存”可能导致的短暂不一致风险及具体应对（如延迟双删或接受短暂不一致）。",
+            "未说明数据更新频率极高时，消息队列重试策略的具体配置（如重试次数、退避算法）",
+            "未说明Key设计的命名空间层级是否支持多维度失效（如按用户维度或按时间维度）",
+            "未说明消息队列积压或重试失败后的最终降级策略（如是否直接查询DB或报错）。",
+            "未说明如何保证高并发下的写一致性（如是否使用分布式锁或延迟双删）",
+            "未说明缓存穿透中“空结果”的具体存储值及如何区分真空值与查询错误"
+          ],
+          "follow_up_question": "你提到在写操作时“先更新数据库再删除缓存”，并依靠消息队列处理删除失败。请问在这种流程下，如果存在高并发的读请求在“更新DB”和“删除缓存”这两个动作之间间隙发生（即读到了旧值并回填），你会如何保证最终一致性？是否考虑过延迟双删或其他并发控制手段？"
+        },
+        {
+          "sample_index": 3,
+          "status": "success",
+          "latency_ms": 23668.8,
+          "scores": {
+            "answer_quality": 90,
+            "technical_depth": 90,
+            "completeness": 90
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "depth": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "completeness": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "anchor_reason": "回答直接回应了缓存对象、Key设计、一致性策略及失败处理，并提供了具体的Key格式、TTL数值、Cache-Aside流程细节及MQ重试机制，满足A档对可验证具体信息和多项技术细节的要求。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明消息队列重试策略的具体参数（如重试次数、间隔）以及是否引入了分布式锁来防止高并发下的缓存击穿。",
+            "未说明在'先更新数据库，再删除缓存'模式下，如果数据库更新成功但删除缓存失败且MQ重试也失败时的具体最终一致状态或监控告警手段。",
+            "未说明在写操作并发场景下，DB更新成功但缓存删除失败期间，其他读请求回填旧数据的竞态窗口如何处理（如加锁或版本号）",
+            "未说明并发写场景下，先更新 DB 再删缓存可能导致的短暂不一致窗口是否有额外补偿机制（如延迟双删）",
+            "未说明缓存击穿（热点Key过期瞬间大量请求回源）的防护措施",
+            "未说明缓存序列化格式或数据结构选择"
+          ],
+          "follow_up_question": "你提到在写操作时“先更新数据库，再删除缓存”，并考虑了删除失败后的 MQ 重试。请问在这种流程中，如果数据库更新成功但缓存删除失败，在 MQ 重试成功之前的短暂窗口内，若并发请求导致缓存被重新回填旧值，你是如何通过“延迟双删”或其他机制来保证数据最终一致性的？"
+        },
+        {
+          "sample_index": 4,
+          "status": "success",
+          "latency_ms": 31326.11,
+          "scores": {
+            "answer_quality": 90,
+            "technical_depth": 90,
+            "completeness": 90
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "depth": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "completeness": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "anchor_reason": "回答直接回应了所有提问点，并提供了具体的Key格式、TTL数值、一致性策略（Cache-Aside）、失效机制（MQ+TTL兜底）及防穿透细节，符合A档对多处可验证具体信息和深度技巧的要求。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明并发读请求下，回源数据库是否做了防击穿处理（如互斥锁或single-flight模式）。",
+            "未提及高并发场景下，删除缓存后立即被并发读回填旧值（写读竞争）的具体应对策略（如延迟双删或依赖MQ重试的时效性保障）。",
+            "未说明如何保证'先写库后删缓存'中删除操作的高成功率（如是否使用了LocalCache或延时双删等进一步措施）。",
+            "未说明在‘删除缓存’步骤中，如果消息队列也不可用或延迟过大时的降级策略（如是否强制延长TTL）",
+            "未说明在删除缓存失败时，消息队列的具体实现选型或如何保证顺序性/幂等性。",
+            "未说明对于‘空结果’占位缓存的存储数据结构及过期后的重新加载逻辑细节。"
+          ],
+          "follow_up_question": "你提到了使用消息队列来保证缓存删除的可靠性，但在高并发场景下，如果先更新数据库后删除缓存失败，紧接着会有大量读请求将旧值重新回填到缓存中（即写读竞争导致的脏数据窗口）。请问除了依赖 TTL 兜底外，你当时采取了什么具体机制来规避或缩短这个“旧值被回填”的窗口？例如是否使用了延迟双删策略，或者在消息消费端做了怎样的延迟处理？"
+        },
+        {
+          "sample_index": 5,
+          "status": "success",
+          "latency_ms": 34910.16,
+          "scores": {
+            "answer_quality": 90,
+            "technical_depth": 90,
+            "completeness": 90
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "depth": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "completeness": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "anchor_reason": "候选人直接回应了缓存对象、Key设计、TTL取值及一致性方案（Cache-Aside+MQ重试+空值防穿透），提供了多处可验证的具体参数和机制细节，覆盖了问题所有要点。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明在高频并发场景下，'先更新DB再删除缓存'期间可能出现的短暂不一致窗口及其业务可接受性",
+            "未提及高并发下删除缓存与更新数据库之间的时序竞争问题（如延迟双删或监听Binlog）",
+            "未说明在极端高并发写场景下，延迟删除或双删策略等更细致的一致性优化是否考虑过",
+            "未说明消息队列重试的具体策略（如重试次数、延迟间隔、最大重试后是否丢弃）",
+            "未说明如何保证消息队列投递的最终一致性（如死信队列处理或重试上限）",
+            "未说明空结果占位的TTL具体时长是多少"
+          ],
+          "follow_up_question": "你提到删除缓存失败会通过消息队列重试，那么请问在高并发写场景下，如果数据库更新和缓存删除之间存在时序竞争，单纯依赖 MQ 重试是否足以保证一致性？你当时是如何权衡“延迟双删”或“Binlog 监听”等方案，并确定最终采用 MQ 重试 + TTL 兜底这一策略的具体依据是什么？"
+        },
+        {
+          "sample_index": 6,
+          "status": "success",
+          "latency_ms": 25829.62,
+          "scores": {
+            "answer_quality": 90,
+            "technical_depth": 90,
+            "completeness": 90
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "depth": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "completeness": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "anchor_reason": "候选人明确回应了缓存对象、Key设计及一致性保证三个核心点，并提供了TTL具体数值、Cache-Aside流程细节、MQ重试及穿透防护等多处可验证的具体技术信息。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明消息队列重试的最大次数、间隔策略及最终失败后的告警机制",
+            "未说明在极端并发场景下（如高并发更新同一Key）是否使用延迟双删或Redis Watch机制解决短暂的脏读",
+            "未说明缓存存储介质（如Redis、Memcached）及其集群部署方式。",
+            "未提及删除缓存的具体实现细节（如Lua脚本原子性、双删策略或延迟双删）。",
+            "未说明缓存击穿（热点key过期）的防护机制（如互斥锁或逻辑过期）",
+            "未提及缓存与数据库连接池或QPS限流在缓存击穿场景下的配合措施"
+          ],
+          "follow_up_question": "你提到在删除缓存失败时会通过 MQ 重试来保证最终一致性，请问在这个机制中，如果 MQ 消费端持续失败或网络抖动导致消息堆积，你们是如何监控异常并防止缓存状态长期脏读的？另外，针对“先更新 DB 再删缓存”在极高并发写入下可能出现的短暂脏读问题（即旧值回填缓存），你们是否有采用延迟双删或其他更严格的强一致性策略？"
+        },
+        {
+          "sample_index": 7,
+          "status": "success",
+          "latency_ms": 34315.94,
+          "scores": {
+            "answer_quality": 90,
+            "technical_depth": 90,
+            "completeness": 90
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "depth": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "completeness": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "anchor_reason": "回答直接回应了缓存对象、Key设计、一致性策略、失败处理及防穿透五个核心点，并给出了具体的TTL数值、Key格式、Cache-Aside流程细节及MQ重试机制，满足A档‘至少两处可验证具体信息’及深度A‘三项以上细节’的要求，覆盖了问题全部要点。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明消息队列重试的具体次数、间隔策略或死信队列处理机制",
+            "未明确说明防穿透的‘空结果占位’的具体数据结构（如NULL哨兵值的具体格式）及TTL时长",
+            "未说明是否使用了Redisson等分布式锁来解决高并发下的缓存击穿（热Key）问题",
+            "未说明在高并发写场景下，是否使用了延迟双删或二进制日志监听等更强的一致性保障措施",
+            "未明确数据库删除后缓存删除失败导致的一致性窗口期内，对业务读取的影响评估",
+            "未提及高并发下的热Key处理或分布式锁防击穿措施"
+          ],
+          "follow_up_question": "你提到在并发写场景下使用 MQ 重试来保证缓存删除的最终一致性，但在高并发下，如果多个请求同时触发“先查缓存未命中、后回源 DB 再回填”的逻辑，极易引发缓存击穿。你当时是否采用了分布式锁（如 Redisson）或其他互斥机制来防止大量请求同时穿透到数据库？如果有，具体是如何实现锁的粒度控制以及处理锁释放后的二次校验（Double Check）以防止写入过期数据的？"
+        },
+        {
+          "sample_index": 8,
+          "status": "success",
+          "latency_ms": 20026.82,
+          "scores": {
+            "answer_quality": 90,
+            "technical_depth": 90,
+            "completeness": 90
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "depth": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "completeness": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "anchor_reason": "回答直接回应了缓存对象、Key设计、一致性机制，提供了具体TTL取值、Cache-Aside细节、失败处理机制（MQ重试、兜底TTL、防穿透占位），包含至少3项实现细节/参数/取舍/失败处理，但完整性上未量化缓存命中率或监控指标，故completeness为B。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明Redis集群环境下Key的分布情况或是否需要一致性哈希/Cluster Slot",
+            "未说明缓存击穿（热点key过期瞬间大量请求穿透）的具体防护手段，如互斥锁或逻辑过期",
+            "未提及在高并发写场景下，先更新DB后删缓存可能出现的短暂脏读窗口及其业务容忍度",
+            "未说明删除缓存后回填缓存的时机，是否存在读请求与写请求竞争导致旧值回填的问题",
+            "未说明缓存层使用的具体技术选型（如Redis集群配置、分片策略等）",
+            "未说明如何监控缓存与数据库的一致性（如通过对账或错误率指标）"
+          ],
+          "follow_up_question": "你提到采用“先更新数据库，再删除缓存”的策略，在并发读写场景下，如果一条读请求在“更新数据库”和“删除缓存”之间发生，将导致旧数据回填缓存从而产生脏读。请问你在业务上如何评估或容忍这个短暂的一致性窗口？或者你采取了什么具体的技术手段（如延迟双删、基于 Binlog 的异步删除等）来进一步缩小这个风险？"
+        },
+        {
+          "sample_index": 9,
+          "status": "success",
+          "latency_ms": 34921.97,
+          "scores": {
+            "answer_quality": 90,
+            "technical_depth": 90,
+            "completeness": 90
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "depth": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "completeness": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "anchor_reason": "回答直接回应了缓存对象、Key设计、更新策略及一致性保证三个核心问题，提供了具体的Key命名规范、TTL参数取值、Cache-Aside机制细节以及MQ重试等失败处理方案，满足A档对具体信息和实现细节的要求。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未说明高并发场景下先更新DB再删缓存可能导致的一小段时间内的脏读窗口及其容忍度或解决手段（如延迟双删的具体参数）。",
+            "未说明删除缓存时的原子性或如何确保'先删后更'与'先更后删'在极端高并发下的具体竞态条件处理（如延迟双删）。",
+            "未提及如何获取'更新信号'以触发消息队列（是监听DB binlog，应用层直接投递，还是定时对账）",
+            "未说明数据更新触发删除缓存的具体时机（是数据库事务提交后立即删除，还是监听Binlog异步删除）。",
+            "未说明缓存雪崩或热点Key的处理机制（虽然TTL不同，但缺乏主动预热或随机打散的说明）。",
+            "未提及缓存中间件的具体选型（如Redis集群架构、是否使用Local Cache）。"
+          ],
+          "follow_up_question": "你提到在写操作“先更新数据库”后会去删除缓存，如果此时恰好有高并发读请求，可能会出现“读到旧缓存”的窗口期。请问你具体是如何评估这个脏读窗口对业务的影响？是否采用了延迟双删（Delayed Double Delete）或监听 Binlog 来兜底？如果是延迟双删，你设置的延迟参数是多少，依据是什么？"
+        },
+        {
+          "sample_index": 10,
+          "status": "success",
+          "latency_ms": 39125.72,
+          "scores": {
+            "answer_quality": 90,
+            "technical_depth": 90,
+            "completeness": 90
+          },
+          "analyzer_sample_count": 3,
+          "anchors": {
+            "quality": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "depth": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "completeness": {
+              "anchor": "A",
+              "label": "优秀",
+              "adjusted": null,
+              "score": 90
+            },
+            "anchor_reason": "回答直接回应了缓存对象、Key设计及一致性策略，且提供了具体的Key命名规范、TTL数值、Cache-Aside细节、MQ重试及防穿透措施，具体信息点超过两处，符合A档定义。"
+          },
+          "missing_points_count": 6,
+          "missing_points": [
+            "未解释高并发下“删除缓存”与“数据库更新”之间的微小时间窗口是否允许短暂不一致，或是否有延迟双删等进一步保障措施",
+            "未提及具体的并发控制机制或锁策略，仅提到避免脏数据，缺乏对高并发写场景下缓存删除抖动的具体处理细节。",
+            "未说明使用何种具体的缓存中间件（如Redis/Memcached）及其集群部署方式。",
+            "未明确“先更新数据库，再删除缓存”中删除缓存的同步/异步执行细节及延迟时间。",
+            "未说明面试题列表缓存失效时，是仅删除特定Key还是涉及关联关系的级联删除。",
+            "未说明数据库侧是否配合使用了更新版本号或逻辑删除标记来辅助一致性判断。"
+          ],
+          "follow_up_question": "你提到在写场景下采用“先更新数据库，再删除缓存”来避免脏数据，但在高并发下这个顺序仍存在微小时间窗口：若并发读在DB更新前取了旧值，并在DB更新后回填缓存，会导致缓存长期脏数据。请问你是如何权衡这个一致性与性能风险的？是否考虑过引入延迟双删、版本号校验或可接受不一致的时间窗口策略？具体是如何判断和处理的？"
+        }
+      ],
+      "score_statistics": {
+        "answer_quality": {
+          "values": [
+            90,
+            90,
+            90,
+            90,
+            90,
+            90,
+            90,
+            90,
+            90,
+            90
+          ],
+          "min": 90,
+          "max": 90,
+          "range": 0,
+          "average": 90.0
+        },
+        "technical_depth": {
+          "values": [
+            90,
+            90,
+            90,
+            90,
+            90,
+            90,
+            90,
+            90,
+            90,
+            90
+          ],
+          "min": 90,
+          "max": 90,
+          "range": 0,
+          "average": 90.0
+        },
+        "completeness": {
+          "values": [
+            70,
+            90,
+            90,
+            90,
+            90,
+            90,
+            90,
+            90,
+            90,
+            90
+          ],
+          "min": 70,
+          "max": 90,
+          "range": 20,
+          "average": 88.0
+        }
+      },
+      "max_range": 20,
+      "missing_points_count_range": 0,
+      "turn_index": 2,
+      "case_id": "redis_cache_follow_up_interview",
+      "sample_coverage": 1.0,
+      "coverage_sufficient": true,
+      "verdict": "unstable",
+      "stable": false
+    }
+  ]
+}

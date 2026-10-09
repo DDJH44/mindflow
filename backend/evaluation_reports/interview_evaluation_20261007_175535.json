@@ -1,0 +1,232 @@
+{
+  "evaluation": {
+    "kind": "interview_engine",
+    "version": "v1",
+    "dataset_version": "v1",
+    "created_at": "2026-10-07T17:55:35.268171",
+    "case_count": 1
+  },
+  "run_config": {
+    "llm_model": "deepseek-flash",
+    "llm_base_url": "https://api.deepseek.com",
+    "analyzer_temperature": 0.2,
+    "follow_up_temperature": 0.4,
+    "sampling": {
+      "used_in_this_report": "offline",
+      "offline_analysis_samples": 3,
+      "offline_evaluation_samples": 3,
+      "online_analysis_samples": 1,
+      "online_evaluation_samples": 1,
+      "llm_calls_per_turn": 4
+    },
+    "note": "离线评估使用多次采样以保证可复现；线上路径只采 1 次以控制延迟，因此线上分数波动更大，两者不可直接比较。"
+  },
+  "summary": {
+    "case_count": 1,
+    "passed_case_count": 1,
+    "failed_case_count": 0,
+    "turn_count": 1,
+    "successful_turn_count": 1,
+    "errored_turn_count": 0,
+    "turn_pass_count": 1,
+    "turn_pass_rate": 1.0,
+    "rule_pass_rate": {
+      "R1_missing_point_coverage": 1.0,
+      "R3_follow_up_targeting": 1.0,
+      "R4_analyzer_score_floor": 1.0
+    },
+    "r1_average_hit_rate": 0.4,
+    "r3_average_hit_rate": 0.5714,
+    "r2_violated_keywords": [],
+    "deprecated_rules": [],
+    "vague_follow_up_turns": [],
+    "latency_ms": {
+      "average": 41319.02,
+      "max": 41319.02
+    },
+    "failed_cases": []
+  },
+  "dataset": [
+    {
+      "id": "evasive_answer_interview",
+      "title": "候选人回避问题的处理",
+      "project_id": 3,
+      "direction": "考察候选人对具体技术问题的回答能力",
+      "turns": [
+        {
+          "question": "你们的 chunk 切分是怎么设计的？为什么选择这个长度？overlap 取多少？",
+          "answer": "这个要看具体情况，不同项目不一样。我们团队技术氛围很好，大家都很努力，平时也会一起讨论方案。我觉得做技术最重要的是持续学习，遇到问题就去查资料、问同事。",
+          "expected_missing_points": [
+            "切分长度",
+            "overlap",
+            "切分依据",
+            "未回答",
+            "回避"
+          ],
+          "expected_follow_up_keywords": [
+            "切分",
+            "chunk",
+            "长度",
+            "overlap",
+            "重叠",
+            "分块",
+            "参数"
+          ],
+          "min_analyzer_score": 0
+        }
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "case_id": "evasive_answer_interview",
+      "title": "候选人回避问题的处理",
+      "project_id": 3,
+      "direction": "考察候选人对具体技术问题的回答能力",
+      "turn_count": 1,
+      "successful_turn_count": 1,
+      "failed_turn_count": 0,
+      "passed": true,
+      "turns": [
+        {
+          "turn_index": 1,
+          "question": "你们的 chunk 切分是怎么设计的？为什么选择这个长度？overlap 取多少？",
+          "answer": "这个要看具体情况，不同项目不一样。我们团队技术氛围很好，大家都很努力，平时也会一起讨论方案。我觉得做技术最重要的是持续学习，遇到问题就去查资料、问同事。",
+          "case_id": "evasive_answer_interview",
+          "status": "success",
+          "latency_ms": 41319.02,
+          "passed": true,
+          "analysis": {
+            "answer_quality": 40,
+            "technical_depth": 15,
+            "completeness": 15,
+            "anchors": {
+              "quality": {
+                "anchor": "C",
+                "label": "偏弱",
+                "adjusted": null,
+                "score": 40
+              },
+              "depth": {
+                "anchor": "D",
+                "label": "很差",
+                "adjusted": null,
+                "score": 15
+              },
+              "completeness": {
+                "anchor": "D",
+                "label": "很差",
+                "adjusted": null,
+                "score": 15
+              },
+              "anchor_reason": "回答只有套话和态度表达，没有任何句子直接回应 chunk 切分设计、长度选择理由或 overlap 取值，属于内容空泛的 C 档，且未体现任何技术信息，完整度也未覆盖提问要点。"
+            },
+            "sample_count": 3,
+            "sampled_missing_points": [
+              [
+                "未说明 chunk 的具体切分方法（如固定长度、递归字符、语义或按文档结构切分）",
+                "未说明 chunk 长度的具体取值及其选择依据",
+                "未说明 overlap 的具体取值及其调整依据",
+                "未说明不同项目或文档类型下切分策略会如何不同",
+                "未说明切分长度与 overlap 对检索召回、生成质量的影响和评估方式",
+                "未说明表格、代码块、长段落等边界内容如何处理"
+              ],
+              [
+                "未说明 chunk 切分的具体策略或规则（如固定长度、按符号、按语义、递归切分等）。",
+                "未说明 chunk 长度的具体取值及选择该长度的依据。",
+                "未说明 overlap 的具体取值或比例。",
+                "未说明不同项目或文档类型下如何调整切分参数。",
+                "未说明切分效果如何评估，以及它与检索效果或成本的关系。",
+                "未说明对长文档、短文档、表格、代码等特殊内容的切分处理方式。"
+              ],
+              [
+                "未说明 chunk 切分的具体策略（如按固定字符、句子、段落或语义切分）。",
+                "未说明 chunk 长度的具体取值。",
+                "未说明选择该长度的理由或依据（如模型上下文限制、检索精度、业务需求等）。",
+                "未说明 overlap 的具体取值。",
+                "未说明设置该 overlap 值的原因或对检索效果的影响。",
+                "未说明不同文档类型或项目场景下切分策略的差异化处理。"
+              ]
+            ],
+            "strengths": [
+              "表达了持续学习和团队协作的积极态度，但与本技术问题无关。",
+              "意识到切分方案可能需要视项目情况而定"
+            ],
+            "missing_points": [
+              "未说明 chunk 长度的具体取值及选择该长度的依据。",
+              "未说明 overlap 的具体取值或比例。",
+              "未说明不同项目或文档类型下切分策略会如何不同",
+              "未说明 chunk 切分的具体策略或规则（如固定长度、按符号、按语义、递归切分等）。",
+              "未说明 chunk 的具体切分方法（如固定长度、递归字符、语义或按文档结构切分）",
+              "未说明 chunk 切分的具体策略（如按固定字符、句子、段落或语义切分）。",
+              "未说明选择该长度的理由或依据（如模型上下文限制、检索精度、业务需求等）。",
+              "未说明切分长度与 overlap 对检索召回、生成质量的影响和评估方式",
+              "未说明对长文档、短文档、表格、代码等特殊内容的切分处理方式。",
+              "未说明设置该 overlap 值的原因或对检索效果的影响。"
+            ],
+            "summary": "候选人没有回答 chunk 切分设计、长度选择和 overlap 取值，只表示要看具体情况，并转向团队氛围与学习态度；缺少任何可验证的技术细节，无法体现相关设计能力。"
+          },
+          "follow_up_question": "你提到切分方案要视项目情况而定。那请举一个你实际参与的项目，具体说明当时文档的典型长度和结构是什么，你们最终采用的 chunk 长度和 overlap 分别是多少，以及这两个数值是基于哪些因素确定的？",
+          "rules": {
+            "R1_missing_point_coverage": {
+              "passed": true,
+              "expected": [
+                "切分长度",
+                "overlap",
+                "切分依据",
+                "未回答",
+                "回避"
+              ],
+              "matched": [
+                "切分长度",
+                "overlap"
+              ],
+              "missed": [
+                "切分依据",
+                "未回答",
+                "回避"
+              ],
+              "hit_rate": 0.4
+            },
+            "R3_follow_up_targeting": {
+              "passed": true,
+              "expected_keywords": [
+                "切分",
+                "chunk",
+                "长度",
+                "overlap",
+                "重叠",
+                "分块",
+                "参数"
+              ],
+              "matched": [
+                "切分",
+                "chunk",
+                "长度",
+                "overlap"
+              ],
+              "missed": [
+                "重叠",
+                "分块",
+                "参数"
+              ],
+              "hit_rate": 0.5714285714285714,
+              "vague_patterns": [],
+              "is_vague": false
+            },
+            "R4_analyzer_score_floor": {
+              "passed": true,
+              "min_score": 0,
+              "scores": {
+                "answer_quality": 40,
+                "technical_depth": 15,
+                "completeness": 15
+              },
+              "below_min_score": {}
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
