@@ -1,11 +1,14 @@
 from collections import Counter
 
+from app.core.logging import get_logger
 from app.core.config import settings
 from app.core.model_json import parse_model_json
 from app.schemas.interview.evaluation import (
     InterviewEvaluationResult,
 )
 from app.services.openai_llm_service import OpenAILLMService
+
+logger = get_logger("app.evaluator")
 
 
 # 整场评价的采样策略，与逐轮分析一致（见 answer_analyzer 的说明）。
@@ -148,9 +151,12 @@ class InterviewEvaluator:
                 )
             except Exception as exc:
                 errors.append(f"{type(exc).__name__}: {exc}")
-                print(
-                    f"[评价器] 第 {index + 1}/{repeats} 次采样失败："
-                    f"{type(exc).__name__}: {exc}"
+                logger.warning(
+                    "第 %d/%d 次采样失败：%s: %s",
+                    index + 1,
+                    repeats,
+                    type(exc).__name__,
+                    exc,
                 )
 
         if not samples:

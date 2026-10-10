@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.core.config import settings
+from app.core.middleware import install_middleware
 from app.database.base import Base
 from app.database.session import engine
 
@@ -33,6 +34,10 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+# 配置日志并挂上请求上下文中间件。
+# 放在 `include_router` 之前，保证所有路由的请求都被记录。
+install_middleware(app)
 
 
 @app.get("/")

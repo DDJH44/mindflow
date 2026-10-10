@@ -1,10 +1,13 @@
 from collections import Counter
 
+from app.core.logging import get_logger
 from app.core.config import settings
 from app.core.model_json import parse_model_json
 from app.evaluation.interview.judges import dedupe_paraphrases
 from app.schemas.interview.answer_analysis import AnswerAnalysis
 from app.services.openai_llm_service import OpenAILLMService
+
+logger = get_logger("app.analyzer")
 
 
 # 采样策略：线上路径与离线评估分开配置。
@@ -232,9 +235,12 @@ class InterviewAnswerAnalyzer:
                 )
             except Exception as exc:
                 errors.append(f"{type(exc).__name__}: {exc}")
-                print(
-                    f"[分析器] 第 {index + 1}/{repeats} 次采样失败："
-                    f"{type(exc).__name__}: {exc}"
+                logger.warning(
+                    "第 %d/%d 次采样失败：%s: %s",
+                    index + 1,
+                    repeats,
+                    type(exc).__name__,
+                    exc,
                 )
 
         if not samples:

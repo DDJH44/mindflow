@@ -61,6 +61,19 @@ class Settings(BaseSettings):
     offline_analysis_samples: int = 3
     offline_evaluation_samples: int = 3
 
+    # =====================
+    # 日志配置
+    # =====================
+    # 是否打印每条 SQL。
+    #
+    # 默认关闭。开启时 SQLAlchemy 会**用自己的 handler** 再打一遍，
+    # 于是每条 SQL 出现两次、应用的访问日志被淹没。
+    #
+    # ⚠️ 此前这是 `create_async_engine(..., echo=True)` **硬编码**，
+    # `.env` 里关不掉 —— 属于"调试开关被写死进代码"。
+    # 需要看 SQL 时在 `.env` 设 `SQL_ECHO=true`。
+    sql_echo: bool = False
+
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",
         env_file_encoding="utf-8",

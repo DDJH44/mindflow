@@ -9,7 +9,10 @@ from openai import (
 )
 
 from app.core.config import settings
+from app.core.logging import get_logger
 from app.services.llm_service import LLMService
+
+logger = get_logger("app.llm")
 
 
 class LLMEmptyResponseError(RuntimeError):
@@ -220,9 +223,14 @@ class OpenAILLMService(LLMService):
                 # 传输层失败：连接中断、超时、限流、服务端 5xx。
                 # 这类错误与内容无关，重试即可恢复。
                 last_error = exc
-                print(
-                    f"[LLM] 传输层失败（第 {attempt}/{attempts} 次）："
-                    f"{type(exc).__name__}: {exc}"
+                # WARNING 而不是 ERROR：这类失败**预计会重试并可能成功**，
+                # 用 ERROR 会让真正的失败淹没在噪音里。
+                logger.warning(
+                    "传输层失败（第 %d/%d 次）：%s: %s",
+                    attempt,
+                    attempts,
+                    type(exc).__name__,
+                    exc,
                 )
 
                 if attempt < attempts:
@@ -248,13 +256,17 @@ class OpenAILLMService(LLMService):
                 )
             else:
                 if attempt > 1:
-                    print(
-                        f"[LLM] 第 {attempt} 次尝试成功"
+                    # 重试后成功值得记一条：它能说明端点在抖动，
+                    # 而不是"一切正常"。
+                    logger.info(
+                        "第 %d 次尝试成功（前 %d 次失败）",
+                        attempt,
+                        attempt - 1,
                     )
                 return content
 
-            print(
-                f"[LLM] 调用失败，准备重试：{last_error}"
+            logger.warning(
+                "调用失败，准备重试：%s", last_error
             )
 
             if attempt < attempts:

@@ -51,6 +51,7 @@ import time
 SUITES: tuple[tuple[str, bool], ...] = (
     # 纯逻辑 / 只依赖数据库，不调模型
     ("test_doctor", False),
+    ("test_logging", False),
     ("test_document_parsing", False),
     ("test_interview_list", False),
     ("test_ability_profile", False),
