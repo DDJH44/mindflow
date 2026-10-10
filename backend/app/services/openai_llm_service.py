@@ -167,10 +167,27 @@ class OpenAILLMService(LLMService):
         temperature: float = 0.7,
         max_tokens: int | None = None,
         seed: int | None = None,
+        max_attempts: int | None = None,
     ) -> str:
+        """生成内容。
+
+        `max_attempts` 覆盖默认重试次数（`MAX_ATTEMPTS`）。
+
+        为什么需要：**健康检查要快速失败并报告**，而生产路径需要
+        重试来吸收抖动。实测诊断工具沿用默认重试时，
+        一个不可达端点会耗掉 45 秒（4 次尝试 + 指数退避），
+        让"检查环境"本身变成一件慢事 —— 那会让人不愿跑它。
+        """
 
         if not prompt.strip():
             raise ValueError("LLM Prompt 不能为空")
+
+        attempts = (
+            MAX_ATTEMPTS if max_attempts is None else max_attempts
+        )
+
+        if attempts < 1:
+            raise ValueError("max_attempts 必须 >= 1")
 
         messages = self._build_messages(
             prompt=prompt,
@@ -194,7 +211,7 @@ class OpenAILLMService(LLMService):
 
         last_error: Exception | None = None
 
-        for attempt in range(1, MAX_ATTEMPTS + 1):
+        for attempt in range(1, attempts + 1):
             try:
                 response = await self.client.chat.completions.create(
                     **request_params
@@ -204,11 +221,11 @@ class OpenAILLMService(LLMService):
                 # 这类错误与内容无关，重试即可恢复。
                 last_error = exc
                 print(
-                    f"[LLM] 传输层失败（第 {attempt}/{MAX_ATTEMPTS} 次）："
+                    f"[LLM] 传输层失败（第 {attempt}/{attempts} 次）："
                     f"{type(exc).__name__}: {exc}"
                 )
 
-                if attempt < MAX_ATTEMPTS:
+                if attempt < attempts:
                     await asyncio.sleep(
                         self._backoff_seconds(attempt)
                     )
@@ -221,12 +238,12 @@ class OpenAILLMService(LLMService):
 
             if not content or not content.strip():
                 last_error = LLMEmptyResponseError(
-                    f"LLM 返回内容为空（第 {attempt}/{MAX_ATTEMPTS} 次）"
+                    f"LLM 返回内容为空（第 {attempt}/{attempts} 次）"
                 )
             elif self._looks_truncated(content, finish_reason):
                 last_error = LLMTruncatedResponseError(
                     f"LLM 输出被截断（finish_reason={finish_reason}，"
-                    f"第 {attempt}/{MAX_ATTEMPTS} 次，"
+                    f"第 {attempt}/{attempts} 次，"
                     f"长度={len(content)}）"
                 )
             else:
@@ -240,7 +257,7 @@ class OpenAILLMService(LLMService):
                 f"[LLM] 调用失败，准备重试：{last_error}"
             )
 
-            if attempt < MAX_ATTEMPTS:
+            if attempt < attempts:
                 await asyncio.sleep(
                     self._backoff_seconds(attempt)
                 )

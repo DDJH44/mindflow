@@ -25,10 +25,21 @@ dependencies = [
 ]
 
 [dependency-groups]
-# 仅用于 `app/core/ui_walkthrough.py`（界面走查）。
-# 单独成组，避免让运行时依赖带上一整套浏览器驱动。
+# 开发期工具，不进运行时依赖。
 dev = [
+    # 界面走查（`app/core/ui_walkthrough.py`）。
+    # 单独成组，避免让运行时依赖带上一整套浏览器驱动。
     "playwright>=1.63.0",
+
+    # 数据库迁移。
+    #
+    # ⚠️ 此前**没有声明**，但 `alembic/` 下有 12 个迁移文件。
+    # 后果：`uv run alembic` 实际走的是全局 Python 里装的 alembic，
+    # 不是项目环境 —— 换一台机器（或 CI）就跑不了迁移，
+    # 而报错是 `No module named 'alembic.config'`（因为
+    # `import alembic` 会命中项目根目录下的 `alembic/` 包，
+    # 把真实的缺失伪装成"模块缺了个子模块"，很难一眼看出）。
+    "alembic>=1.18.4",
 ]
 
 [[tool.uv.index]]

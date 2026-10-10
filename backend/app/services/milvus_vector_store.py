@@ -23,6 +23,8 @@ class MilvusVectorStore(VectorStore):
         if self.client.has_collection(
             collection_name=self.COLLECTION_NAME
         ):
+            # 已存在也要检查一致性级别：老集合可能是用 Bounded 建的。
+            self.ensure_strong_consistency()
             return
 
         schema = MilvusClient.create_schema(
@@ -81,6 +83,43 @@ class MilvusVectorStore(VectorStore):
             index_params=index_params,
             consistency_level="Strong",
         )
+
+    def ensure_strong_consistency(self) -> bool:
+        """确保集合的一致性级别是 Strong（幂等）。
+
+        存在的理由（D53 的加固）：`create_collection` 只在集合**不存在**
+        时执行，因此早期用 Bounded 建出来的老集合**永远修不到** ——
+        而老库恰恰是问题正在发生的地方。
+        实测本项目库里的集合就是 `Bounded`，只能靠显式改。
+
+        为什么还要留着 `search` 里的 `consistency_level="Strong"`：
+        调用方可能绕过本类直接用 MilvusClient，那一层保证不能撤。
+        这里是**收紧集合自身**，让"忘了传参"也不会踩到 D53。
+
+        返回是否发生了修改。
+        """
+
+        try:
+            description = self.client.describe_collection(
+                collection_name=self.COLLECTION_NAME
+            )
+        except Exception:  # noqa: BLE001
+            # 读不到就不动它 —— 这里只是加固，不是关键路径，
+            # 不该因为它让调用方失败。
+            return False
+
+        if description.get("consistency_level_name") == "Strong":
+            return False
+
+        try:
+            self.client.alter_collection_properties(
+                collection_name=self.COLLECTION_NAME,
+                properties={"consistency_level": "Strong"},
+            )
+            return True
+        except Exception:  # noqa: BLE001
+            # 改动失败也放过：正确的行为仍由 search 层的显式参数保证。
+            return False
 
     async def insert(
         self,
