@@ -10,6 +10,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import get_current_user
 from app.database.session import get_db
 from app.models.user import User
+from app.repositories.document_chunk_repository import (
+    DocumentChunkRepository,
+)
+from app.repositories.document_repository import DocumentRepository
+from app.repositories.interview_question_repository import (
+    InterviewQuestionRepository,
+)
 from app.repositories.interview_session_repository import (
     InterviewSessionRepository,
 )
@@ -18,6 +25,7 @@ from app.schemas.interview.interview_qa import (
     InterviewAnswerCreate,
     InterviewAnswerResponse,
     InterviewDetailResponse,
+    InterviewEvidenceResponse,
     InterviewQuestionResponse,
     InterviewStartRequest,
     InterviewStartResponse,
@@ -189,6 +197,13 @@ def _llm_error_or_none(exc: Exception) -> HTTPException | None:
 # ============================================================
 # 会话
 # ============================================================
+
+# 走查/展示用的资料依据片段上限。
+#
+# 切块本身是 500 字符，这里取 300 是因为前端只是展示
+# "这道题依据的是哪几段"，不需要整块；同时保留足够上下文
+# 让用户能认出"这是我的哪段经历"。
+EVIDENCE_EXCERPT_CHARS = 300
 
 # 这些状态下的会话**还没结束**，用户可以回去继续。
 #
@@ -884,6 +899,115 @@ async def submit_answer(
                 if isinstance(value, dict)
             },
         },
+    }
+
+
+@router.get(
+    "/{interview_id}/questions/{question_id}/evidence",
+    response_model=InterviewEvidenceResponse,
+)
+async def get_question_evidence(
+    interview_id: int,
+    question_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """取一道题的资料依据（片段正文）。
+
+    为什么路径里要带 `question_id`，而不是直接收一串 chunk id：
+    直接收 id 会让任何登录用户都能读**任意项目的**资料片段
+    （IDOR）—— chunk 自带 `project_id`，但没有任何依据能证明
+    调用方有权看它。从问题派生就天然受限：问题属于会话，
+    会话已经过所有权校验。
+
+    片段内容按需截断：前端只是展示"这道题的依据是哪几段"，
+    返回整块 500 字没有意义，还会让响应体无谓变大。
+    """
+
+    interview_session = await _load_owned_session(
+        interview_id=interview_id,
+        db=db,
+        current_user=current_user,
+    )
+
+    if not interview_session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="面试会话不存在",
+        )
+
+    question_repository = InterviewQuestionRepository(db)
+
+    question = await question_repository.get_by_id(question_id)
+
+    if not question or question.session_id != interview_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="该问题不属于此面试会话",
+        )
+
+    chunk_ids = [
+        int(chunk_id)
+        for chunk_id in (question.evidence_chunk_ids or [])
+    ]
+
+    chunk_repository = DocumentChunkRepository(db)
+
+    chunks = await chunk_repository.get_by_ids(chunk_ids)
+
+    # 资料名：按 chunk 里的 document_id 一次性取回，避免逐条查询
+    document_ids = [
+        chunk.document_id
+        for chunk in chunks.values()
+        if chunk.document_id is not None
+    ]
+
+    document_repository = DocumentRepository(db)
+
+    documents = await document_repository.get_by_ids(document_ids)
+
+    items = []
+    missing = []
+
+    for chunk_id in chunk_ids:
+        chunk = chunks.get(chunk_id)
+
+        if chunk is None:
+            # 资料被删除后依据会失效。明确报出来，让前端能提示
+            # "这条依据引用的资料已被删除"，而不是静默少一条。
+            missing.append(chunk_id)
+            continue
+
+        document = documents.get(chunk.document_id)
+        content = chunk.content or ""
+
+        truncated = len(content) > EVIDENCE_EXCERPT_CHARS
+
+        items.append(
+            {
+                "chunk_id": chunk.id,
+                "content": (
+                    content[:EVIDENCE_EXCERPT_CHARS]
+                    if truncated
+                    else content
+                ),
+                "truncated": truncated,
+                "document_id": chunk.document_id,
+                "document_name": (
+                    document.name if document else None
+                ),
+                "document_type": (
+                    document.document_type if document else None
+                ),
+            }
+        )
+
+    return {
+        "question_id": question.id,
+        "question": question.question,
+        "is_general": question.is_general,
+        "items": items,
+        "missing_chunk_ids": missing,
     }
 
 

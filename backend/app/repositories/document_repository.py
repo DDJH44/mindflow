@@ -24,6 +24,28 @@ class DocumentRepository:
 
         return result.scalar_one_or_none()
 
+    async def get_by_ids(
+        self,
+        document_ids: list[int],
+    ) -> dict[int, Document]:
+        """按 id 批量取文档，返回 {id: document}。
+
+        用于"资料依据"要显示来源文件名：把按 chunk 收集到的
+        document_id 一次性取回，避免逐条查询。
+        """
+
+        if not document_ids:
+            return {}
+
+        result = await self.session.execute(
+            select(Document).where(Document.id.in_(document_ids))
+        )
+
+        return {
+            document.id: document
+            for document in result.scalars().all()
+        }
+
     async def get_by_project(
         self,
         project_id: int,

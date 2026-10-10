@@ -53,6 +53,48 @@ class InterviewQuestionResponse(BaseModel):
         return bool(self.evidence_chunk_ids)
 
 
+class InterviewEvidenceItem(BaseModel):
+    """一条资料依据（面试问题所依据的资料片段）。
+
+    存在的理由：§9.3 要求资料型问题**可追溯依据**。
+    此前接口只暴露 `evidence_chunk_ids`（一串数字），
+    用户看不到"这道题到底是从我哪段资料里来的" ——
+    数字本身无法建立信任。
+    """
+
+    chunk_id: int
+
+    # 片段正文。过长时由服务端截断（见端点说明）：
+    # 前端是用来展示依据的，不需要整块 500 字。
+    content: str
+
+    # 是否被服务端截断过，让前端能如实提示"还有更多"。
+    truncated: bool = False
+
+    # 来源文件。用户据此判断"这是我的哪份资料"。
+    document_id: int | None = None
+    document_name: str | None = None
+    document_type: str | None = None
+
+
+class InterviewEvidenceResponse(BaseModel):
+    """一道题的全部资料依据。"""
+
+    question_id: int
+    question: str
+    is_general: bool = False
+
+    # 按 `evidence_chunk_ids` 的**原顺序**返回。
+    # 顺序反映了检索结果喂给模型时的位置，重排会让"依据"
+    # 与"实际使用情况"对不上（见 context_builder 的说明）。
+    items: list[InterviewEvidenceItem] = Field(default_factory=list)
+
+    # 有依据但编号已失效（资料被删除）的 chunk 数。
+    # 明确报出来而不是静默少几条 —— 否则用户会以为
+    # 那道题本来就没依据。
+    missing_chunk_ids: list[int] = Field(default_factory=list)
+
+
 class InterviewAnswerResponse(BaseModel):
     """作答后返回的结果，含生成的追问。"""
 

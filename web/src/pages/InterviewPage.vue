@@ -22,6 +22,7 @@ import type {
   InterviewEvaluation,
   InterviewQuestion,
 } from '../api/types'
+import EvidencePanel from '../components/EvidencePanel.vue'
 
 const props = defineProps<{ id: number }>()
 
@@ -33,6 +34,14 @@ const loading = ref(true)
 const submitting = ref(false)
 const finishing = ref(false)
 const error = ref('')
+
+/** 当前展开了资料依据的问题 id（同时只开一个，避免刷屏）。 */
+const openEvidenceId = ref<number | null>(null)
+
+function toggleEvidence(questionId: number) {
+  openEvidenceId.value =
+    openEvidenceId.value === questionId ? null : questionId
+}
 
 /** 服务端带回的自动评价（预算耗尽时）。 */
 const autoEvaluation = ref<InterviewEvaluation | null>(null)
@@ -260,20 +269,30 @@ onMounted(async () => {
       <div v-if="current" class="card">
         <div class="row-between" style="margin-bottom: 12px">
           <h2>当前问题</h2>
-          <span
-            :class="
-              current.is_general ? 'tag' : 'tag tag-primary'
-            "
+          <!--
+            资料依据做成可展开：只显示"N 段"等于让用户相信一个数字，
+            而 §9.3 要求依据**可追溯** —— 用户应该能亲眼看到
+            这道题是从他哪段经历里来的。
+          -->
+          <button
+            v-if="!current.is_general"
+            class="evidence-toggle"
+            type="button"
+            @click="toggleEvidence(current.id)"
           >
-            {{
-              current.is_general
-                ? '通用能力题'
-                : `资料依据 ${current.evidence_chunk_ids.length} 段`
-            }}
-          </span>
+            资料依据 {{ current.evidence_chunk_ids.length }} 段
+            {{ openEvidenceId === current.id ? '▲' : '▼' }}
+          </button>
+          <span v-else class="tag">通用能力题</span>
         </div>
 
         <div class="question-box">{{ current.question }}</div>
+
+        <EvidencePanel
+          v-if="openEvidenceId === current.id"
+          :session-id="id"
+          :question-id="current.id"
+        />
 
         <div class="field" style="margin-top: 16px">
           <label for="answer">你的回答</label>
@@ -342,8 +361,32 @@ onMounted(async () => {
             >
               追问
             </span>
+            <button
+              v-if="!item.is_general && item.evidence_chunk_ids.length"
+              class="evidence-toggle"
+              type="button"
+              style="margin-left: 8px"
+              @click="toggleEvidence(item.id)"
+            >
+              资料依据 {{ item.evidence_chunk_ids.length }} 段
+              {{ openEvidenceId === item.id ? '▲' : '▼' }}
+            </button>
+            <span
+              v-else-if="item.is_general"
+              class="tag"
+              style="margin-left: 6px"
+            >
+              通用题
+            </span>
           </div>
           <div style="font-weight: 500">{{ item.question }}</div>
+
+          <EvidencePanel
+            v-if="openEvidenceId === item.id"
+            :session-id="id"
+            :question-id="item.id"
+          />
+
           <div class="muted" style="margin-top: 4px">
             {{ item.answer }}
           </div>

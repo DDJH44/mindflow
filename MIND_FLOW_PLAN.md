@@ -989,7 +989,7 @@ summarizing        → completed          [evaluation_completed]
 | 面试——开始 | `POST /api/interviews/{id}/start` | ✅ |
 | 面试——状态 | `GET /api/interviews/{id}/allowed-transitions`、`POST /api/interviews/{id}/transition`、`POST /api/interviews/{id}/pause`、`POST /api/interviews/{id}/resume` | ✅ |
 | 面试——轨迹 | `GET /api/interviews/{id}/history` | ✅ |
-| 面试——答题 | `GET /api/interviews/{id}/questions`、`POST /api/interviews/{id}/answer` | ✅ |
+| 面试——答题 | `GET /api/interviews/{id}/questions`、`GET /api/interviews/{id}/questions/{qid}/evidence`（**资料依据片段**）、`POST /api/interviews/{id}/answer` | ✅ |
 | 面试——结束 | `POST /api/interviews/{id}/finish` | ✅ |
 | 用量 | `GET /api/usage` | ✅ |
 面试 API 的设计约定：
@@ -1200,6 +1200,10 @@ PostgreSQL 与 Milvus 之间没有分布式事务，因而无法提供严格原�
 - `python -m app.core.test_interview_list`：**面试历史列表**（21 项）——
   结构、按更新时间倒序、`unfinished_only` 过滤、项目过滤、分页、
   `answered_count` 与 `questions_asked` 的区别、所有权隔离、参数校验。
+- `python -m app.core.test_interview_evidence`：**资料依据片段**（16 项）——
+  片段内容与来源、**顺序与 `evidence_chunk_ids` 一致**、截断标记、
+  资料被删除时明确报出失效依据、以及越权防护
+  （他人的会话 / 别的会话的 question_id 都返回 404）。
 - `python -m app.core.test_llm_error_mapping`：**上游 LLM 失败的映射**（8 项，D57）。
   需要额外起一个指向不可达 LLM 的后端（见该文件头部说明），
   断言 LLM 失败返回 503 且业务异常（409/404/401）不被误判。
@@ -2532,11 +2536,41 @@ Strong          立刻可见 10 次中命中 10 次
 
 **低分是正确判定**（回答确实答非所问），说明评价链路是有效的。
 
-### 27.9 仍缺
+### 27.9 资料依据可点开看片段
+
+§9.3 要求资料型问题**可追溯依据**，但此前接口只暴露
+`evidence_chunk_ids`（一串数字）。**数字本身建立不了信任** ——
+用户想知道的是"系统是不是真读了我的简历"，而不是"它引用了 4 和 3"。
+
+现在面试页与报告页的"资料依据 N 段"都可点开，展开后显示
+每段片段正文 + 来源文件名与类型。
+
+**两个设计决定：**
+
+1. **路径带 `question_id`，而不是直接收一串 chunk id。**
+   后者会让任何登录用户都能读**任意项目的**资料片段（IDOR）——
+   chunk 自带 `project_id`，但没有任何依据能证明调用方有权看它。
+   从问题派生则天然受限：问题属于会话，会话已经过所有权校验。
+   测试里对"他人的会话"与"别的会话的 question_id"都断言返回 404。
+
+2. **片段按 300 字截断并如实标注。**
+   切块本身是 500 字，这里截断是因为前端只是展示依据；
+   截断时必须提示"仅显示前 300 字"，否则用户会以为资料就这么短。
+
+**顺序必须与 `evidence_chunk_ids` 一致**（不是数据库返回顺序）：
+那个顺序反映了检索结果喂给模型时的位置，重排会让"展示的依据"
+与"实际使用情况"对不上 —— 这正是 `context_builder` 里已经注明的约束。
+
+抽成 `EvidencePanel.vue` 是因为面试页与报告页都要用；
+两处各写一遍取数、加载态、错误态与失效提示，很快会漂移成两套行为。
+
+### 27.10 仍缺
 
 | 项 | 为什么重要 |
 | --- | --- |
-| **面试历史列表** | 后端**没有**列出面试的端点。用户关掉页面就找不回进行中的面试；需要先加后端端点 |
-| 面试页的"资料依据"详情 | 现在只显示依据段数（`evidence_chunk_ids.length`），点不开具体片段 |
 | 无 chunk 的文档 | 解析成功但切不出块（内容太短/为空）的文档停在 `parsed`，界面上点"重试索引"会返回 400。应在服务端明确这类文档的状态与提示 |
+| 依据片段的"完整查看" | 目前每条依据最多显示 300 字（超出会提示已截断）。要看完整片段需要另开入口 |
 | `docs/ui-shots/` 的版本管理 | 截图是验证产物，是否入库待定（当前已落在 `docs/` 下）|
+
+**已完成**：面试历史列表（`GET /api/interviews` + `HistoryPage`）、
+资料依据可点开看片段（`GET .../questions/{qid}/evidence` + `EvidencePanel`）。

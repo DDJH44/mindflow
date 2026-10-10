@@ -489,6 +489,54 @@ button:disabled {
   margin-top: 6px;
 }
 
+/* ------------------------------------------------------ 资料依据 */
+
+.evidence {
+  margin-top: 10px;
+}
+
+.evidence-item {
+  border-left: 2px solid var(--primary-soft);
+  background: #fafbfd;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 8px 12px;
+}
+
+.evidence-item + .evidence-item {
+  margin-top: 8px;
+}
+
+.evidence-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.evidence-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-dim);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 可展开的依据入口：看起来像链接，但是按钮（键盘可达） */
+.evidence-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 12px;
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.evidence-toggle:hover {
+  text-decoration: underline;
+}
+
 /* ------------------------------------------------------ 加载与居中 */
 
 .spinner {

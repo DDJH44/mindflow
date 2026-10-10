@@ -13,6 +13,7 @@ import type {
   InterviewAnswerResult,
   InterviewDetail,
   InterviewEvaluation,
+  InterviewEvidence,
   InterviewFinishResult,
   InterviewQuestion,
   InterviewSession,
@@ -210,6 +211,19 @@ export const interviewApi = {
   async questions(id: number) {
     const { data } = await http.get<InterviewQuestion[]>(
       `/interviews/${id}/questions`,
+    )
+    return data
+  },
+
+  /**
+   * 取一道题的资料依据（片段正文）。
+   *
+   * 路径里带 `question_id` 而不是直接传 chunk id：后者会让
+   * 任何登录用户都能读任意项目的片段（IDOR）。
+   */
+  async evidence(id: number, questionId: number) {
+    const { data } = await http.get<InterviewEvidence>(
+      `/interviews/${id}/questions/${questionId}/evidence`,
     )
     return data
   },

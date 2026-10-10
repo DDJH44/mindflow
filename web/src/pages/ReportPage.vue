@@ -13,12 +13,21 @@ import { computed, onMounted, ref } from 'vue'
 import { interviewApi } from '../api'
 import { ApiError } from '../api/http'
 import type { InterviewDetail } from '../api/types'
+import EvidencePanel from '../components/EvidencePanel.vue'
 
 const props = defineProps<{ id: number }>()
 
 const detail = ref<InterviewDetail | null>(null)
 const loading = ref(true)
 const error = ref('')
+
+/** 当前展开了资料依据的问题 id。 */
+const openEvidenceId = ref<number | null>(null)
+
+function toggleEvidence(questionId: number) {
+  openEvidenceId.value =
+    openEvidenceId.value === questionId ? null : questionId
+}
 
 const evaluation = computed(() => detail.value?.evaluation ?? null)
 const session = computed(() => detail.value?.session ?? null)
@@ -189,19 +198,33 @@ onMounted(load)
             >
               追问
             </span>
-            <span
+            <button
               v-if="!item.is_general && item.evidence_chunk_ids.length"
-              class="tag tag-ok"
-              style="margin-left: 6px"
+              class="evidence-toggle"
+              type="button"
+              style="margin-left: 8px"
+              @click="toggleEvidence(item.id)"
             >
               资料依据 {{ item.evidence_chunk_ids.length }} 段
-            </span>
-            <span v-else-if="item.is_general" class="tag" style="margin-left: 6px">
+              {{ openEvidenceId === item.id ? '▲' : '▼' }}
+            </button>
+            <span
+              v-else-if="item.is_general"
+              class="tag"
+              style="margin-left: 6px"
+            >
               通用能力题
             </span>
           </div>
 
           <div style="font-weight: 500">{{ item.question }}</div>
+
+          <!-- 报告里也给出依据：这是"答案有据可查"的最后落点 -->
+          <EvidencePanel
+            v-if="openEvidenceId === item.id"
+            :session-id="id"
+            :question-id="item.id"
+          />
 
           <div v-if="item.answer" class="muted" style="margin-top: 6px">
             {{ item.answer }}

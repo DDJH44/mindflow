@@ -117,6 +117,34 @@ export interface InterviewStartResult {
   question: InterviewQuestion
 }
 
+/** 一条资料依据（面试问题所依据的资料片段）。 */
+export interface InterviewEvidenceItem {
+  chunk_id: number
+
+  /** 片段正文，服务端可能已截断（见 `truncated`）。 */
+  content: string
+
+  /** 是否被服务端截断过，前端据此提示"还有更多"。 */
+  truncated: boolean
+
+  /** 来源文件，让用户认出"这是我的哪份资料"。 */
+  document_id: number | null
+  document_name: string | null
+  document_type: string | null
+}
+
+export interface InterviewEvidence {
+  question_id: number
+  question: string
+  is_general: boolean
+
+  /** 按 `evidence_chunk_ids` 的原顺序返回。 */
+  items: InterviewEvidenceItem[]
+
+  /** 依据已失效（资料被删除）的 chunk id。 */
+  missing_chunk_ids: number[]
+}
+
 /** 历史列表里的一条会话。 */
 export interface InterviewSessionListItem extends InterviewSession {
   /** 项目名，由服务端按 id 批量补上。 */

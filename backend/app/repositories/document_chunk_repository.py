@@ -26,6 +26,30 @@ class DocumentChunkRepository:
 
         return list(result.scalars().all())
     
+    async def get_by_ids(
+        self,
+        chunk_ids: list[int],
+    ) -> dict[int, DocumentChunk]:
+        """按 id 批量取 chunk，返回 {id: chunk}。
+
+        返回字典而不是列表：调用方（资料依据）要按原顺序重排，
+        而 `IN (...)` 不保证顺序。顺序很重要 ——
+        证据的次序反映了它在喂给模型时的位置（§9.3）。
+        """
+
+        if not chunk_ids:
+            return {}
+
+        result = await self.session.execute(
+            select(DocumentChunk).where(
+                DocumentChunk.id.in_(chunk_ids)
+            )
+        )
+
+        return {
+            chunk.id: chunk for chunk in result.scalars().all()
+        }
+
     async def get_pending_chunks(
         self,
         document_id: int,

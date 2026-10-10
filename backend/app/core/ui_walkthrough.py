@@ -666,6 +666,42 @@ async def main() -> int:
                 ]
                 note(f"标记: {tag_texts[:6]}")
 
+                # 点开资料依据。
+                #
+                # 只断言"N 段"这个数字存在是不够的 ——
+                # 那只能证明标签渲染了，证明不了**点开能看到内容**，
+                # 而"依据可追溯"（§9.3）恰恰要求后者。
+                toggle = await page.query_selector(".evidence-toggle")
+                if toggle is None:
+                    note("资料依据入口: 缺失（可能是通用题）")
+                else:
+                    note(
+                        "资料依据入口: "
+                        f"'{(await toggle.text_content()).strip()}'"
+                    )
+                    await toggle.click()
+                    await page.wait_for_timeout(1500)
+
+                    items = await page.query_selector_all(
+                        ".evidence-item"
+                    )
+                    note(f"展开后依据条数: {len(items)}")
+
+                    if items:
+                        first_text = " ".join(
+                            (await items[0].text_content()).split()
+                        )
+                        note(f"第一条依据: {first_text[:100]}")
+
+                    # 展开态必须真的有正文，否则等于没展开
+                    body = await page.query_selector(".evidence-text")
+                    note(
+                        "依据正文可读: "
+                        f"{bool(body and (await body.text_content()).strip())}"
+                    )
+
+                    await shot(page, "04-interview-evidence")
+
                 await shot(page, "04-interview")
 
                 # 作答：预算 2 题，第 2 次作答后应自动结束并跳报告
@@ -718,6 +754,32 @@ async def main() -> int:
                         ".bullet-list li"
                     )
                     note(f"建议/优势条目数: {len(bullets)}")
+
+                    # 报告页也要能点开依据 —— 这是"答案有据可查"的
+                    # 最后落点，与面试页是同一套判定。
+                    report_toggles = await page.query_selector_all(
+                        ".evidence-toggle"
+                    )
+                    note(f"报告页证据入口数: {len(report_toggles)}")
+
+                    if report_toggles:
+                        await report_toggles[0].click()
+                        await page.wait_for_timeout(1500)
+
+                        report_items = await page.query_selector_all(
+                            ".evidence-item"
+                        )
+                        note(f"报告页展开后依据条数: {len(report_items)}")
+
+                        report_body = await page.query_selector(
+                            ".evidence-text"
+                        )
+                        note(
+                            "报告页依据正文可读: "
+                            f"{bool(report_body and (await report_body.text_content()).strip())}"
+                        )
+
+                        await shot(page, "05-report-evidence")
 
                     await shot(page, "05-report")
                 else:
