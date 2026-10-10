@@ -74,6 +74,23 @@ class Settings(BaseSettings):
     # 需要看 SQL 时在 `.env` 设 `SQL_ECHO=true`。
     sql_echo: bool = False
 
+    # =====================
+    # 嵌入配置
+    # =====================
+    # 单次嵌入请求的最大文本条数（初始值）。
+    #
+    # ⚠️ 这个上限**不是可选的**：当前端点会直接拒绝过大的批量
+    # （`batch size is invalid, it should not be larger than 10`）。
+    # 此前代码把整个文档的 chunk 一次性发出，于是
+    # **超过约 1 万字符的文件必然上传失败**（25 块 > 上限）。
+    #
+    # 实测该端点的真实上限是 **10**（11 条即被拒）。
+    # 但**不要把它当成事实**：同一端点在另一次测量里声称 20，
+    # 换端点（OpenAI 自身是 2048）差异更大。因此
+    # `OpenAIEmbeddingService` 还会从端点的报错里**自适应学习**
+    # 真实上限并缓存 —— 这里的值只是初始猜测。
+    embedding_batch_size: int = 10
+
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",
         env_file_encoding="utf-8",

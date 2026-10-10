@@ -65,9 +65,38 @@ async def cleanup(client, document_ids: list[int]) -> None:
         except Exception as exc:
             print(f"      清理文档 {document_id} 失败: {exc}")
 
-    # 兜底：若端点删除失败，直接删库避免留下测试数据
+    # 兜底：若端点删除失败，直接删库避免留下测试数据。
+    #
+    # ⚠️ **必须同时删向量**：直接删库不会经过删除端点，
+    # 因此 chunk 与 Milvus 里的向量都会留下 ——
+    # 那些孤儿向量会占用 top-k 名额、静默降低召回（D52）。
+    # 此前这里只删了库，留下的向量要等到某次
+    # `check_orphan_vectors --purge` 才被发现。
+    from app.services.milvus_vector_store import MilvusVectorStore
+
     async with AsyncSessionLocal() as db:
         for document_id in document_ids:
+            chunk_ids = [
+                row[0]
+                for row in (
+                    await db.execute(
+                        text(
+                            "SELECT id FROM document_chunks "
+                            "WHERE document_id = :d"
+                        ),
+                        {"d": document_id},
+                    )
+                ).all()
+            ]
+
+            if chunk_ids:
+                try:
+                    await MilvusVectorStore().delete(ids=chunk_ids)
+                except Exception as exc:  # noqa: BLE001
+                    print(
+                        f"      清理向量失败 doc {document_id}: {exc}"
+                    )
+
             await db.execute(
                 text("DELETE FROM documents WHERE id = :d"),
                 {"d": document_id},
@@ -388,15 +417,201 @@ async def main():
                 # 已通过端点删除，清理时不必再删
                 created_documents.clear()
 
+            # ================================================
+            # 9. 大文件上传（嵌入分批）
+            # ================================================
+            print()
+            print("=" * 74)
+            print("9. 大文件上传（验证嵌入分批）")
+            print("=" * 74)
+
+            # 端点的嵌入批量上限约为 10 条。
+            # 此前 `embed_texts` 把整个文档的 chunk 一次性发出，
+            # 因此**超过约 1 万字符（25 块）的文件必然上传失败**，
+            # 而报错是 502「服务不可用」——
+            # 用户完全看不出问题出在文件长度上。
+            #
+            # 端点的嵌入批量上限约为 10 条。
+            # 此前 `embed_texts` 把整个文档的 chunk 一次性发出，
+            # 因此**超过约 1 万字符（25 块）的文件必然上传失败**，
+            # 而报错是 502「服务不可用」——
+            # 用户完全看不出问题出在文件长度上。
+            #
+            # 200KB 约产出 450 块，远超上限。
+            #
+            # 文本里埋一个**唯一标识串**，后面用它检索回来 ——
+            # 这样验证的是"向量真的可被检索"（真实用途），
+            # 而不只是"代码走到了 embedded 这一步"。
+            unique_marker = "ZYXVUTSRQPON"
+
+            big_text = (
+                "这是一段用于验证嵌入分批的中文文本，"
+                "包含项目经历、技术选型与实现细节的描述。"
+            ) * 1400 + f"\n\n关键标识：{unique_marker}。"
+
+            response = await client.post(
+                f"/api/projects/{PROJECT_ID}/documents",
+                params={"document_type": "resume"},
+                files={
+                    "file": (
+                        "big_upload_test.txt",
+                        big_text.encode("utf-8"),
+                        "text/plain",
+                    )
+                },
+            )
+
+            record(
+                "大文件（约 200KB）上传返回 201",
+                response.status_code == 201,
+                f"status={response.status_code}",
+            )
+
+            if response.status_code != 201:
+                print("      响应体:", response.text[:240])
+
+            big_body = (
+                response.json()
+                if response.status_code == 201
+                else {}
+            )
+            big_document_id = big_body.get("id")
+
+            if big_document_id:
+                created_documents.append(big_document_id)
+
+            record(
+                "大文件状态为 embedded",
+                big_body.get("status") == "embedded",
+                f"status={big_body.get('status')}",
+            )
+
+            if big_document_id:
+                # 分批写入了多少块？必须远超单个批次的上限，
+                # 否则这个用例没有覆盖到"需要分批"的情形。
+                async with AsyncSessionLocal() as db:
+                    chunk_count = (
+                        await db.execute(
+                            text(
+                                "SELECT COUNT(*) FROM document_chunks "
+                                "WHERE document_id = :d"
+                            ),
+                            {"d": big_document_id},
+                        )
+                    ).scalar_one()
+
+                record(
+                    "切块数远超单批上限（确实需要分批）",
+                    chunk_count > 20,
+                    f"共 {chunk_count} 块",
+                )
+
+                # 关键：向量必须真的进了 Milvus，而且**可被检索到**。
+                #
+                # 状态是 embedded 只说明代码走到了那一步；
+                # 这里用埋在文本里的唯一标识串检索回来，
+                # 验证的是真实用途。
+                from app.services.retrieval_service import (
+                    RetrievalService,
+                )
+
+                async with AsyncSessionLocal() as db:
+                    hits = await RetrievalService(db).retrieve(
+                        query=unique_marker,
+                        project_id=PROJECT_ID,
+                        limit=10,
+                    )
+
+                matched = [
+                    hit
+                    for hit in hits
+                    if hit["document_id"] == big_document_id
+                ]
+
+                record(
+                    "大文件的向量**可被检索到**（不只是状态对）",
+                    bool(matched),
+                    f"命中 {len(hits)} 段，其中属于本文档 "
+                    f"{len(matched)} 段",
+                )
+
+                # ============================================
+                # 10. 清理大文件并断言"真的清理干净"
+                # ============================================
+                #
+                # **放在客户端仍打开时**：此前清理在 `finally` 里，
+                # 而 `finally` 在 `async with client` 之外 ——
+                # 那时客户端已关闭，HTTP 删除必然失败，
+                # 只能退化成直接删库，于是**向量被留在 Milvus**
+                # （实测 137 块 200KB 文档留下了 137 个孤儿向量）。
+                #
+                # 而且清理放在 `finally` 里意味着它发生在**所有断言
+                # 之后** —— 清理本身从不被验证。这里改为显式清理
+                # 并断言结果。
+                print()
+                print("=" * 74)
+                print("10. 清理大文件并验证无残留")
+                print("=" * 74)
+
+                response = await client.delete(
+                    f"/api/projects/{PROJECT_ID}/documents/"
+                    f"{big_document_id}"
+                )
+
+                record(
+                    "大文件删除返回 204",
+                    response.status_code == 204,
+                    f"status={response.status_code}",
+                )
+
+                async with AsyncSessionLocal() as db:
+                    left = (
+                        await db.execute(
+                            text(
+                                "SELECT COUNT(*) FROM document_chunks "
+                                "WHERE document_id = :d"
+                            ),
+                            {"d": big_document_id},
+                        )
+                    ).scalar_one()
+
+                record(
+                    "删除后文本块一并清除",
+                    left == 0,
+                    f"剩余 {left} 段",
+                )
+
+                # 向量也必须没了 —— 这正是此前被漏掉的一环。
+                # 用**检索**验证：删掉后不该再命中本文档。
+                async with AsyncSessionLocal() as db:
+                    hits_after = await RetrievalService(db).retrieve(
+                        query=unique_marker,
+                        project_id=PROJECT_ID,
+                        limit=20,
+                    )
+
+                still_there = [
+                    hit
+                    for hit in hits_after
+                    if hit["document_id"] == big_document_id
+                ]
+
+                record(
+                    "删除后向量不再被检索到（无孤儿向量）",
+                    not still_there,
+                    f"仍命中 {len(still_there)} 段",
+                )
+
+                # 已通过端点删除，清理阶段不必再删
+                created_documents.remove(big_document_id)
+
     finally:
-        # 兜底清理：正常路径已在上面通过 DELETE 端点删掉
-        # （此时 `created_documents` 已清空、这里是 no-op）；
+        # 兜底：正常路径已在上面通过 DELETE 端点逐条删掉
+        # （此时 `created_documents` 为空，这里是 no-op）；
         # 若中途失败，这里保证不留下测试数据。
         #
-        # ⚠️ 注意：`finally` 在 `async with client` **之外**，
-        # 此刻客户端已关闭，因此 cleanup 里的 HTTP 调用会失败。
-        # 正常路径不受影响（列表为空），但**失败路径下删不掉** ——
-        # 所以 cleanup 里保留了直接删库的兜底。
+        # `cleanup` 自身也删向量（见其说明）—— 因为它可能在
+        # 客户端已关闭时运行。
         await cleanup(client, created_documents)
         await reset_quota(USER_ID)
 

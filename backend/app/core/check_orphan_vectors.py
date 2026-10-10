@@ -25,26 +25,27 @@ from sqlalchemy import text
 
 from app.database.session import AsyncSessionLocal
 from app.services.milvus_vector_store import MilvusVectorStore
-from app.services.openai_embedding_service import (
-    OpenAIEmbeddingService,
-)
 
-# 扫描范围。取足够大以覆盖开发库的向量量级。
-SCAN_LIMIT = 500
+# 扫描范围。
+#
+# ⚠️ 此前这里有一个 `SCAN_LIMIT = 500`，并且用一次 top-K **相似度
+# 搜索**来"枚举"库里的 id。那是错的：相似度搜索只返回离查询向量
+# 最近的 K 条，于是
+#
+# - 向量数超过 K 时每次只看到 K 条，而且**每次看到的都不同**
+#   （实测表现为"每清理一次只删掉 1–2 个"）
+# - 检测本身不可靠：没落进这 K 条的向量永远查不出来
+#
+# 现在改用 `MilvusVectorStore.list_all_ids()`（`query` + 过滤表达式），
+# 这才能真正枚举。因此不再需要"扫描查询"与"扫描上限"。
 
-# 用于召回扫描的查询。
-# 刻意写成一串领域词而不是自然句：目的是**广度**而非排序质量，
-# 我们只关心"Milvus 里存在哪些 id"。
-SCAN_QUERY = (
-    "简历 项目经历 chunk 切分 overlap 向量检索 面试问题 "
-    "PostgreSQL Milvus Redis FastAPI 缓存 索引"
-)
 
+async def collect_orphans(
+    store: MilvusVectorStore,
+) -> tuple[set[int], set[int]]:
+    """返回 (孤儿的 chunk id, Milvus 中的全部 id)。
 
-async def collect_orphans(store: MilvusVectorStore) -> tuple[set[int], set[int]]:
-    """返回 (孤儿的 chunk id, 扫描到的全部 id)。
-
-    扫描**不带 project_id 过滤**：孤儿可能属于任何项目，
+    孤儿可能属于任何项目，因此数据库侧也不带 project 过滤 ——
     漏扫会让污染长期残留。
     """
 
@@ -57,15 +58,7 @@ async def collect_orphans(store: MilvusVectorStore) -> tuple[set[int], set[int]]
             ).scalars().all()
         )
 
-    embedding = OpenAIEmbeddingService()
-    vectors = await embedding.embed_texts([SCAN_QUERY])
-
-    hits = await store.search(
-        vector=vectors[0],
-        limit=SCAN_LIMIT,
-    )
-
-    milvus_ids = {int(item["id"]) for item in hits}
+    milvus_ids = await store.list_all_ids()
 
     return milvus_ids - live_ids, milvus_ids
 
@@ -97,7 +90,7 @@ async def main() -> int:
 
     orphans, scanned = await collect_orphans(store)
 
-    print(f"  扫描返回向量数: {len(scanned)}（上限 {SCAN_LIMIT}）")
+    print(f"  Milvus 中的向量数: {len(scanned)}")
     print(f"  孤儿向量数: {len(orphans)}")
 
     if not orphans:
@@ -105,7 +98,13 @@ async def main() -> int:
         print("  ✓ 未发现孤儿向量")
         return 0
 
-    print(f"  孤儿 id: {sorted(orphans)}")
+    # 只打印前 20 个：孤儿可能有几百个，
+    # 全打出来会把真正的结论淹没。
+    listed = sorted(orphans)
+    preview = listed[:20]
+    more = len(listed) - len(preview)
+
+    print(f"  孤儿 id: {preview}" + (f" …还有 {more} 个" if more else ""))
 
     if not args.purge:
         print()

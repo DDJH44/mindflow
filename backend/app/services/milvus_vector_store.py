@@ -205,7 +205,40 @@ class MilvusVectorStore(VectorStore):
         if not ids:
             return
 
-        self.client.delete(
+        # 分批删除：与嵌入端点类似，批量接口普遍有上限，
+        # 一次性传入过大的列表会被拒绝。
+        # 每批 500 是保守取值 —— 删除是幂等的，
+        # 批次小一点只是多几次往返。
+        batch_size = 500
+
+        for start in range(0, len(ids), batch_size):
+            self.client.delete(
+                collection_name=self.COLLECTION_NAME,
+                ids=ids[start : start + batch_size],
+            )
+
+    async def list_all_ids(self) -> set[int]:
+        """枚举集合里**全部**主键。
+
+        **为什么不能用 `search` 来枚举**：孤儿检测此前用一次
+        top-K 相似度搜索来"看到库里有哪些 id"，那是错的 ——
+        相似度搜索只返回**离查询向量最近**的 K 条，
+        于是：
+
+        - 库里的向量数超过 K 时，**每次只看到 K 条**，
+          而且每次看到的 K 条随查询向量而变
+          （实测表现为"每清理一次只删掉 1–2 个"）
+        - 更糟的是**检测本身不可靠**：没落进这 K 条里的
+          向量永远查不出来，孤儿会被判定为"不存在"
+
+        用 `query` + 过滤表达式才是真正的枚举。
+        """
+
+        rows = self.client.query(
             collection_name=self.COLLECTION_NAME,
-            ids=ids,
+            filter="id >= 0",
+            output_fields=["id"],
+            limit=16384,
         )
+
+        return {int(row["id"]) for row in rows}

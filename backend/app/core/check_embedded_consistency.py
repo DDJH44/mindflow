@@ -27,21 +27,21 @@ from sqlalchemy import text
 
 from app.database.session import AsyncSessionLocal
 from app.services.milvus_vector_store import MilvusVectorStore
-from app.services.openai_embedding_service import (
-    OpenAIEmbeddingService,
-)
-
-SCAN_QUERY = (
-    "简历 项目 经历 chunk 切分 overlap 向量 检索 面试 "
-    "后端 RAG 缓存 索引 数据库"
-)
-SCAN_LIMIT = 500
 
 
 async def find_phantom_chunks() -> tuple[dict[int, int], list[int]]:
     """类型 A：声称已嵌入、但 Milvus 里不存在的 chunk。
 
     返回 (claimed 映射, 缺失的 chunk id 列表)。
+
+    **为什么必须用 `list_all_ids()` 而不是 `search`**：
+    类型 A 的判据是"这个 chunk 在 Milvus 里**不存在**"，
+    而 `search` 是 top-K 相似度查询 —— 它只返回离查询向量最近的
+    K 条。用它来判断"不存在"会产生**假阳性**：
+    真实存在、只是没落进这 K 条的 chunk 会被误报为幻影，
+    于是脚本会去"修复"一个没坏的东西。
+
+    此前这里确实是 `store.search(..., limit=500)`。
     """
 
     async with AsyncSessionLocal() as db:
@@ -63,12 +63,7 @@ async def find_phantom_chunks() -> tuple[dict[int, int], list[int]]:
     if not claimed:
         return {}, []
 
-    store = MilvusVectorStore()
-    embedding = OpenAIEmbeddingService()
-    vectors = await embedding.embed_texts([SCAN_QUERY])
-
-    hits = await store.search(vector=vectors[0], limit=SCAN_LIMIT)
-    present = {int(item["id"]) for item in hits}
+    present = await MilvusVectorStore().list_all_ids()
 
     return claimed, sorted(set(claimed) - present)
 
