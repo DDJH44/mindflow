@@ -177,8 +177,8 @@ async def main() -> int:
                     f"type={first.get('document_type')}",
                 )
                 record(
-                    "正文不超过上限（300 字符）",
-                    len(first["content"]) <= 300,
+                    "返回**完整**片段（不截断）",
+                    "truncated" not in first,
                     f"len={len(first['content'])}",
                 )
                 print("      --- 第一条片段 ---")

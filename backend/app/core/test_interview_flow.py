@@ -70,6 +70,18 @@ async def main():
     # 依赖外部残留状态会让失败原因指向错误的地方（见 D38）。
     await grant_quota(USER_ID, QUOTA)
 
+    try:
+        await _run_checks()
+    finally:
+        # 恢复默认配额，避免影响后续脚本。
+        #
+        # 放在 finally：中途抛异常（例如 LLM 超时）时也要恢复，
+        # 否则一次失败会持续污染库里的额度状态，
+        # 让后续脚本因为额度不足而失败 —— 又是一次误判。
+        await reset_quota(USER_ID)
+
+
+async def _run_checks():
     async with AsyncSessionLocal() as db:
         service = InterviewSessionService(db)
 
@@ -383,9 +395,6 @@ async def main():
 
         print(f"通过 {passed} / {len(results)}")
 
-    # 恢复默认配额，避免影响后续脚本
-    await reset_quota(USER_ID)
-
     if failed:
         print("失败项:")
         for label in failed:
@@ -395,4 +404,55 @@ async def main():
     print("全部通过")
 
 
-asyncio.run(main())
+def _is_llm_error(exc: Exception) -> bool:
+    """是否为上游 LLM 的失败。
+
+    判据用**类名与 MRO 特征**而不是 `import openai`：
+    本项目允许替换 LLM 实现（§24 换过端点），
+    硬绑具体 SDK 的异常类会让这个判断在换实现后失效。
+    """
+
+    names = {cls.__name__ for cls in type(exc).__mro__}
+
+    return bool(
+        names
+        & {
+            "OpenAIError",
+            "APITimeoutError",
+            "APIConnectionError",
+            "APIStatusError",
+            "RateLimitError",
+        }
+    )
+
+
+def main_sync() -> int:
+    """入口：区分"代码失败"与"LLM 端点当时不可用"。
+
+    为什么需要：本套件要调多次 LLM（生成题目、分析作答、整场评价），
+    而该端点会**间歇性慢到超时**（实测极短请求也曾连续 4 次超时）。
+    不区分的话一次端点抖动会让套件以 exit=1 崩溃 ——
+    看起来像代码回归，这类误判已经发生过并浪费过排查时间。
+    """
+
+    try:
+        asyncio.run(main())
+    except SystemExit as exc:
+        return int(exc.code or 0)
+    except Exception as exc:  # noqa: BLE001
+        if _is_llm_error(exc):
+            print()
+            print("=" * 74)
+            print("  ⚠️ LLM 端点不可用，本次**未执行完**（不是代码失败）")
+            print(f"     {type(exc).__name__}: {str(exc)[:140]}")
+            print("     稍后重跑本套件即可。")
+            print("=" * 74)
+            return 2
+
+        raise
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main_sync())

@@ -111,10 +111,6 @@ onMounted(load)
         </div>
 
         <p class="evidence-text">{{ item.content }}</p>
-
-        <p v-if="item.truncated" class="faint" style="margin: 2px 0 0">
-          片段较长，仅显示前 300 字。
-        </p>
       </div>
 
       <!--

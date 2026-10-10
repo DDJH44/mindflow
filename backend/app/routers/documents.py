@@ -385,6 +385,31 @@ async def upload_document(
             chunk_overlap=100,
         )
 
+        # 守卫：有内容却切不出块，属于不该发生的状态。
+        #
+        # 为什么必须拦：这类文档会停在"已解析但没有块"——
+        # **检索永远命中不到、界面也不显示异常**，是个静默死档。
+        # 库里确实有 5 份这样的历史数据（来自切块还没接入上传
+        # 流程的旧版本）。与其让前端去猜这种状态，不如在源头保证
+        # "有内容的文档必有块"。
+        #
+        # 为什么标 failed 而不是丢弃：记录与文件已经落盘，
+        # 标 failed 让用户能看到、能删除，也能据此反馈问题。
+        if not chunks:
+            document.status = "failed"
+
+            await db.commit()
+            await db.refresh(document)
+
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"文档解析出 {len(content)} 字符，但切不出任何文本块。"
+                    "请确认内容是有效文本；若确实如此，这是服务端的"
+                    "切块问题，请反馈。"
+                ),
+            )
+
         chunk_repository = DocumentChunkRepository(db)
 
         await chunk_repository.create_chunks(
@@ -399,6 +424,12 @@ async def upload_document(
 
         await db.commit()
         await db.refresh(document)
+
+    except HTTPException:
+        # 上面那条"有内容却切不出块"的守卫抛的就是 HTTPException。
+        # 必须原样放行 —— 否则会被下一条 `except Exception` 抓住、
+        # 重新包成 500，把 400 与具体提示都丢掉。
+        raise
 
     except Exception as exc:
         document.status = "failed"

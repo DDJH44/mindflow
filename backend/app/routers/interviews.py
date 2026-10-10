@@ -198,13 +198,6 @@ def _llm_error_or_none(exc: Exception) -> HTTPException | None:
 # 会话
 # ============================================================
 
-# 走查/展示用的资料依据片段上限。
-#
-# 切块本身是 500 字符，这里取 300 是因为前端只是展示
-# "这道题依据的是哪几段"，不需要整块；同时保留足够上下文
-# 让用户能认出"这是我的哪段经历"。
-EVIDENCE_EXCERPT_CHARS = 300
-
 # 这些状态下的会话**还没结束**，用户可以回去继续。
 #
 # 为什么在服务端定义：前端的"进行中"筛选若自己列一遍状态，
@@ -979,19 +972,16 @@ async def get_question_evidence(
             continue
 
         document = documents.get(chunk.document_id)
-        content = chunk.content or ""
 
-        truncated = len(content) > EVIDENCE_EXCERPT_CHARS
-
+        # 返回**完整**片段，不截断。
+        #
+        # 切块上限本来就是 500 字，返回完整片段对响应体没有实质影响；
+        # 而截断会隐藏信息 —— 用户看到的应该就是系统当时看到的那一段，
+        # 那正是"依据"要传达的东西。
         items.append(
             {
                 "chunk_id": chunk.id,
-                "content": (
-                    content[:EVIDENCE_EXCERPT_CHARS]
-                    if truncated
-                    else content
-                ),
-                "truncated": truncated,
+                "content": chunk.content or "",
                 "document_id": chunk.document_id,
                 "document_name": (
                     document.name if document else None

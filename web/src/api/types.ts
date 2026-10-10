@@ -121,11 +121,8 @@ export interface InterviewStartResult {
 export interface InterviewEvidenceItem {
   chunk_id: number
 
-  /** 片段正文，服务端可能已截断（见 `truncated`）。 */
+  /** 片段正文（**完整**返回，服务端不截断）。 */
   content: string
-
-  /** 是否被服务端截断过，前端据此提示"还有更多"。 */
-  truncated: boolean
 
   /** 来源文件，让用户认出"这是我的哪份资料"。 */
   document_id: number | null
