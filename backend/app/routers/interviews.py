@@ -21,6 +21,9 @@ from app.repositories.interview_session_repository import (
     InterviewSessionRepository,
 )
 from app.repositories.project_repository import ProjectRepository
+from app.schemas.interview.ability_profile import (
+    AbilityProfileResponse,
+)
 from app.schemas.interview.interview_qa import (
     InterviewAnswerCreate,
     InterviewAnswerResponse,
@@ -37,6 +40,9 @@ from app.schemas.interview.interview_session import (
     InterviewSessionListResponse,
     InterviewSessionResponse,
     InterviewSessionTransition,
+)
+from app.services.interview.ability_profile_service import (
+    AbilityProfileService,
 )
 from app.services.interview.interview_flow_service import (
     InterviewFlowService,
@@ -192,6 +198,86 @@ def _llm_error_or_none(exc: Exception) -> HTTPException | None:
             "本次操作没有写入任何数据。"
         ),
     )
+
+
+# ============================================================
+# 能力画像（Phase 6）
+# ============================================================
+
+
+@router.get(
+    "/profile/ability",
+    response_model=AbilityProfileResponse,
+)
+async def get_ability_profile(
+    project_id: int | None = Query(
+        default=None,
+        description="只看某个项目下的面试（不传则跨全部项目）",
+    ),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """当前用户的能力画像。
+
+    路径放在 `/profile/ability` 而不是 `/profile/{user_id}/ability`：
+    画像永远只看自己，让调用方传 user_id 等于给越权留一个口子。
+    """
+
+    # 项目名：画像要显示"这是哪个项目的面试"，
+    # 按 id 批量取名，避免在评价仓储里再写一遍 join。
+    project_repository = ProjectRepository(db)
+    projects = await project_repository.get_by_owner_id(
+        owner_id=current_user.id
+    )
+    project_names = {
+        project.id: project.name for project in projects
+    }
+
+    profile = await AbilityProfileService(db).build(
+        user_id=current_user.id,
+        project_id=project_id,
+        project_names=project_names,
+    )
+
+    return {
+        "session_count": profile.session_count,
+        "dimensions": [
+            {
+                "key": dimension.key,
+                "label": dimension.label,
+                "count": dimension.count,
+                "median": dimension.median,
+                "minimum": dimension.minimum,
+                "maximum": dimension.maximum,
+                "latest": dimension.latest,
+                "spread": dimension.spread,
+                "history": dimension.history,
+            }
+            for dimension in profile.dimensions
+        ],
+        "sessions": [
+            {
+                "session_id": item.session_id,
+                "project_id": item.project_id,
+                "project_name": item.project_name,
+                "target_role": item.target_role,
+                "evaluated_at": item.evaluated_at,
+                "scores": item.scores,
+            }
+            for item in profile.sessions
+        ],
+        "recent_weaknesses": profile.recent_weaknesses,
+        "recent_suggestions": profile.recent_suggestions,
+        "recurring_weaknesses": [
+            {
+                "text": item.text,
+                "occurrences": item.occurrences,
+            }
+            for item in profile.recurring_weaknesses
+        ],
+        "sufficient_samples": profile.sufficient_samples,
+        "caveats": profile.caveats,
+    }
 
 
 # ============================================================

@@ -16,6 +16,7 @@ Vue 挂载失败、布局错位、文案写错、按钮点不动，这些只有�
 import asyncio
 import json
 import sys
+import uuid
 from pathlib import Path
 
 from playwright.async_api import async_playwright
@@ -294,6 +295,175 @@ async def purge_orphan_vectors() -> None:
         pass
 
 
+async def seed_profile_evaluations(
+    count: int = 3,
+) -> tuple[list[int], int | None]:
+    """造若干带评价的已完成面试，供能力画像页断言。
+
+    返回 (session_ids, project_id)。
+
+    为什么要造：画像页在样本不足（<3 场）时**故意不显示**
+    维度卡片与重复弱点 —— 那是正确行为，但走查就看不到那些界面。
+    因此要造够样本才能验证它们渲染正确。
+    """
+
+    session_ids: list[int] = []
+    project_id = None
+
+    try:
+        async with AsyncSessionLocal() as db:
+            user_id = (
+                await db.execute(
+                    sql_text(
+                        "SELECT id FROM users WHERE username = :u"
+                    ),
+                    {"u": ACCOUNT},
+                )
+            ).scalar_one()
+
+            project_id = (
+                await db.execute(
+                    sql_text(
+                        "INSERT INTO projects "
+                        "(name, description, owner_id, status, "
+                        " created_at, updated_at) "
+                        "VALUES (:n, NULL, :u, 'active', "
+                        " now(), now()) RETURNING id"
+                    ),
+                    {
+                        "n": f"画像走查 {uuid.uuid4().hex[:6]}",
+                        "u": user_id,
+                    },
+                )
+            ).scalar_one()
+
+            # 分数刻意有跨度（含一次高、一次低），
+            # 这样极差警示与趋势图都会被触发到。
+            score_sets = [
+                {
+                    "overall_score": 90,
+                    "technical_score": 90,
+                    "project_score": 70,
+                    "communication_score": 70,
+                },
+                {
+                    "overall_score": 40,
+                    "technical_score": 40,
+                    "project_score": 40,
+                    "communication_score": 40,
+                },
+                {
+                    "overall_score": 70,
+                    "technical_score": 70,
+                    "project_score": 70,
+                    "communication_score": 70,
+                },
+            ]
+
+            for index in range(count):
+                scores = score_sets[index % len(score_sets)]
+
+                session_id = (
+                    await db.execute(
+                        sql_text(
+                            "INSERT INTO interview_sessions "
+                            "(project_id, user_id, status, "
+                            " interview_type, target_role, "
+                            " current_question_index, max_questions, "
+                            " questions_asked, termination_reason, "
+                            " created_at, updated_at) "
+                            "VALUES (:p, :u, 'completed', 'technical', "
+                            " '后端工程师', 2, 2, 2, "
+                            " 'budget_exhausted', now(), now()) "
+                            "RETURNING id"
+                        ),
+                        {"p": project_id, "u": user_id},
+                    )
+                ).scalar_one()
+
+                session_ids.append(session_id)
+
+                # 两条弱点原文相同，触发"反复出现的问题"
+                await db.execute(
+                    sql_text(
+                        "INSERT INTO interview_evaluations "
+                        "(session_id, overall_score, technical_score, "
+                        " project_score, communication_score, feedback, "
+                        " strengths, weaknesses, suggestions, "
+                        " scoring_details, created_at) "
+                        "VALUES (:s, :o, :t, :p, :c, '走查用反馈', "
+                        " CAST(:st AS JSON), CAST(:wk AS JSON), "
+                        " CAST(:sg AS JSON), CAST(:sd AS JSON), now())"
+                    ),
+                    {
+                        "s": session_id,
+                        "o": scores["overall_score"],
+                        "t": scores["technical_score"],
+                        "p": scores["project_score"],
+                        "c": scores["communication_score"],
+                        "st": json.dumps(["能说清基础参数"]),
+                        "wk": json.dumps(
+                            [
+                                "走查用重复弱点：未说明 TTL 设置依据",
+                                f"走查用第 {index} 条独立弱点",
+                            ]
+                        ),
+                        "sg": json.dumps(["走查用建议"]),
+                        "sd": json.dumps({}),
+                    },
+                )
+
+            await db.commit()
+
+    except Exception as exc:  # noqa: BLE001
+        print(f"      造画像样本失败: {type(exc).__name__}: {exc}")
+        return [], None
+
+    return session_ids, project_id
+
+
+async def cleanup_profile_samples(
+    session_ids: list[int],
+    project_id: int | None,
+) -> None:
+    """清理走查为画像页造的数据。"""
+
+    try:
+        async with AsyncSessionLocal() as db:
+            if session_ids:
+                await db.execute(
+                    sql_text(
+                        "DELETE FROM interview_evaluations "
+                        "WHERE session_id = ANY(:s)"
+                    ),
+                    {"s": session_ids},
+                )
+                await db.execute(
+                    sql_text(
+                        "DELETE FROM interview_status_history "
+                        "WHERE session_id = ANY(:s)"
+                    ),
+                    {"s": session_ids},
+                )
+                await db.execute(
+                    sql_text(
+                        "DELETE FROM interview_sessions "
+                        "WHERE id = ANY(:s)"
+                    ),
+                    {"s": session_ids},
+                )
+
+            if project_id:
+                await db.execute(
+                    sql_text("DELETE FROM projects WHERE id = :p"),
+                    {"p": project_id},
+                )
+
+            await db.commit()
+    except Exception as exc:  # noqa: BLE001
+        print(f"      清理画像样本失败: {exc}")
+
+
 def find_chromium() -> str | None:
     """找本地已有的 chromium 可执行文件。
 
@@ -521,10 +691,91 @@ async def main() -> int:
             finally:
                 await cleanup_session(seeded_session_id)
 
+            # ---------------- 能力画像页 ----------------
+            print()
+            print("=" * 74)
+            print("5. 能力画像页")
+            print("=" * 74)
+
+            profile_sessions: list[int] = []
+            profile_project_id = None
+
+            try:
+                (
+                    profile_sessions,
+                    profile_project_id,
+                ) = await seed_profile_evaluations(count=3)
+                note(
+                    f"造了 {len(profile_sessions)} 场带评价的面试"
+                )
+
+                await page.goto(
+                    f"{BASE}/profile", wait_until="networkidle"
+                )
+                await page.wait_for_timeout(2500)
+
+                note(f"URL: {page.url}")
+                heading = await page.text_content("h1")
+                note(f"主标题: {heading}")
+
+                # 解读说明必须在最前面 —— 用户会先看分数再看结论
+                warnings = await page.query_selector_all(
+                    ".alert-warn"
+                )
+                note(f"解读说明条数: {len(warnings)}")
+                if warnings:
+                    first_warning = " ".join(
+                        (await warnings[0].text_content()).split()
+                    )
+                    note(f"第一条说明: {first_warning[:90]}")
+
+                cells = await page.query_selector_all(
+                    ".dimension-cell"
+                )
+                note(f"维度卡片数: {len(cells)}")
+
+                if cells:
+                    first_cell = " ".join(
+                        (await cells[0].text_content()).split()
+                    )
+                    note(f"第一张卡片: {first_cell[:100]}")
+
+                # 趋势图必须真的画出来（单点也要有点）
+                sparks = await page.query_selector_all(".sparkline")
+                note(f"趋势图数量: {len(sparks)}")
+                if sparks:
+                    polylines = await sparks[0].query_selector_all(
+                        "polyline"
+                    )
+                    circles = await sparks[0].query_selector_all(
+                        "circle"
+                    )
+                    note(
+                        f"第一张趋势图: 折线 {len(polylines)} 条、"
+                        f"数据点 {len(circles)} 个"
+                    )
+
+                recurring = await page.query_selector_all(
+                    ".bullet-list li"
+                )
+                note(f"列表条目数: {len(recurring)}")
+
+                rows = await page.query_selector_all(
+                    ".data-table tbody tr"
+                )
+                note(f"逐场明细行数: {len(rows)}")
+
+                await shot(page, "05-profile")
+
+            finally:
+                await cleanup_profile_samples(
+                    profile_sessions, profile_project_id
+                )
+
             # ---------------- 资料页 ----------------
             print()
             print("=" * 74)
-            print("5. 资料页")
+            print("6. 资料页")
             print("=" * 74)
 
             # 显式挑一个**有资料的项目**，否则可能落在空项目上，
@@ -611,7 +862,7 @@ async def main() -> int:
             # ---------------- 结束 ----------------
             print()
             print("=" * 74)
-            print("6. 面试页与报告页")
+            print("7. 面试页与报告页")
             print("=" * 74)
 
             # 回首页开一场只有 2 题的面试，用来走完"作答 → 报告"
@@ -789,7 +1040,7 @@ async def main() -> int:
             # ---------------- 控制台 ----------------
             print()
             print("=" * 74)
-            print("7. 控制台与异常")
+            print("8. 控制台与异常")
             print("=" * 74)
             note(f"控制台错误数: {len(console_errors)}")
             for item in console_errors[:8]:

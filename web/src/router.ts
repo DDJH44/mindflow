@@ -33,6 +33,12 @@ export const router = createRouter({
       meta: { title: '面试历史' },
     },
     {
+      path: '/profile',
+      name: 'profile',
+      component: () => import('./pages/ProfilePage.vue'),
+      meta: { title: '能力画像' },
+    },
+    {
       path: '/projects/:id',
       name: 'project',
       component: () => import('./pages/ProjectPage.vue'),

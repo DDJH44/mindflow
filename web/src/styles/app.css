@@ -537,6 +537,75 @@ button:disabled {
   text-decoration: underline;
 }
 
+/* ------------------------------------------------------ 能力画像 */
+
+.dimension-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.dimension-cell {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+}
+
+.dimension-label {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.dimension-figure {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 4px 0 2px;
+}
+
+.dimension-median {
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.dimension-spark {
+  display: block;
+  color: var(--primary);
+  margin: 6px 0 2px;
+  width: 100%;
+  height: 40px;
+}
+
+/* 逐场明细表格：窄屏可横向滚动，不挤坏布局 */
+.table-scroll {
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.data-table th,
+.data-table td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.data-table th {
+  color: var(--text-dim);
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
 /* ------------------------------------------------------ 加载与居中 */
 
 .spinner {

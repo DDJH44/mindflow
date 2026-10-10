@@ -163,6 +163,55 @@ export interface InterviewSessionListResponse {
   offset: number
 }
 
+/** 单个维度的能力画像。 */
+export interface DimensionProfile {
+  key: string
+  label: string
+  count: number
+
+  /** 中位数（服务端不用平均值，见能力画像服务说明）。 */
+  median: number | null
+
+  minimum: number | null
+  maximum: number | null
+  latest: number | null
+
+  /** 极差。本项目一直用这个口径衡量波动（§8A.9）。 */
+  spread: number | null
+
+  /** 逐次分数，**按时间正序**（旧 → 新），用于画趋势。 */
+  history: number[]
+}
+
+export interface RecurringWeakness {
+  text: string
+  occurrences: number
+}
+
+export interface ProfileSession {
+  session_id: number
+  project_id: number
+  project_name: string | null
+  target_role: string | null
+  evaluated_at: string
+  scores: Record<string, number>
+}
+
+export interface AbilityProfile {
+  session_count: number
+  dimensions: DimensionProfile[]
+  sessions: ProfileSession[]
+  recent_weaknesses: string[]
+  recent_suggestions: string[]
+  recurring_weaknesses: RecurringWeakness[]
+
+  /** 样本是否足以支撑"优势 / 短板"判断。 */
+  sufficient_samples: boolean
+
+  /** 采样与解读说明 —— 必须展示，否则用户会把波动当进步。 */
+  caveats: string[]
+}
+
 export interface ListInterviewsParams {
   /** 只看还没结束的面试 —— 用于「找回没做完的」。 */
   unfinished_only?: boolean

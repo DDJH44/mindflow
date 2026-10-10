@@ -36,6 +36,7 @@ function logout() {
       <nav class="topnav">
         <RouterLink :to="{ name: 'home' }">开面试</RouterLink>
         <RouterLink :to="{ name: 'history' }">历史</RouterLink>
+        <RouterLink :to="{ name: 'profile' }">能力画像</RouterLink>
       </nav>
 
       <div class="spacer" />

@@ -40,6 +40,65 @@ def record(label: str, ok: bool, extra: str = "") -> None:
     print(f"  [{'OK  ' if ok else 'FAIL'}] {label}{suffix}")
 
 
+async def delete_session(session_id: int) -> bool:
+    """删除走查/e2e 造出的会话及其关联数据。
+
+    顺序很重要：先删**依赖行**（答案 → 题目 → 评价 → 轨迹），
+    再删会话本身。只删会话会因外键报错，而外层若吞掉异常，
+    数据就留下了 —— 那种"清理失败但没人发现"最难查。
+    """
+
+    try:
+        from sqlalchemy import text as sql_text
+
+        from app.database.session import AsyncSessionLocal
+
+        async with AsyncSessionLocal() as db:
+            await db.execute(
+                sql_text(
+                    "DELETE FROM interview_answers "
+                    "WHERE question_id IN "
+                    "(SELECT id FROM interview_questions "
+                    " WHERE session_id = :s)"
+                ),
+                {"s": session_id},
+            )
+            await db.execute(
+                sql_text(
+                    "DELETE FROM interview_questions "
+                    "WHERE session_id = :s"
+                ),
+                {"s": session_id},
+            )
+            await db.execute(
+                sql_text(
+                    "DELETE FROM interview_evaluations "
+                    "WHERE session_id = :s"
+                ),
+                {"s": session_id},
+            )
+            await db.execute(
+                sql_text(
+                    "DELETE FROM interview_status_history "
+                    "WHERE session_id = :s"
+                ),
+                {"s": session_id},
+            )
+            await db.execute(
+                sql_text(
+                    "DELETE FROM interview_sessions WHERE id = :s"
+                ),
+                {"s": session_id},
+            )
+            await db.commit()
+
+    except Exception as exc:  # noqa: BLE001
+        print(f"      清理会话失败: {type(exc).__name__}: {exc}")
+        return False
+
+    return True
+
+
 async def delete_test_user(username: str) -> bool:
     """删除本次注册的测试用户及其遗留数据与向量。
 
@@ -457,6 +516,19 @@ async def main():
         print("=" * 74)
         print("7. 清理")
         print("=" * 74)
+
+        # 会话先删。
+        #
+        # 不删的话它会留在库里：后面删测试用户虽然会把会话一起
+        # 级联掉，但**那把它的向量留成了孤儿**（D52），
+        # 而孤儿向量会占用 top-k 名额、静默降低召回。
+        if created_session_id:
+            deleted = await delete_session(created_session_id)
+            record(
+                "删除测试会话",
+                deleted,
+                f"session={created_session_id}",
+            )
 
         if created_document_id:
             response = await client.delete(

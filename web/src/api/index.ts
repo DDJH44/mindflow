@@ -8,6 +8,7 @@
 
 import { http } from './http'
 import type {
+  AbilityProfile,
   DocumentItem,
   DocumentType,
   InterviewAnswerResult,
@@ -175,6 +176,19 @@ export const interviewApi = {
     const { data } = await http.get<InterviewSessionListResponse>(
       '/interviews',
       { params },
+    )
+    return data
+  },
+
+  /**
+   * 能力画像（跨场次聚合）。
+   *
+   * 路径不接受 `user_id`：画像永远只看自己。
+   */
+  async abilityProfile(projectId?: number) {
+    const { data } = await http.get<AbilityProfile>(
+      '/interviews/profile/ability',
+      { params: projectId ? { project_id: projectId } : {} },
     )
     return data
   },

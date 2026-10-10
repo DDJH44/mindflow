@@ -991,6 +991,7 @@ summarizing        → completed          [evaluation_completed]
 | 面试——轨迹 | `GET /api/interviews/{id}/history` | ✅ |
 | 面试——答题 | `GET /api/interviews/{id}/questions`、`GET /api/interviews/{id}/questions/{qid}/evidence`（**资料依据片段**）、`POST /api/interviews/{id}/answer` | ✅ |
 | 面试——结束 | `POST /api/interviews/{id}/finish` | ✅ |
+| 面试——能力画像 | `GET /api/interviews/profile/ability`（Phase 6，跨场次聚合）| ✅ |
 | 用量 | `GET /api/usage` | ✅ |
 面试 API 的设计约定：
 
@@ -1211,6 +1212,13 @@ PostgreSQL 与 Milvus 之间没有分布式事务，因而无法提供严格原�
   需要另起一个 `upload_with_broken_chunker`（把 `split_text`
   打成永远返回空），断言"有内容却切不出块"返回 400 且
   **不留下静默死档**。
+- `python -m app.core.test_ability_profile`：**能力画像**（21 项）——
+  中位数 / 区间 / 极差、逐次趋势**按时间正序**、重复弱点识别、
+  样本不足时不下结论、无数据的项目返回空画像、未认证 401。
+- `python -m app.core.cleanup_legacy_evaluations [--purge]`：
+  检查（默认）/ 清理"三组结构化内容全空"的评价。
+  **默认只检查** —— 那些评价的 `feedback` 是真实内容，
+  删掉不可逆；画像已通过过滤排除它们，通常不需要删。
 - `python -m app.core.repair_missing_chunks [--repair]`：
   回填"有内容但没有文本块"的文档（历史数据，§27.10）。
   切块参数与上传流程严格一致，避免回填的文档与正常上传的
@@ -1424,8 +1432,8 @@ completeness A=17  B=4   B+=9  C=20 D=10
 | Phase 4 | RAG Evaluation | Dataset、Runner、Recall@1/3/5、MRR、基线报告 | ✅ 已关闭（2026-09-23） |
 | **Phase 5** | **Interview Engine MVP** | 会话模型、提问、回答、追问、整场评价、状态机、证据引用、题目预算、按题计量 | **✅ 后端已完成** |
 | **Phase 5.6** | **Interview Evaluation** | 数据集、判定规则、报告、稳定性基线、报告对比工具 | **🟡 框架可用**（见 §8A.9 的真实水平） |
-| Phase 6 | 评价与成长反馈 | rubric、总结、能力画像、训练建议 | 🔵 后端数据已就绪（`strengths`/`weaknesses`/`suggestions` 已落库）|
-| **前端** | 让 MVP 可被真实使用 | 登录、项目、上传、面试全流程 UI | 🟡 **面试全流程已完成**（登录 / 首页 / 面试 / 报告）|
+| Phase 6 | 评价与成长反馈 | rubric、总结、能力画像、训练建议 | 🟡 **能力画像已完成**（`GET /api/interviews/profile/ability` + `ProfilePage`）|
+| **前端** | 让 MVP 可被真实使用 | 登录、项目、上传、面试全流程、历史、能力画像 UI | ✅ **六个页面已完成** |
 | Phase 7 | 生产化与优化 | 异步任务、可观测性、缓存、安全、性能与回归门禁 | 🔵 |
 
 ### 当前的下一个出口
@@ -2398,6 +2406,7 @@ web/src/
     LoginPage.vue      登录 / 注册
     HomePage.vue       额度提示 + 选项目 + 新建面试
     HistoryPage.vue    面试历史（默认只看未完成）
+    ProfilePage.vue    能力画像（中位数 / 区间 / 极差 / 趋势）
     ProjectPage.vue    资料上传 / 索引状态 / 重试与删除
     InterviewPage.vue  逐题作答
     ReportPage.vue     报告
@@ -2614,7 +2623,45 @@ Strong          立刻可见 10 次中命中 10 次
 - 该套件的配额恢复移进 `finally`：此前中途抛异常就不恢复，
   会让后续脚本因额度不足而失败 —— 又是一次误判。
 
-### 27.11 仍缺
+### 27.11 能力画像（Phase 6 首项）
+
+`GET /api/interviews/profile/ability` + `ProfilePage`：
+把多场面试的评价放在一起看趋势。
+
+**这一项最重要的约束：不能把评分波动说成能力进步。**
+
+本项目实测同一份回答重复评分的极差有 10–20 分（§8A.9），
+ADR-015 也明确"不用 LLM 评分均值衡量模型升级效果"。
+因此这一页刻意做了四件事：
+
+1. **给中位数 + 区间 + 极差，不给一个光洁的平均分。**
+   中位数比均值稳：实测分数分布偶尔是双峰的，
+   均值会被单次极端值拖走。
+2. **把采样说明放在最前面。** 用户会先看分数再看结论；
+   把"这不是精确测量"放页脚等于让他先形成错误印象。
+   极差 ≥10 时额外给出警示。
+3. **样本 <3 场时不下结论。** `sufficient_samples` 为假，
+   前端不显示"优势 / 短板"类判断 —— 一两场的差异
+   完全可能是采样噪声（§22.7）。
+4. **弱点只列原文，不做自动归类。** 想按主题聚合就得做
+   词表或语义匹配，而两者都会**编造不存在的共性**：
+   词表匹配会把"未说明 TTL"和"未说明重试"归成一类。
+   因此只统计**去空白后完全一致**的重复原文。
+
+**一个必须过滤的噪音**：`mindflow` 名下有 3 条 2026-09-28 的评价，
+`strengths` / `weaknesses` / `suggestions` 三组**全空** ——
+它们来自 D20 落库之前，只有四项分数与 `feedback`。
+不排除的话画像会显示"共 6 次测量、区间 30–90"，
+而其中一半是占位数据，**用户无从分辨**。
+
+选择**过滤而不是删除**：那些评价的 `feedback` 是真实内容、
+报告页还在用。清理数据不可逆，过滤视图可逆。
+`cleanup_legacy_evaluations` 保留了删除能力，但**默认只检查**。
+
+**逐场明细的时间列刻意用完整日期**（不是"3 天前"）：
+趋势判断要按时间对齐，相对时间在这里反而难用。
+
+### 27.12 仍缺
 
 | 项 | 为什么重要 |
 | --- | --- |
