@@ -97,3 +97,54 @@ async def delete_sessions(session_ids: list[int | None]) -> None:
                 {"sid": sid},
             )
         await db.commit()
+
+
+async def wait_for_document_indexed(
+    client,
+    project_id: int,
+    document_id: int,
+    timeout: float = 180.0,
+) -> str | None:
+    """等待文档的索引完成，返回最终状态。
+
+    **为什么需要它**：上传自 §28 起是**异步**的 —— 接口返回 202
+    时状态是 `chunked`，嵌入由后台 worker 完成。
+    任何依赖"上传后即可检索"的验证脚本都必须先等这一步，
+    否则它会以"检索命中 0 段"失败，而**失败信息指向的是
+    错误的地方**（看起来像检索坏了，实际只是还没索引完）。
+
+    放在 `test_support` 而不是各脚本自己写：三处复制必然漂移，
+    而其中一处写错就会变成一次假的失败。
+    """
+
+    import asyncio
+
+    elapsed = 0.0
+
+    # 两种路径都试：有的脚本 `base_url` 已含 `/api`、用短路径，
+    # 有的用完整 `/api/...`。写死一种会让另一半脚本静默拿到 404
+    # 并最终以"索引超时"失败 —— 而真因是路径写错了。
+    full_path = f"/api/projects/{project_id}/documents"
+    short_path = f"/projects/{project_id}/documents"
+
+    path = full_path
+
+    while elapsed < timeout:
+        response = await client.get(path)
+
+        if response.status_code == 404 and path == full_path:
+            path = short_path
+            response = await client.get(path)
+
+        documents = response.json()
+        found = [
+            item for item in documents if item["id"] == document_id
+        ]
+
+        if found and found[0]["status"] in ("embedded", "failed"):
+            return found[0]["status"]
+
+        await asyncio.sleep(1)
+        elapsed += 1
+
+    return None

@@ -464,6 +464,133 @@ async def cleanup_profile_samples(
         print(f"      清理画像样本失败: {exc}")
 
 
+async def seed_index_document() -> tuple[int | None, int | None]:
+    """造一个项目 + 一份资料，用于走查异步索引的界面行为。
+
+    返回 (project_id, document_id)。
+
+    用**小文件**：大文件让走查等太久，而这里要验证的是界面的
+    轮询行为，与文件大小无关。
+
+    为什么必须造：走查原先只挑"已有资料的项目"，而开发库里
+    `mindflow` 名下一个含资料的项目都没有 —— 于是资料页与轮询
+    一直被跳过、从未被覆盖。
+    """
+
+    try:
+        async with AsyncSessionLocal() as db:
+            user_id = (
+                await db.execute(
+                    sql_text(
+                        "SELECT id FROM users WHERE username = :u"
+                    ),
+                    {"u": ACCOUNT},
+                )
+            ).scalar_one()
+
+        import httpx
+
+        from app.core.security import create_access_token
+
+        token = create_access_token({"sub": str(user_id)})
+
+        async with httpx.AsyncClient(
+            base_url=f"{BASE}/api",
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=120.0,
+        ) as client:
+            project_id = (
+                await client.post(
+                    "/projects",
+                    json={
+                        "name": f"索引走查 {uuid.uuid4().hex[:6]}"
+                    },
+                )
+            ).json()["id"]
+
+            response = await client.post(
+                f"/projects/{project_id}/documents",
+                params={"document_type": "resume"},
+                files={
+                    "file": (
+                        "walkthrough_index.txt",
+                        (
+                            "这是一份用于界面走查的资料。"
+                            "它包含 RAG 检索与 Milvus 向量库的描述。"
+                        ).encode("utf-8"),
+                        "text/plain",
+                    )
+                },
+            )
+
+            document_id = (
+                response.json().get("id")
+                if response.status_code == 202
+                else None
+            )
+
+        return project_id, document_id
+
+    except Exception as exc:  # noqa: BLE001
+        print(f"      造索引走查资料失败: {type(exc).__name__}: {exc}")
+        return None, None
+
+
+async def cleanup_index_document(
+    project_id: int | None,
+    document_id: int | None,
+) -> None:
+    """清理走查为异步索引造的项目与资料。
+
+    直接删库**同时删向量**：走查造的文档可能已经索引完成，
+    只删库会留下孤儿向量（D52）。
+    """
+
+    if not project_id:
+        return
+
+    try:
+        from app.services.milvus_vector_store import MilvusVectorStore
+
+        async with AsyncSessionLocal() as db:
+            if document_id:
+                chunk_ids = [
+                    row[0]
+                    for row in (
+                        await db.execute(
+                            sql_text(
+                                "SELECT id FROM document_chunks "
+                                "WHERE document_id = :d"
+                            ),
+                            {"d": document_id},
+                        )
+                    ).all()
+                ]
+
+                if chunk_ids:
+                    try:
+                        await MilvusVectorStore().delete(ids=chunk_ids)
+                    except Exception as exc:  # noqa: BLE001
+                        print(f"      清理向量失败: {exc}")
+
+            await db.execute(
+                sql_text(
+                    "DELETE FROM document_index_jobs "
+                    "WHERE document_id IN ("
+                    "  SELECT id FROM documents WHERE project_id = :p)"
+                ),
+                {"p": project_id},
+            )
+            await db.execute(
+                sql_text("DELETE FROM projects WHERE id = :p"),
+                {"p": project_id},
+            )
+            await db.commit()
+
+    except Exception as exc:  # noqa: BLE001
+        print(f"      清理索引走查数据失败: {exc}")
+
+
 def find_chromium() -> str | None:
     """找本地已有的 chromium 可执行文件。
 
@@ -772,10 +899,90 @@ async def main() -> int:
                     profile_sessions, profile_project_id
                 )
 
+            # ---------------- 异步索引（§28）----------------
+            print()
+            print("=" * 74)
+            print("6. 资料上传与异步索引")
+            print("=" * 74)
+
+            # 造一个项目并上传一份资料，专门验证异步索引的**界面行为**。
+            #
+            # 为什么必须造：走查原先只挑"已有资料的项目"，而开发库里
+            # `mindflow` 名下一个含资料的项目都没有 —— 于是这一步
+            # 一直被跳过，资料页与轮询**从未被走查覆盖**。
+            # 加了轮询之后更不能跳过：没有它，用户看到的是一个
+            # 永远不变的"已切块·未索引"。
+            index_project_id, index_document_id = (
+                await seed_index_document()
+            )
+
+            try:
+                if index_project_id is None:
+                    note("造资料失败，跳过异步索引走查")
+                else:
+                    await page.goto(
+                        f"{BASE}/projects/{index_project_id}",
+                        wait_until="networkidle",
+                    )
+
+                    # 立刻检查：应当看到"正在建立向量索引"，
+                    # 以及文档行上的"已切块·未索引"。
+                    #
+                    # 这一步有时间敏感性 —— 小文件可能在几百毫秒内
+                    # 就索引完了。因此这里**不断言**"一定在索引中"，
+                    # 只记录观察到的状态（见下方 note）。
+                    await page.wait_for_timeout(400)
+
+                    pending_hint = await page.query_selector(
+                        ".spinner"
+                    )
+                    note(
+                        "上传后立即出现的进度提示: "
+                        f"{'有' if pending_hint else '无（可能已索引完）'}"
+                    )
+
+                    row_text = " ".join(
+                        (
+                            await page.text_content(".card")
+                        ).split()
+                    )
+                    note(f"资料区文案: {row_text[:150]}")
+
+                    # 等轮询把它变成"已索引·可检索"。
+                    #
+                    # 这是本步的核心断言：前端轮询必须真的能
+                    # 把状态刷新过来，否则用户会以为上传坏了。
+                    indexed = False
+                    for _ in range(40):
+                        body = await page.text_content("body")
+
+                        if "已索引" in body:
+                            indexed = True
+                            break
+
+                        await page.wait_for_timeout(1000)
+
+                    note(
+                        "轮询后出现「已索引·可检索」: "
+                        f"{indexed}"
+                    )
+
+                    if not indexed:
+                        print(
+                            "      ⚠️ 轮询未能在 40 秒内刷新出已索引状态"
+                        )
+
+                    await shot(page, "06-project-indexed")
+
+            finally:
+                await cleanup_index_document(
+                    index_project_id, index_document_id
+                )
+
             # ---------------- 资料页 ----------------
             print()
             print("=" * 74)
-            print("6. 资料页")
+            print("7. 资料页")
             print("=" * 74)
 
             # 显式挑一个**有资料的项目**，否则可能落在空项目上，
@@ -862,7 +1069,7 @@ async def main() -> int:
             # ---------------- 结束 ----------------
             print()
             print("=" * 74)
-            print("7. 面试页与报告页")
+            print("8. 面试页与报告页")
             print("=" * 74)
 
             # 回首页开一场只有 2 题的面试，用来走完"作答 → 报告"
@@ -1040,7 +1247,7 @@ async def main() -> int:
             # ---------------- 控制台 ----------------
             print()
             print("=" * 74)
-            print("8. 控制台与异常")
+            print("9. 控制台与异常")
             print("=" * 74)
             note(f"控制台错误数: {len(console_errors)}")
             for item in console_errors[:8]:

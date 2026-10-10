@@ -53,6 +53,7 @@ SUITES: tuple[tuple[str, bool], ...] = (
     ("test_doctor", False),
     ("test_logging", False),
     ("test_embedding_batching", False),
+    ("test_async_indexing", True),
     ("test_document_parsing", False),
     ("test_interview_list", False),
     ("test_ability_profile", False),

@@ -144,6 +144,12 @@ def configure_logging(level: str = "INFO") -> None:
     # 但会让应用日志不可读 —— 因此调高到 WARNING。
     logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 
+    # httpx 把**每一次**外部 HTTP 请求都打成 INFO。
+    # 嵌入是按批调用的（一个 200KB 文档约 25 批），
+    # 于是分批进度日志会被这类行完全淹没 ——
+    # 真正有用的那条"进度 240/245"反而看不见了。
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+
     _configured = True
 
 

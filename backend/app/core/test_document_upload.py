@@ -16,7 +16,11 @@ import httpx
 from sqlalchemy import text
 
 from app.core.security import create_access_token
-from app.core.test_support import grant_quota, reset_quota
+from app.core.test_support import (
+    grant_quota,
+    reset_quota,
+    wait_for_document_indexed,
+)
 from app.database.session import AsyncSessionLocal
 from app.main import app
 
@@ -177,15 +181,15 @@ async def main():
                 },
             )
             record(
-                "上传返回 201",
-                response.status_code == 201,
+                "上传返回 202（已受理，索引在后台）",
+                response.status_code == 202,
                 f"status={response.status_code}",
             )
 
-            if response.status_code != 201:
+            if response.status_code != 202:
                 print("      响应体:", response.text[:300])
 
-            body = response.json() if response.status_code == 201 else {}
+            body = response.json() if response.status_code == 202 else {}
             document_id = body.get("id")
             if document_id:
                 created_documents.append(document_id)
@@ -196,12 +200,23 @@ async def main():
                 f"type={body.get('document_type')}",
             )
 
-            # 这是本次修复的核心断言
+            # 上传是异步的（§28）：202 时状态是 chunked，
+            # 嵌入由后台 worker 完成 —— 因此这里要等。
             record(
-                "状态为 embedded（已写入向量索引）",
-                body.get("status") == "embedded",
+                "上传时状态为 chunked（已切块·待索引）",
+                body.get("status") == "chunked",
                 f"status={body.get('status')}",
             )
+
+            if document_id:
+                final_status = await wait_for_document_indexed(
+                    client, PROJECT_ID, document_id
+                )
+                record(
+                    "后台 worker 完成索引（embedded）",
+                    final_status == "embedded",
+                    f"最终状态={final_status}",
+                )
 
             # ================================================
             # 3. 切块与索引落库
@@ -258,14 +273,26 @@ async def main():
                     f"{document_id}/embed"
                 )
                 record(
-                    "重试索引返回 200",
-                    response.status_code == 200,
+                    "重试索引返回 202（已入队）",
+                    response.status_code == 202,
                     f"status={response.status_code}",
                 )
+                # 幂等性：重复调用不该破坏已完成的状态。
+                # 返回体在 202 时状态可能仍是 embedded（已索引过），
+                # 因此断言"要么 embedded、要么 chunked 等待中"，
+                # 而不是写死其中一个 —— 后者会随 worker 的速度
+                # 随机失败。
+                retry_status = response.json().get("status")
+
                 record(
-                    "重复调用后状态仍为 embedded",
-                    response.json().get("status") == "embedded",
-                    f"status={response.json().get('status')}",
+                    "重复调用后状态不变成 failed",
+                    retry_status in ("embedded", "chunked"),
+                    f"status={retry_status}",
+                )
+
+                # 让它回到终态，避免影响后续小节
+                await wait_for_document_indexed(
+                    client, PROJECT_ID, document_id
                 )
 
             # ================================================
@@ -462,17 +489,17 @@ async def main():
             )
 
             record(
-                "大文件（约 200KB）上传返回 201",
-                response.status_code == 201,
+                "大文件（约 200KB）上传返回 202",
+                response.status_code == 202,
                 f"status={response.status_code}",
             )
 
-            if response.status_code != 201:
+            if response.status_code != 202:
                 print("      响应体:", response.text[:240])
 
             big_body = (
                 response.json()
-                if response.status_code == 201
+                if response.status_code == 202
                 else {}
             )
             big_document_id = big_body.get("id")
@@ -480,11 +507,23 @@ async def main():
             if big_document_id:
                 created_documents.append(big_document_id)
 
+            # 这个用例同时验证了"大文件走异步不会阻塞上传"：
+            # 同步版本下 200KB 要 9 秒以上，异步只做解析与切块。
             record(
-                "大文件状态为 embedded",
-                big_body.get("status") == "embedded",
+                "大文件上传立即返回 chunked（不等嵌入）",
+                big_body.get("status") == "chunked",
                 f"status={big_body.get('status')}",
             )
+
+            if big_document_id:
+                big_final = await wait_for_document_indexed(
+                    client, PROJECT_ID, big_document_id
+                )
+                record(
+                    "大文件最终索引完成（embedded）",
+                    big_final == "embedded",
+                    f"最终状态={big_final}",
+                )
 
             if big_document_id:
                 # 分批写入了多少块？必须远超单个批次的上限，

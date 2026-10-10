@@ -45,6 +45,7 @@ async def main() -> int:
     from sqlalchemy import text as sql_text
 
     from app.core.security import create_access_token
+    from app.core.test_support import wait_for_document_indexed
     from app.database.session import AsyncSessionLocal
     from app.services.retrieval_service import RetrievalService
 
@@ -105,24 +106,36 @@ async def main() -> int:
                 )
 
             record(
-                "PDF 上传返回 201（此前是「暂不支持的文件类型」）",
-                response.status_code == 201,
+                "PDF 上传返回 202（此前是「暂不支持的文件类型」）",
+                response.status_code == 202,
                 f"status={response.status_code}",
             )
 
-            if response.status_code != 201:
+            if response.status_code != 202:
                 print("      响应:", response.text[:400])
 
             document = (
-                response.json() if response.status_code == 201 else {}
+                response.json() if response.status_code == 202 else {}
             )
             document_id = document.get("id")
 
             if document_id:
+                # 上传是异步的（§28）：202 时状态是 chunked，
+                # 嵌入由后台 worker 完成。
                 record(
-                    "状态为 embedded",
-                    document.get("status") == "embedded",
+                    "上传时状态为 chunked（已切块·待索引）",
+                    document.get("status") == "chunked",
                     f"status={document.get('status')}",
+                )
+
+                final = await wait_for_document_indexed(
+                    client, project_id, document_id
+                )
+
+                record(
+                    "后台 worker 把它索引完成（embedded）",
+                    final == "embedded",
+                    f"最终状态={final}",
                 )
 
             # ================================================

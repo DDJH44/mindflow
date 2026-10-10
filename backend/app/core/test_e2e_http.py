@@ -164,6 +164,8 @@ async def main():
     username = f"e2e_{suffix}"
     password = "e2e_pass_123"
 
+    from app.core.test_support import wait_for_document_indexed
+
     created_project_id = None
     created_document_id = None
     created_session_id = None
@@ -263,24 +265,37 @@ async def main():
             },
         )
         record(
-            "上传资料返回 201",
-            response.status_code == 201,
+            "上传资料返回 202（已受理，索引在后台）",
+            response.status_code == 202,
             f"status={response.status_code}",
         )
 
-        if response.status_code != 201:
+        if response.status_code != 202:
             print("      响应体:", response.text[:300])
 
         document = (
-            response.json() if response.status_code == 201 else {}
+            response.json() if response.status_code == 202 else {}
         )
         created_document_id = document.get("id")
 
         record(
-            "资料已建立向量索引（status=embedded）",
-            document.get("status") == "embedded",
+            "上传时状态为 chunked（已切块·待索引）",
+            document.get("status") == "chunked",
             f"status={document.get('status')}",
         )
+
+        # 索引是异步的（§28）。**必须等它完成**再开始面试：
+        # 否则检索命中 0 段，下面"首题带资料依据"会失败，
+        # 而失败信息指向的是错误的地方（看起来像检索或出题坏了）。
+        if created_document_id:
+            indexed = await wait_for_document_indexed(
+                client, created_project_id, created_document_id
+            )
+            record(
+                "后台 worker 完成索引（可被检索）",
+                indexed == "embedded",
+                f"最终状态={indexed}",
+            )
 
         # ================================================
         # 3. 开始面试（首页走的路径）

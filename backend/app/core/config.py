@@ -91,6 +91,27 @@ class Settings(BaseSettings):
     # 真实上限并缓存 —— 这里的值只是初始猜测。
     embedding_batch_size: int = 10
 
+    # =====================
+    # 异步索引 worker
+    # =====================
+    # 是否在应用进程内跑索引 worker（§28）。
+    #
+    # 默认开启：这样 `uv run uvicorn` 一条命令就能用，
+    # 本地开发不需要额外起进程。
+    #
+    # 部署多副本时必须设为 false 并在别处起独立 worker ——
+    # 否则每个副本都会跑一个 worker。**功能上不会出错**
+    # （`FOR UPDATE SKIP LOCKED` 保证同一任务只被领一次），
+    # 但那是在浪费连接与轮询。
+    worker_enabled: bool = True
+
+    # 空队列时的轮询间隔（秒）。
+    #
+    # 用 sleep 而不是长轮询/通知机制：实现简单，代价是空队列时
+    # 每 N 秒一次索引查询。那个代价远小于引入新基础设施
+    # （例如 Redis 队列）来消除它。
+    worker_poll_seconds: float = 2.0
+
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",
         env_file_encoding="utf-8",

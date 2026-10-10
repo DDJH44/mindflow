@@ -6,8 +6,12 @@
  * 才能被检索到。停在 `chunked` 时检索为空、面试只会出通用题，
  * 而用户完全看不出哪里不对。因此这里把状态如实展示，
  * 并给一个"重试索引"的动作。
+ *
+ * 索引是**异步**的（§28）：上传只做解析与切块并立即返回 202，
+ * 嵌入由后台 worker 完成。因此这里有轮询 —— 没有它，
+ * 用户会看到文档一直停在"已切块·未索引"、以为坏了。
  */
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 import { documentApi, projectApi } from '../api'
 import { ApiError } from '../api/http'
@@ -29,6 +33,21 @@ const uploadPercent = ref(0)
 const uploadType = ref<DocumentType>('resume')
 const retryingId = ref<number | null>(null)
 const deletingId = ref<number | null>(null)
+
+/**
+ * 轮询间隔。
+ *
+ * 2 秒：太快会给后端制造无谓压力（每次是一个列表查询），
+ * 太慢会让用户觉得"没反应"。文档索引通常 1–15 秒完成，
+ * 2 秒的粒度足够。
+ */
+const POLL_INTERVAL_MS = 2000
+
+/** 轮询上限次数。避免后端异常时无限轮询。 */
+const MAX_POLLS = 60
+
+let pollTimer: number | null = null
+let pollCount = 0
 
 const TYPE_OPTIONS: { value: DocumentType; label: string }[] = [
   { value: 'resume', label: '简历' },
@@ -89,6 +108,67 @@ function typeLabel(value: string): string {
   )
 }
 
+/** 是否有文档正在被索引（决定要不要轮询）。 */
+const hasPendingIndexing = computed(() =>
+  documents.value.some((item) =>
+    // `failed` 是终态，等它不会变好 —— 那需要用户点"重试索引"。
+    // 把 failed 也算作"进行中"会导致永远轮询。
+    ['pending', 'parsed', 'chunked'].includes(item.status),
+  ),
+)
+
+function stopPolling() {
+  if (pollTimer !== null) {
+    window.clearTimeout(pollTimer)
+    pollTimer = null
+  }
+}
+
+/**
+ * 只刷新文档列表（不重设 loading）。
+ *
+ * 刻意不用 `load()`：那会把整页切成加载态、列表闪一下。
+ * 轮询是背景行为，不该让页面看起来在"重新加载"。
+ */
+async function refreshDocuments() {
+  try {
+    documents.value = await documentApi.list(props.id)
+  } catch {
+    // 轮询失败静默忽略：网络抖动不该弹错误，
+    // 用户此刻也没做任何操作。
+  }
+}
+
+async function pollUntilIndexed() {
+  stopPolling()
+  pollCount = 0
+
+  const tick = async () => {
+    pollCount += 1
+    await refreshDocuments()
+
+    if (!hasPendingIndexing.value) {
+      stopPolling()
+      return
+    }
+
+    if (pollCount >= MAX_POLLS) {
+      // 到上限就停，并如实说明 —— 静默停止会让用户
+      // 以为还在处理，而实际已经不再刷新了。
+      stopPolling()
+      error.value =
+        '索引耗时较长，已停止自动刷新。可稍后手动刷新页面查看。'
+      return
+    }
+
+    pollTimer = window.setTimeout(tick, POLL_INTERVAL_MS)
+  }
+
+  pollTimer = window.setTimeout(tick, POLL_INTERVAL_MS)
+}
+
+onUnmounted(stopPolling)
+
 async function load() {
   loading.value = true
   error.value = ''
@@ -100,6 +180,13 @@ async function load() {
     ])
     project.value = detail
     documents.value = list
+
+    // 进入页面时如果还有未完成的索引（例如用户上次没等就关了
+    // 页面），也要继续刷新 —— 否则他会看到一个永远不变的
+    // "已切块·未索引"。
+    if (hasPendingIndexing.value) {
+      void pollUntilIndexed()
+    }
   } catch (err) {
     error.value =
       err instanceof ApiError ? err.message : '加载失败'
@@ -152,18 +239,21 @@ async function upload(event: Event) {
         uploadPercent.value = percent
       },
     )
+
+    // 后端返回 202：解析与切块已完成，索引在后台进行。
+    // 因此这里插入的是 `chunked` 状态的文档，
+    // 需要靠轮询把它变成"已索引·可检索"。
     documents.value = [created, ...documents.value]
-  } catch (err) {
-    if (err instanceof ApiError) {
-      // 502 表示"文件已保存但索引失败" —— 文档其实已经入库了，
-      // 因此要刷新列表让用户看到它，而不是以为上传白做了。
-      if (err.status === 502) {
-        await load()
-      }
-      error.value = err.message
-    } else {
-      error.value = '上传失败'
+
+    if (hasPendingIndexing.value) {
+      void pollUntilIndexed()
     }
+  } catch (err) {
+    // 不再有 502 分支：索引已经异步化，上传不会再因为
+    // "文件已保存但索引失败"而返回 502。解析或切块失败
+    // 会返回 4xx/5xx，且此时记录已被清理。
+    error.value =
+      err instanceof ApiError ? err.message : '上传失败'
   } finally {
     uploading.value = false
     uploadPercent.value = 0
@@ -184,6 +274,12 @@ async function retryEmbed(document: DocumentItem) {
     documents.value = documents.value.map((item) =>
       item.id === updated.id ? updated : item,
     )
+
+    // 重试同样是异步的（后端返回 202）—— 也要轮询，
+    // 否则用户点了"重试索引"却看不到任何变化。
+    if (hasPendingIndexing.value) {
+      void pollUntilIndexed()
+    }
   } catch (err) {
     error.value =
       err instanceof ApiError ? err.message : '重试索引失败'
@@ -292,8 +388,10 @@ onMounted(load)
               @change="upload"
             />
             <p class="faint" style="margin: 6px 0 0">
-              支持 TXT / MD / PDF / DOCX，单个文件上限 {{ MAX_FILE_MB }}MB。
-              上传后会解析、切块并建立索引，大文件可能需要一会儿。
+              支持 TXT / MD / PDF / DOCX，单个文件上限
+              {{ MAX_FILE_MB }}MB。
+              上传后会立刻解析与切块，<strong>建立索引在后台进行</strong>
+              —— 上传完就可以离开，索引完成后这里会自动更新。
             </p>
             <p class="faint" style="margin: 4px 0 0">
               提示：若简历是「图片型」的（正文其实是一张图），
@@ -306,8 +404,7 @@ onMounted(load)
           <div class="row">
             <span class="spinner" />
             <span class="muted">
-              正在上传并建立索引…（
-              {{ uploadPercent }}%，解析与嵌入在后面进行）
+              正在上传…（{{ uploadPercent }}%）
             </span>
           </div>
           <div class="progress-track" style="margin-top: 8px">
@@ -316,6 +413,23 @@ onMounted(load)
               :style="{ width: uploadPercent + '%' }"
             />
           </div>
+        </div>
+
+        <!--
+          索引在后台进行时的提示。
+          没有它，用户只看到一个不变的"已切块·未索引"，
+          会以为上传坏了 —— 而现在上传是**立即返回**的，
+          这类困惑比以前更容易出现。
+        -->
+        <div
+          v-if="!uploading && hasPendingIndexing"
+          class="row"
+          style="margin-top: 14px"
+        >
+          <span class="spinner" />
+          <span class="muted">
+            正在建立向量索引…（可继续操作，完成后会自动更新）
+          </span>
         </div>
       </div>
 

@@ -3,6 +3,7 @@ from typing import Literal
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
@@ -17,9 +18,6 @@ from app.services.document_parser import (
 )
 from app.repositories.document_chunk_repository import DocumentChunkRepository
 from app.services.chunking_service import ChunkingService
-from app.services.embedding_pipeline_service import (
-    EmbeddingPipelineService,
-)
 from app.services.milvus_vector_store import MilvusVectorStore
 
 
@@ -89,6 +87,9 @@ async def list_documents(
 @router.post(
     "/{project_id}/documents/{document_id}/embed",
     response_model=DocumentResponse,
+    # 202：任务已入队，索引在后台进行 —— 与上传保持一致。
+    # 此前这里同步嵌入，大文档会让用户继续等 30 秒以上。
+    status_code=status.HTTP_202_ACCEPTED,
 )
 async def embed_document_endpoint(
     project_id: int,
@@ -96,13 +97,15 @@ async def embed_document_endpoint(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    """为文档补齐向量索引（幂等，可重复调用）。
+    """把文档重新排入索引队列（幂等，可重复调用）。
 
-    存在的理由：上传时的嵌入是**非致命**的 ——
-    Milvus 未就绪或嵌入服务抖动都不会让上传失败，
-    但文档会停在 `chunked`。此时检索不到它，
-    面试只会出通用题。这个端点让用户能重试，
-    而不必删掉重传（重传会丢掉已有的 chunk）。
+    存在的理由：索引是**异步**的，失败时文档会停在 `chunked` 或
+    `failed`。此时检索不到它，面试只会出通用题。
+    这个端点让用户能重试，而不必删掉重传（重传会丢掉已有的 chunk）。
+
+    为什么改成入队而不是同步执行：同步版本在"重试一个 800KB 文档"
+    时同样要阻塞 30 秒以上。既然上传已经异步，重试也必须异步 ——
+    否则用户会看到"上传很快、重试却卡住"这种矛盾的行为。
     """
 
     project_repository = ProjectRepository(db)
@@ -131,19 +134,21 @@ async def embed_document_endpoint(
             detail="文档不存在",
         )
 
-    embedded_count = await _embed_document_or_400(
-        db=db,
-        document=document,
-    )
+    # 没有 chunk 就没什么可嵌入的 —— 排队只会让 worker
+    # 空转一次并把文档标成失败。这里直接说清楚。
+    chunk_repository = DocumentChunkRepository(db)
+    chunks = await chunk_repository.get_by_document(document_id)
 
-    if embedded_count == 0 and document.status != "embedded":
+    if not chunks:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
-                "没有待嵌入的文本块。若文档状态为 chunked，"
-                "说明切块失败或内容为空。"
+                "这份资料还没有文本块，无法建立索引。"
+                "请确认文件内容是可提取的文字，或重新上传。"
             ),
         )
+
+    await enqueue_index_job(db, document_id)
 
     await db.refresh(document)
 
@@ -228,39 +233,44 @@ async def delete_document(
     return None
 
 
-async def _embed_document_or_400(db, document):
-    """执行嵌入，失败时转成 4xx 并说明原因。
+async def enqueue_index_job(db, document_id: int) -> None:
+    """把一个文档的索引任务放进队列（幂等）。
 
-    与上传时的处理不同：这里是用户**主动重试**，
-    因此失败必须显式报错 —— 静默失败会让用户以为已经索引好了。
+    用 `ON CONFLICT DO NOTHING` 依赖 `document_id` 的唯一约束：
+    重复入队（例如用户连点"重试索引"）不该产生第二个任务 ——
+    那会让同一份文档被嵌入两次，**白花钱且表面上完全正常**。
+
+    已 `done` / `failed` 的任务会被**重置为 pending**：
+    那是"重试"的语义，与"重复入队"不同。
     """
 
-    embedding_pipeline = EmbeddingPipelineService(db)
-
-    try:
-        return await embedding_pipeline.embed_document(document.id)
-
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"嵌入失败：{exc}",
-        ) from exc
-
-    except Exception as exc:
-        # Milvus 未就绪、嵌入服务不可用、网络问题等
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                f"嵌入失败（{type(exc).__name__}）：{exc}。"
-                "请确认 Milvus 与嵌入服务可用后重试。"
-            ),
-        ) from exc
+    await db.execute(
+        text(
+            """
+            INSERT INTO document_index_jobs
+                (document_id, status, attempts, last_error)
+            VALUES (:d, 'pending', 0, NULL)
+            ON CONFLICT (document_id) DO UPDATE
+            SET status = 'pending',
+                attempts = 0,
+                last_error = NULL,
+                lease_expires_at = NULL,
+                updated_at = now()
+            WHERE document_index_jobs.status IN ('done', 'failed')
+            """
+        ),
+        {"d": document_id},
+    )
+    await db.commit()
 
 
 @router.post(
     "/{project_id}/documents",
     response_model=DocumentResponse,
-    status_code=status.HTTP_201_CREATED,
+    # 202 而不是 201：文档已经**落盘、解析、切块**完成，
+    # 但索引仍在后台进行，此刻它还不能被检索到。
+    # 用 201 会声称"创建完成"，那是过度承诺。
+    status_code=status.HTTP_202_ACCEPTED,
 )
 async def upload_document(
     project_id: int,
@@ -445,41 +455,21 @@ async def upload_document(
             ),
         ) from exc
 
-    # 9. 写入向量索引
+    # 9. 入队异步索引（§28）
     #
     # 这一步是**必须**的：不嵌入就检索不到，面试只会出通用题，
-    # "资料依据"整条链路落不了地。
-    # 此前嵌入只存在于开发脚本里，上传接口从不触发它 ——
-    # 于是文档永远停在 chunked，是个静默的断点。
+    # "资料依据"整条链路落不了地。此前嵌入只存在于开发脚本里，
+    # 上传接口从不触发它 —— 于是文档永远停在 chunked，
+    # 是个静默的断点。
     #
-    # 但嵌入**不能是致命的**：Milvus 未就绪或嵌入服务抖动时，
-    # 让上传整体失败会丢掉用户刚传的文件与已完成的切块。
-    # 因此失败时保留 chunked 状态并如实告知，
-    # 用户可在资料页点"重试索引"（走 embed 端点）。
-    embedded_count = 0
-    embedding_error: str | None = None
-
-    try:
-        embedding_pipeline = EmbeddingPipelineService(db)
-        embedded_count = await embedding_pipeline.embed_document(
-            document.id
-        )
-
-        document.status = "embedded"
-        await db.commit()
-        await db.refresh(document)
-
-    except Exception as exc:
-        embedding_error = f"{type(exc).__name__}: {exc}"
-
-    if embedding_error:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=(
-                f"文档已解析并切块（{embedded_count} 段已嵌入），"
-                f"但向量索引失败：{embedding_error}。"
-                "文件已保留，可在资料页点「重试索引」。"
-            ),
-        )
+    # 但嵌入**不能阻塞响应**：实测 800KB 文档同步嵌入要 30 秒以上，
+    # 期间用户只能等（还要赌代理/网关的超时）。因此改为：
+    # 解析与切块仍同步（它们决定文件是否有效，必须立刻告知用户），
+    # 嵌入交给 worker，接口立即返回。
+    #
+    # 状态语义因此是"已切块·待索引"，这正是前端已有的
+    # `chunked` 状态与"还有资料未索引"提示的用途 ——
+    # 不需要新增状态概念。
+    await enqueue_index_job(db, document.id)
 
     return document
