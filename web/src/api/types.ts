@@ -117,6 +117,35 @@ export interface InterviewStartResult {
   question: InterviewQuestion
 }
 
+/** 历史列表里的一条会话。 */
+export interface InterviewSessionListItem extends InterviewSession {
+  /** 项目名，由服务端按 id 批量补上。 */
+  project_name: string | null
+
+  /**
+   * 已作答的题数。
+   *
+   * 注意与 `questions_asked` 的区别：后者是"问了几题"。
+   * 用户可能看到题就关了，因此列表显示已作答数才有意义。
+   */
+  answered_count: number
+}
+
+export interface InterviewSessionListResponse {
+  items: InterviewSessionListItem[]
+  total: number
+  limit: number
+  offset: number
+}
+
+export interface ListInterviewsParams {
+  /** 只看还没结束的面试 —— 用于「找回没做完的」。 */
+  unfinished_only?: boolean
+  project_id?: number
+  limit?: number
+  offset?: number
+}
+
 export interface AnswerAnalysisSummary {
   sample_count: number
   missing_points_count: number

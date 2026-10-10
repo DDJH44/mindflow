@@ -16,7 +16,9 @@ import type {
   InterviewFinishResult,
   InterviewQuestion,
   InterviewSession,
+  InterviewSessionListResponse,
   InterviewStartResult,
+  ListInterviewsParams,
   Project,
   StatusHistoryEntry,
   TokenResponse,
@@ -162,6 +164,20 @@ export interface CreateSessionPayload {
 }
 
 export const interviewApi = {
+  /**
+   * 列出当前用户的面试会话（最近更新的在前）。
+   *
+   * `unfinished_only` 是历史页最有用的筛选：用户打开历史时
+   * 首先想知道"有没有还没做完的面试"。
+   */
+  async list(params: ListInterviewsParams = {}) {
+    const { data } = await http.get<InterviewSessionListResponse>(
+      '/interviews',
+      { params },
+    )
+    return data
+  },
+
   async create(payload: CreateSessionPayload) {
     const { data } = await http.post<InterviewSession>(
       '/interviews',

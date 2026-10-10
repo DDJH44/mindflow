@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.interview.interview_session import InterviewSession
@@ -162,3 +162,111 @@ class InterviewSessionRepository:
         )
 
         return result.all()
+
+    async def get_answered_counts(
+        self,
+        session_ids: list[int],
+    ) -> dict[int, int]:
+        """批量统计每个会话**已作答**的题数。
+
+        一次 group by 取回，避免列表页对每场面试各查一次
+        （N+1 查询）。这一条在历史页会是热路径 —— 用户一打开
+        就要列出十几场。
+
+        只统计 `interview_answers` 里确实有记录的题，
+        因此"问了几题"与"答了几题"能区分开。
+        """
+
+        if not session_ids:
+            return {}
+
+        result = await self.session.execute(
+            select(
+                InterviewQuestion.session_id,
+                func.count(InterviewAnswer.id),
+            )
+            .join(
+                InterviewAnswer,
+                InterviewAnswer.question_id == InterviewQuestion.id,
+            )
+            .where(InterviewQuestion.session_id.in_(session_ids))
+            .group_by(InterviewQuestion.session_id)
+        )
+
+        return {
+            session_id: count
+            for session_id, count in result.all()
+        }
+
+    async def get_by_user(
+        self,
+        user_id: int,
+        statuses: list[str] | None = None,
+        project_id: int | None = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> list[InterviewSession]:
+        """按用户列出面试会话，最近更新的在前。
+
+        `statuses` 用来做**最有用的那个筛选**：用户打开历史
+        首先想知道"有没有还没做完的面试"，因此前端会按
+        `asking / waiting_for_answer / paused / planned` 过滤。
+        在数据库侧过滤，避免把全部历史拉到内存再筛。
+
+        排序用 `updated_at` 而不是 `created_at`：用户想找回的是
+        "最近动过的"那场，而不是"最早建的"。
+        """
+
+        statement = select(InterviewSession).where(
+            InterviewSession.user_id == user_id
+        )
+
+        if statuses:
+            statement = statement.where(
+                InterviewSession.status.in_(statuses)
+            )
+
+        if project_id is not None:
+            statement = statement.where(
+                InterviewSession.project_id == project_id
+            )
+
+        statement = (
+            statement.order_by(InterviewSession.updated_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+
+        result = await self.session.execute(statement)
+
+        return list(result.scalars().all())
+
+    async def count_by_user(
+        self,
+        user_id: int,
+        statuses: list[str] | None = None,
+        project_id: int | None = None,
+    ) -> int:
+        """符合条件的会话总数。
+
+        分页必须给出总数，否则前端只能说"还有更多"，
+        无法显示"共 N 场"或算出总页数。
+        """
+
+        statement = select(func.count(InterviewSession.id)).where(
+            InterviewSession.user_id == user_id
+        )
+
+        if statuses:
+            statement = statement.where(
+                InterviewSession.status.in_(statuses)
+            )
+
+        if project_id is not None:
+            statement = statement.where(
+                InterviewSession.project_id == project_id
+            )
+
+        result = await self.session.execute(statement)
+
+        return result.scalar_one()

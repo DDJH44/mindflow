@@ -27,6 +27,12 @@ export const router = createRouter({
       meta: { title: '面试' },
     },
     {
+      path: '/history',
+      name: 'history',
+      component: () => import('./pages/HistoryPage.vue'),
+      meta: { title: '面试历史' },
+    },
+    {
       path: '/projects/:id',
       name: 'project',
       component: () => import('./pages/ProjectPage.vue'),

@@ -93,6 +93,38 @@ body {
   flex: 1;
 }
 
+.topnav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-left: 8px;
+}
+
+.topnav a {
+  color: var(--text-dim);
+  text-decoration: none;
+  font-size: 13px;
+  padding: 2px 0;
+  border-bottom: 2px solid transparent;
+}
+
+.topnav a:hover {
+  color: var(--text);
+}
+
+/*
+ * 当前页高亮。
+ *
+ * 用 `.router-link-exact-active` 而不是 `.router-link-active`：
+ * 首页路径是 `/`，vue-router 会认为它匹配**所有**路由，
+ * 于是"开面试"在任何页面都高亮。
+ * 历史页用 exact 也一样匹配得上。
+ */
+.topnav a.router-link-exact-active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
 .who {
   color: var(--text-dim);
   font-size: 13px;

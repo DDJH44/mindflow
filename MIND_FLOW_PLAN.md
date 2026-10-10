@@ -625,6 +625,8 @@ A=90  B=70  C=40  D=15
 | **D54** | **文档级状态与 chunk 真实情况不符，界面据此误报** | `documents.status` 停在 `chunked`，而其 chunk 已全部 `embedded`。后果：资料页显示"已切块·未索引"、顶部提示"**还没有可被检索的资料**"、首页也警告"问题会退化为通用题" —— 而**向量其实都在，面试确实能检索到**。用户会反复点"重试索引"（对无 pending chunk 的文档返回 400）。这是**看界面才发现的**：接口测试与端到端测试都不检查展示文案 | ① `check_embedded_consistency` 扩为**双向**检查（新增类型 B：文档状态 vs chunk 真实情况），并在修复时对齐文档状态；② 修复后资料页正确显示"已有 3 份资料可被检索" |
 | **D55** | **界面承诺支持 PDF / DOCX，后端只支持 TXT / MD** | `DocumentParser` 只实现了 `.txt` / `.md`，而资料页写着"支持 TXT / MD / PDF / DOCX"。**真实用户上传简历两次（PDF 738KB、DOCX 811KB）都被拒**，库里留下两条 `status=failed` 记录，磁盘留下两个文件。这是**最严重的一类问题：入口就断了**，用户不可能走到面试 | ① 实现 PDF（`pypdf`）与 DOCX（`python-docx` + 直读 `document.xml`）解析；② 前端把 `accept` 与后端 `SUPPORTED_SUFFIXES` 对齐，并在上传前做类型/体积检查（不再让 20MB 文件先传完才被拒）；③ 把"解析"前移到**建记录与落盘之前**，失败即彻底不留残留 |
 | **D56** | **暂停中无法结束面试**（用户实际报告） | 用户回答一题后暂停，再点"结束并生成报告"得到 `非法状态转移：paused → waiting_for_answer；允许的目标状态为 ['cancelled']`。根因：`finish_interview` 假设会话处于活跃态、无条件推进 `→ waiting_for_answer`，而 `paused` 的唯一合法后继是 `cancelled`。**用户的意图是结束，不是恢复** —— 这个路径此前完全没被考虑 | ① `finish_interview` 遇到 `paused` 时**先恢复再结束**；② 新增 `resolve_resume_target`：`resume_status` 缺失时按问答事实推断恢复目标（有未答题→`asking`，否则→`waiting_for_answer`），把原本**永久卡死**的会话救回来；③ 允许从 `waiting_for_answer` 直接结束；④ 终态重复结束返回 **409** 并说明"已经结束过" |
+| **D57** | **上游 LLM 失败变成裸 500，看不出原因** | LLM SDK 的超时/连接异常继承自 `openai.OpenAIError`，**既不是 `ValueError` 也不是 `RuntimeError`**。而生成题目、分析回答、整场评价三处只处理了后两者，于是上游一慢就返回 `{"detail": "Internal Server Error"}` —— 客户端拿不到任何提示，运维也分不清是上游问题还是代码 bug。实测该端点会间歇性慢到超时（极短请求连续 4 次超时、第 4 次重试才在 68.9s 后成功），套件因此偶发崩溃，**看起来像代码回归** | ① 新增 `_llm_error_or_none`：按**类名与 MRO 特征**识别 LLM 异常（不硬绑具体 SDK，便于换端点），映射为 **503** 并带上异常类名与"未写入数据"说明；② `start` 在映射命中时**回滚额度**（避免为一次上游抖动白扣一场）；③ `answer` / `finish` 不回滚（作答可能已提交，回滚会丢用户数据）；④ 测试套件遇到 503 明确报告"未执行"而不是崩溃 |
+| **D58** | **前端"草稿"状态下答过题的会话打不开** | 库里存在旧值 `created`（迁移前字面值），而**实际已答过题的会话也可能停在草稿态**。历史页把这些显示为"—"、看起来打不开，而它们恰恰是用户最想找回来的。这是**看截图才发现的**：走查只打印行数，数字上完全看不出 | ① `RESUMABLE` 加入 `created` / `draft`；② 文案改为"未完成"（一场答了 3 题的面试不该叫"草稿"）；③ **给走查补上"每行都必须有可点动作"的断言** —— 否则这类问题下次还是只能靠人眼看出来 |
 
 D9 的教训最为关键：**评估框架自身会用"看起来更小"的指标掩盖失败**，
 这与 §15"不得悄悄忽略失败 case"是同一条原则。
@@ -983,7 +985,7 @@ summarizing        → completed          [evaluation_completed]
 | 认证 | `POST /api/auth/register`、`POST /api/auth/login`、`GET /api/auth/me` | ✅ |
 | 项目 | `POST/GET /api/projects`、`GET/PUT/DELETE /api/projects/{project_id}` | ✅ |
 | 文档 | `POST /api/projects/{project_id}/documents`、`GET /api/projects/{project_id}/documents`、`POST /api/projects/{project_id}/documents/{id}/embed`、`DELETE /api/projects/{project_id}/documents/{id}` | ✅ |
-| 面试——会话 | `POST /api/interviews`、`GET /api/interviews/{id}`、`GET /api/interviews/{id}/detail` | ✅ |
+| 面试——会话 | `GET /api/interviews`（**历史列表**，支持 `unfinished_only` / `project_id` / 分页）、`POST /api/interviews`、`GET /api/interviews/{id}`、`GET /api/interviews/{id}/detail` | ✅ |
 | 面试——开始 | `POST /api/interviews/{id}/start` | ✅ |
 | 面试——状态 | `GET /api/interviews/{id}/allowed-transitions`、`POST /api/interviews/{id}/transition`、`POST /api/interviews/{id}/pause`、`POST /api/interviews/{id}/resume` | ✅ |
 | 面试——轨迹 | `GET /api/interviews/{id}/history` | ✅ |
@@ -1195,6 +1197,15 @@ PostgreSQL 与 Milvus 之间没有分布式事务，因而无法提供严格原�
 - `python -m app.core.test_paused_finish`：**暂停会话能否结束**（10 项，需数据库）。
   覆盖：有/无 `resume_status`、有未答题/已答过、无任何题目、
   以及**重复结束返回 409**。这是 D56 的回归防护。
+- `python -m app.core.test_interview_list`：**面试历史列表**（21 项）——
+  结构、按更新时间倒序、`unfinished_only` 过滤、项目过滤、分页、
+  `answered_count` 与 `questions_asked` 的区别、所有权隔离、参数校验。
+- `python -m app.core.test_llm_error_mapping`：**上游 LLM 失败的映射**（8 项，D57）。
+  需要额外起一个指向不可达 LLM 的后端（见该文件头部说明），
+  断言 LLM 失败返回 503 且业务异常（409/404/401）不被误判。
+- `python -m app.core.cleanup_demo_sessions [--dry-run] [--keep 1,2]`：
+  清理测试留下的面试会话。**默认保留会话 1、2**，
+  且按 `user_id` 隔离 —— 真实用户的会话不会被碰。
 - `python -m app.core.test_document_upload`：上传、切块、索引、幂等、删除（17 项）。
 - `python -m app.core.test_e2e_http`：**端到端**，打 `127.0.0.1:5173/api`
   （即前端真正请求的地址），覆盖注册→建项目→上传→开始面试→逐题作答→报告→清理（26 项）。
@@ -2374,6 +2385,7 @@ web/src/
   pages/
     LoginPage.vue      登录 / 注册
     HomePage.vue       额度提示 + 选项目 + 新建面试
+    HistoryPage.vue    面试历史（默认只看未完成）
     ProjectPage.vue    资料上传 / 索引状态 / 重试与删除
     InterviewPage.vue  逐题作答
     ReportPage.vue     报告

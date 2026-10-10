@@ -198,6 +198,28 @@ async def main():
                 f"/api/interviews/{session_id}/start",
                 json={"query": "考察后端"},
             )
+
+            # 明确区分"代码坏了"与"LLM 端点当时不可用"。
+            #
+            # 实测该端点会间歇性慢到超时（极短请求也曾连续 4 次超时、
+            # 第 4 次重试才在 68.9s 后成功）。若不加区分，一次端点抖动
+            # 会让套件以 exit=1 崩溃，看起来像代码回归 ——
+            # 这类误判已经发生过，浪费过排查时间。
+            #
+            # 路由现在把上游失败映射成 503（D57），因此判据是 503。
+            if response.status_code == 503:
+                detail = ""
+                try:
+                    detail = str(response.json().get("detail", ""))
+                except Exception:  # noqa: BLE001
+                    pass
+
+                print()
+                print("  ⚠️ LLM 端点不可用，本次**未执行**（不是代码失败）")
+                print(f"     {detail[:140]}")
+                print("     稍后重跑本套件即可。")
+                return 2
+
             record(
                 "开始面试返回 200",
                 response.status_code == 200,

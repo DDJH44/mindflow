@@ -2,6 +2,7 @@ from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
+    Query,
     status,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,6 +10,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import get_current_user
 from app.database.session import get_db
 from app.models.user import User
+from app.repositories.interview_session_repository import (
+    InterviewSessionRepository,
+)
 from app.repositories.project_repository import ProjectRepository
 from app.schemas.interview.interview_qa import (
     InterviewAnswerCreate,
@@ -21,6 +25,8 @@ from app.schemas.interview.interview_qa import (
 )
 from app.schemas.interview.interview_session import (
     InterviewSessionCreate,
+    InterviewSessionListItem,
+    InterviewSessionListResponse,
     InterviewSessionResponse,
     InterviewSessionTransition,
 )
@@ -138,9 +144,150 @@ def _bad_transition(exc: Exception) -> HTTPException:
     )
 
 
+def _llm_error_or_none(exc: Exception) -> HTTPException | None:
+    """把上游 LLM 的失败映射成 503，并给出可读原因。
+
+    为什么需要（D57）：LLM SDK 的超时异常继承自
+    `openai.OpenAIError`，**既不是 `ValueError` 也不是 `RuntimeError`**，
+    而生成题目 / 分析回答 / 整场评价三处只处理了后两者 ——
+    于是上游一慢就变成裸 500 "Internal Server Error"，
+    客户端拿不到任何提示，运维也看不出是上游问题还是代码 bug。
+
+    判据用**类名与 MRO 特征**而不是 `import openai`：
+    本项目允许替换 LLM 实现（§24 换过端点），
+    硬绑具体 SDK 的异常类会让替换后这个映射失效。
+    """
+
+    names = {cls.__name__ for cls in type(exc).__mro__}
+
+    is_llm_error = bool(
+        names
+        & {
+            "OpenAIError",
+            "APITimeoutError",
+            "APIConnectionError",
+            "APIStatusError",
+            "RateLimitError",
+        }
+    )
+
+    if not is_llm_error:
+        return None
+
+    detail = str(exc) or type(exc).__name__
+
+    return HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail=(
+            f"调用模型失败（{type(exc).__name__}）：{detail[:200]}。"
+            "这是上游模型服务的临时问题，稍后重试即可；"
+            "本次操作没有写入任何数据。"
+        ),
+    )
+
+
 # ============================================================
 # 会话
 # ============================================================
+
+# 这些状态下的会话**还没结束**，用户可以回去继续。
+#
+# 为什么在服务端定义：前端的"进行中"筛选若自己列一遍状态，
+# 状态机一旦新增状态（例如将来加 `reviewing`）前端就会漏掉，
+# 表现出"面试不见了"。由服务端给出唯一口径。
+#
+# 覆盖状态机的全部非终态，另加迁移前的旧值 `created`
+# （`LEGACY_STATUS_MAP` 会把它归一成 draft，但库里的字面值还在）。
+UNFINISHED_STATUSES = (
+    "created",
+    "draft",
+    "preparing_context",
+    "planned",
+    "asking",
+    "waiting_for_answer",
+    "evaluating",
+    "summarizing",
+    "paused",
+)
+
+
+@router.get(
+    "",
+    response_model=InterviewSessionListResponse,
+)
+async def list_interview_sessions(
+    unfinished_only: bool = Query(
+        default=False,
+        description=(
+            "只返回尚未结束的会话。用于「找回没做完的面试」"
+        ),
+    ),
+    project_id: int | None = Query(
+        default=None,
+        description="只看某个项目下的面试",
+    ),
+    limit: int = Query(default=20, ge=1, le=50),
+    offset: int = Query(default=0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    列出当前用户的面试会话，最近更新的在前。
+
+    没有这个端点时，用户关掉页面就**找不回进行中的面试** ——
+    那场面试既占用了额度，也无法继续，等于白做。
+    """
+
+    repository = InterviewSessionRepository(db)
+
+    statuses = list(UNFINISHED_STATUSES) if unfinished_only else None
+
+    sessions = await repository.get_by_user(
+        user_id=current_user.id,
+        statuses=statuses,
+        project_id=project_id,
+        limit=limit,
+        offset=offset,
+    )
+
+    total = await repository.count_by_user(
+        user_id=current_user.id,
+        statuses=statuses,
+        project_id=project_id,
+    )
+
+    # 项目名：按 id 批量取，避免在会话仓储里再写一遍 join
+    # （项目的读取口径收在 ProjectRepository）。
+    project_repository = ProjectRepository(db)
+    projects = await project_repository.get_by_owner_id(
+        owner_id=current_user.id
+    )
+    project_names = {
+        project.id: project.name for project in projects
+    }
+
+    # 已作答数：`questions_asked` 是"问了几题"，不等于"答了几题"。
+    answered_counts = await repository.get_answered_counts(
+        session_ids=[session.id for session in sessions]
+    )
+
+    return {
+        "items": [
+            {
+                **_session_payload(session),
+                "project_name": project_names.get(
+                    session.project_id
+                ),
+                "answered_count": answered_counts.get(
+                    session.id, 0
+                ),
+            }
+            for session in sessions
+        ],
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+    }
 
 
 @router.post(
@@ -473,6 +620,20 @@ async def start_interview(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(exc),
         ) from exc
+    except Exception as exc:
+        # 上游 LLM 超时/连接失败走这里（D57）：
+        # 它既不是 ValueError 也不是 RuntimeError，不接住就会变成
+        # 裸 500，用户看到 "Internal Server Error" 而不知是上游问题。
+        mapped = _llm_error_or_none(exc)
+
+        if mapped is None:
+            # 不是 LLM 问题：原样抛出，保留堆栈供排查
+            raise
+
+        # 模型没返回，题目没生成 —— 回滚这次配额消费，
+        # 否则用户为了一个"上游抖动"白扣一场额度。
+        await db.rollback()
+        raise mapped from exc
 
     question = result["question"]
     refreshed = result["session"]
@@ -642,6 +803,22 @@ async def submit_answer(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
+    except Exception as exc:
+        # 上游 LLM 超时/连接失败（D57）。
+        #
+        # 这里**不回滚**：回答与分析可能已经在同一事务里提交，
+        # 回滚会丢掉用户刚提交的作答 —— 那比"少一条追问"更糟。
+        # 因此只把错误讲清楚，让用户知道作答已保存、可稍后继续。
+        mapped = _llm_error_or_none(exc)
+
+        if mapped is None:
+            raise
+
+        mapped.detail = (
+            f"{mapped.detail}本次作答可能已保存，"
+            "刷新页面查看当前进度。"
+        )
+        raise mapped from exc
 
     analysis = result["analysis"]
     follow_up = result["follow_up_question"]
@@ -781,6 +958,18 @@ async def finish_interview(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
+    except Exception as exc:
+        # 整场评价要调用 LLM（D57）：模型侧超时/连接失败时给出 503
+        # 与可读原因，而不是裸 500。
+        #
+        # 不回滚：会话已推进到 `evaluating`，该状态**可以直接重试**
+        # 本端点（ADR-025），回滚状态反而会让重试路径变复杂。
+        mapped = _llm_error_or_none(exc)
+
+        if mapped is None:
+            raise
+
+        raise mapped from exc
 
     saved = result["saved_evaluation"]
     refreshed = await InterviewSessionService(db).get_session(

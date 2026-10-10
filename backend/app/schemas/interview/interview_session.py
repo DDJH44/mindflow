@@ -79,3 +79,38 @@ class InterviewSessionTransition(BaseModel):
     target_status: SessionStatus = Field(
         description="目标状态，必须是状态机允许的合法取值",
     )
+
+
+class InterviewSessionListItem(InterviewSessionResponse):
+    """历史列表里的一条会话。
+
+    继承会话响应并补两项**只有列表才需要**的信息，
+    避免为了列表而在会话表上做连表。
+    """
+
+    # 项目名。
+    #
+    # 为什么不直接 join `projects`：项目的读取口径已经收在
+    # `ProjectRepository`（含所有权校验），在会话仓储里再写一遍
+    # join 会让"项目怎么读"出现第二种实现。
+    # 列表最多 50 条、涉及的项目通常只有几个，因此按 id 批量取名。
+    project_name: str | None = None
+
+    # 该会话已作答的题数。
+    #
+    # `questions_asked` 是"问了几题"，不等于"答了几题"：
+    # 用户可能看到题就关了。历史列表要显示"已作答 3 题"，
+    # 用 questions_asked 会把没答的也算上。
+    answered_count: int = 0
+
+
+class InterviewSessionListResponse(BaseModel):
+    """面试历史的分页结果。"""
+
+    items: list[InterviewSessionListItem]
+
+    # 总数用于"共 N 场"与页码计算。只给当页会让前端无法分页。
+    total: int
+
+    limit: int
+    offset: int

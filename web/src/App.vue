@@ -28,6 +28,16 @@ function logout() {
         MindFlow
       </RouterLink>
 
+      <!--
+        导航放在品牌旁边而不是右侧操作区：
+        右侧是"账号相关"（用户名、退出），把页面入口混进去
+        会让用户以为"面试历史"是账号功能。
+      -->
+      <nav class="topnav">
+        <RouterLink :to="{ name: 'home' }">开面试</RouterLink>
+        <RouterLink :to="{ name: 'history' }">历史</RouterLink>
+      </nav>
+
       <div class="spacer" />
 
       <span class="who">{{ auth.user?.username }}</span>
