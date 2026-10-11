@@ -53,6 +53,7 @@ SUITES: tuple[tuple[str, bool], ...] = (
     ("test_doctor", False),
     ("test_logging", False),
     ("test_embedding_batching", False),
+    ("check_eval_dataset", False),
     ("test_async_indexing", True),
     ("test_document_parsing", False),
     ("test_interview_list", False),
@@ -202,6 +203,48 @@ async def check_environment() -> bool:
             print(f"    - {name}: {detail}")
         print()
         print("  先修环境，再跑门禁。")
+        return False
+
+    # HTTP 服务可达性。
+    #
+    # 与依赖检查分开：依赖（库 / 向量库 / 模型）能连，
+    # 不代表**应用与前端**在跑。实测后端停掉时，
+    # 5 个套件各自报一次 `httpx.ConnectError` ——
+    # 5 条失败信息指向 5 个"不同的套件坏了"，
+    # 而真因只有一个：忘了起服务。
+    #
+    # 那种噪音会让门禁的结论失去意义，因此这里也拦停。
+    from app.core import check_services
+
+    print()
+    print("=" * 74)
+    print("步骤 0.1：HTTP 服务可达性")
+    print("=" * 74)
+
+    # **两个都探测**，不用 `and` 短路 ——
+    # 短路会让"两个都不可达"只报出第一个。
+    backend_ok = check_services.probe(
+        "后端 :8000",
+        check_services.BACKEND_HEALTH,
+        "启动：uv run uvicorn app.main:app --host 127.0.0.1 "
+        "--port 8000 --no-access-log",
+    )
+
+    proxy_ok = check_services.probe(
+        "前端代理 :5173",
+        check_services.PROXY_HEALTH,
+        "启动：cd web && npx vite --port 5173",
+    )
+
+    services_ok = backend_ok and proxy_ok
+
+    if not services_ok:
+        print()
+        print(
+            "  ✗ 有服务不可达。**在解决它之前，套件的失败不能"
+            "作为代码问题的证据** —— 多个套件会各报一次连接失败，"
+            "而真因只有一个。"
+        )
         return False
 
     if data_warnings:
