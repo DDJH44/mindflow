@@ -289,6 +289,68 @@ class UsageService:
         await self.db.commit()
 
 
+    async def refund(
+        self,
+        user_id: int,
+        metric: UsageMetric,
+        count: int = 1,
+        period: str | None = None,
+    ) -> int:
+        """退还用量，返回退还后的计数。
+
+        ## 为什么必须有它
+
+        `consume` 的自增可能**已经被提交**（业务中途有 `commit=True`
+        的状态转移），此时调用方的 `db.rollback()` 撤销不了它 ——
+        实测：额度耗尽导致 `start` 返回 503，
+        但 `interview_started` 仍然 +1，**用户为一次失败白扣一场**。
+
+        这正是本项目在题目额度上已经避免的问题：
+        §25.3 规定"生成成功后才 consume"。场次额度此前是
+        "尝试时 consume"，失败路径又依赖 rollback —— 二者不兼容。
+
+        ## 为什么用 `GREATEST(count - :n, 0)`
+
+        计数降到负数会让"剩余额度"算出来超过上限，
+        表现为用户凭空多出额度。夹到 0 是唯一安全的收尾。
+
+        ## 为什么不 `DELETE` 整行
+
+        `reset` 是运维级的清空；这里是**精确退还一次**。
+        整行删除会把同账期里其它成功消费也一起抹掉。
+        """
+
+        if count <= 0:
+            raise ValueError("退还数量必须为正")
+
+        target_period = period or current_period()
+
+        result = await self.db.execute(
+            text(
+                """
+                UPDATE interview_usage
+                SET count = GREATEST(count - :count, 0),
+                    updated_at = NOW()
+                WHERE user_id = :user_id
+                  AND period = :period
+                  AND metric = :metric
+                RETURNING count
+                """
+            ),
+            {
+                "user_id": user_id,
+                "period": target_period,
+                "metric": metric.value,
+                "count": count,
+            },
+        )
+
+        row = result.first()
+        await self.db.commit()
+
+        return int(row[0]) if row else 0
+
+
 __all__ = [
     "UsageService",
     "QuotaDecision",

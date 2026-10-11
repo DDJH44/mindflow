@@ -41,15 +41,16 @@ import time
 
 # 全部验证套件。
 #
-# `needs_llm` 标记该套件会真实调用模型 —— `--offline` 时跳过，
-# 因为离线回归的目标是"快速确认没破坏逻辑"。
+# 第二列 `needs_embedding`：该套件需要**可用的嵌入端点**才能跑。
+# 嵌入不可用时（额度耗尽、端点变更），它们会以各种方式失败
+# （"最终状态=failed"、"开始面试返回 503"）——
+# 那些失败**不是代码回归**，而是前提缺失。
 #
-# ⚠️ 这个标记必须与实际相符。标错会让离线回归**变慢且脆弱**：
-# 未标记的套件照样调模型，于是"离线"仍要等几十秒、
-# 且会因端点抖动而失败。实测误标了两个套件，
-# 它们各自耗时 80s 以上。
+# 实测：嵌入额度耗尽时，三个套件共报 11 处失败，
+# 而真正的原因是同一个。若不区分，门禁会持续误报
+# 直到端点恢复，人就学会了忽略它。
 SUITES: tuple[tuple[str, bool], ...] = (
-    # 纯逻辑 / 只依赖数据库，不调模型
+    # (套件名, 是否需要嵌入端点)
     ("test_doctor", False),
     ("test_logging", False),
     ("test_embedding_batching", False),
@@ -58,16 +59,15 @@ SUITES: tuple[tuple[str, bool], ...] = (
     ("test_document_parsing", False),
     ("test_interview_list", False),
     ("test_ability_profile", False),
-    ("test_usage_quota", False),
-    ("test_document_upload", False),
-    ("test_resume_upload", False),
-    # 会调用模型
+    ("test_usage_quota", True),
+    ("test_quota_refund", False),
+    ("test_document_upload", True),
+    ("test_resume_upload", True),
+    # 会调用模型的套件
     ("test_question_quota", True),
     ("test_question_budget", True),
     ("test_interview_api", True),
     ("test_interview_flow", True),
-    # 这两个也调模型：前者经 `/start` 生成首题，
-    # 后者经 `finish_interview` 触发整场评价。
     ("test_status_history", True),
     ("test_paused_finish", True),
     ("test_e2e_http", True),
@@ -149,6 +149,49 @@ def run_suite(name: str) -> tuple[str, str, float]:
     reason = extract_counts(output) or failure or f"退出码 {code}"
 
     return FAIL, reason, elapsed
+
+
+async def check_embedding_available() -> tuple[bool, str]:
+    """探测嵌入端点是否可用。返回 (可用, 说明)。
+
+    只做一次极短的调用。判据是"能不能拿到向量"，
+    而不是"端点是不是活着" —— 额度耗尽时端点活着但会拒绝。
+
+    **为什么必须单独探测**：嵌入与 LLM 是两个端点、两套额度。
+    嵌入耗尽时 LLM 仍然可用，因此只看 LLM 无法发现这个问题。
+    """
+
+    from app.core.config import settings
+
+    if not settings.embedding_api_key:
+        return False, "未配置 embedding_api_key"
+
+    try:
+        from app.services.openai_embedding_service import (
+            OpenAIEmbeddingService,
+        )
+
+        vectors = await OpenAIEmbeddingService().embed_texts(["探测"])
+
+    except Exception as exc:  # noqa: BLE001
+        message = str(exc)
+
+        # 额度耗尽是常见且**可读**的原因，单独点出来，
+        # 避免只看到一句 BadRequestError。
+        if "quota" in message.lower() or "FreeTier" in message:
+            return False, (
+                f"额度耗尽（{settings.embedding_model}）："
+                "需充值或在控制台关闭「仅用免费额度」"
+            )
+
+        return False, f"不可用：{type(exc).__name__}: {message[:80]}"
+
+    if not vectors:
+        return False, "端点返回空结果"
+
+    return True, (
+        f"可用（{settings.embedding_model}，{len(vectors[0])} 维）"
+    )
 
 
 async def check_environment() -> bool:
@@ -284,29 +327,65 @@ def main() -> int:
             return 1
         print()
 
+    # 嵌入端点可用性。
+    #
+    # 与 LLM 分开探测：嵌入额度耗尽时 LLM 仍然可用，
+    # 而依赖真实嵌入的套件会以各种方式失败
+    # （"最终状态=failed"、"开始面试返回 503"）。
+    # 实测三个套件共报 11 处失败，真因却是同一个。
+    embedding_ok, embedding_detail = asyncio.run(
+        check_embedding_available()
+    )
+
+    print("=" * 74)
+    print("步骤 0.2：嵌入端点可用性")
+    print("=" * 74)
+    print(
+        f"   [{'✓' if embedding_ok else '✗'}] {embedding_detail}"
+    )
+    print()
+
     selected = [
-        (name, needs_llm)
-        for name, needs_llm in SUITES
+        (name, needs_embedding)
+        for name, needs_embedding in SUITES
         if not args.filter or args.filter in name
     ]
 
     if args.offline:
+        # 离线模式的本意是"不调外部服务"，因此嵌入类套件一并跳过。
         selected = [
-            (name, needs_llm)
-            for name, needs_llm in selected
-            if not needs_llm
+            (name, needs_embedding)
+            for name, needs_embedding in selected
+            if not needs_embedding
+        ]
+    elif not embedding_ok:
+        # 嵌入不可用：跳过依赖它的套件，**而不是让它们失败**。
+        #
+        # 这不是"放过失败"：那些套件测的是额度逻辑与上传链路，
+        # 它们没有坏，是前提缺失。把它们报成失败会让门禁
+        # 持续误报直到端点恢复 —— 而人一旦习惯忽略门禁，
+        # 它就不再有任何作用。
+        selected = [
+            (name, needs_embedding)
+            for name, needs_embedding in selected
+            if not needs_embedding
         ]
 
     print("=" * 74)
     print(f"回归门禁：{len(selected)} 个套件")
     if args.offline:
-        print("（离线模式：已跳过需要调用模型的套件）")
+        print("（离线模式：已跳过需要外部服务的套件）")
+    elif not embedding_ok:
+        print(
+            "（嵌入端点不可用：已跳过依赖它的套件 —— "
+            "那些失败会是前提缺失，不是代码回归）"
+        )
     print("=" * 74)
     print()
 
     outcomes: list[tuple[str, str, str, float]] = []
 
-    for name, _needs_llm in selected:
+    for name, _needs_embedding in selected:
         status, detail, elapsed = run_suite(name)
         outcomes.append((name, status, detail, elapsed))
 

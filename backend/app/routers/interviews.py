@@ -8,6 +8,7 @@ from fastapi import (
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user
+from app.core.logging import get_logger
 from app.database.session import get_db
 from app.models.user import User
 from app.repositories.document_chunk_repository import (
@@ -65,6 +66,8 @@ router = APIRouter(
     prefix="/api/interviews",
     tags=["Interviews"],
 )
+
+logger = get_logger("app.interviews")
 
 
 async def _load_owned_session(
@@ -194,8 +197,7 @@ def _llm_error_or_none(exc: Exception) -> HTTPException | None:
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         detail=(
             f"调用模型失败（{type(exc).__name__}）：{detail[:200]}。"
-            "这是上游模型服务的临时问题，稍后重试即可；"
-            "本次操作没有写入任何数据。"
+            "这是上游模型服务的临时问题，稍后重试即可。"
         ),
     )
 
@@ -674,11 +676,22 @@ async def start_interview(
     # 会让并发请求一起通过校验。
     usage_service = UsageService(db)
 
+    # ⚠️ **必须在任何 rollback 之前**把身份取成普通整数。
+    #
+    # `db.rollback()` 会让会话里所有 ORM 对象过期（expire），
+    # 之后再读 `current_user.id` 会触发一次懒加载；
+    # 而同步上下文里访问异步 ORM 属性会抛
+    # `MissingGreenlet: greenlet_spawn has not been called`。
+    # 实测踩过：退还额度时读 `current_user.id` 直接变成 500，
+    # 把"额度退还"这件事本身也搞失败了。
+    user_id: int = current_user.id
+    interview_quota: int = current_user.interview_quota
+
     try:
         await usage_service.consume(
-            user_id=current_user.id,
+            user_id=user_id,
             metric=UsageMetric.INTERVIEW_STARTED,
-            quota=current_user.interview_quota,
+            quota=interview_quota,
         )
     except QuotaExceeded as exc:
         # 配额不足要回滚这次自增：否则"额度用完但还在涨"，
@@ -715,18 +728,59 @@ async def start_interview(
             detail=str(exc),
         ) from exc
     except Exception as exc:
-        # 上游 LLM 超时/连接失败走这里（D57）：
+        # 上游 LLM 超时/连接失败/额度耗尽走这里（D57）：
         # 它既不是 ValueError 也不是 RuntimeError，不接住就会变成
         # 裸 500，用户看到 "Internal Server Error" 而不知是上游问题。
         mapped = _llm_error_or_none(exc)
 
+        await db.rollback()
+
+        # ⚠️ **`rollback` 在这里不足以退还场次额度。**
+        #
+        # `start_interview` 内部的状态转移带 `commit=True`
+        # （draft → preparing_context → planned），
+        # 那一次 commit 把 `consume` 的自增**一起提交了**。
+        # 于是 rollback 只撤销 commit 之后的东西，额度撤销不了。
+        #
+        # 实测：额度耗尽导致 start 返回 503，而
+        # `interview_started` 仍然 +1 —— 用户为一次失败白扣一场。
+        #
+        # **退还对"所有失败"生效，不只对 LLM 类异常。**
+        # 起初我只在 LLM 分支退还，测试立刻暴露了缺口：
+        # 一个纯 RuntimeError 会绕过退还，而它同样发生在
+        # 状态转移已提交之后，同样白扣一场。
+        # 判据应当是"用户有没有真的开始面试"，而不是
+        # "异常属于哪个类型"。
+        #
+        # 用单独的 commit 而不是并入 rollback 的事务：
+        # 失败已经发生，退还应当独立生效，
+        # 不该被后续任何异常再次撤销。
+        try:
+            remaining = await usage_service.refund(
+                user_id=user_id,
+                metric=UsageMetric.INTERVIEW_STARTED,
+            )
+        except Exception:  # noqa: BLE001
+            # 退还失败不能掩盖原始错误 —— 原始错误才是用户要看的。
+            # 但也不能静默：额度不一致会影响后续判定。
+            logger.error(
+                "退还场次额度失败（用户 %s）：用户可能被多扣一场",
+                user_id,
+                exc_info=True,
+            )
+        else:
+            logger.info(
+                "开始面试失败，已退还 1 场额度（用户 %s，剩余用量 %d）",
+                user_id,
+                remaining,
+            )
+
+        # `mapped is None` 表示不是 LLM 问题（例如代码缺陷）。
+        # 那种情况下额度**已经退还**，但仍要原样抛出以保留堆栈 ——
+        # 把它包装成 503 会掩盖真实缺陷。
         if mapped is None:
-            # 不是 LLM 问题：原样抛出，保留堆栈供排查
             raise
 
-        # 模型没返回，题目没生成 —— 回滚这次配额消费，
-        # 否则用户为了一个"上游抖动"白扣一场额度。
-        await db.rollback()
         raise mapped from exc
 
     question = result["question"]
