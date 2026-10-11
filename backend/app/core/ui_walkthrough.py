@@ -43,11 +43,58 @@ console_errors: list[str] = []
 page_errors: list[str] = []
 notes: list[str] = []
 
+# 走查的**硬失败**清单。
+#
+# ## 为什么必须单独有它
+#
+# 在此之前，走查里的检查清一色是 `note()` —— 只打印、不判定。
+# 于是"走查发现了问题但以成功退出"会同时成立，那条检查等于没做。
+#
+# 实测的代价：D58 的记录里写着"给走查补上「每行都必须有可点动作」
+# 的断言"，代码里也确实有那段检查 —— 但它只是 `note()`，
+# 从不失败。**等于第 ③ 项从来没做过**，而文档里记着已完成。
+#
+# 因此约定：**凡是被写进文档当作验收手段的检查，都必须记进这里。**
+failures: list[str] = []
+
 # 面试页断言是否因**外部前提缺失**而跳过（例如嵌入端点额度耗尽）。
 #
 # 与"界面坏了"必须区分：前者应明确报告"结论不完整"并排除
 # 由它引起的预期控制台错误，后者才是真的失败。
 skipped_interview: bool = False
+
+
+def check(label: str, ok: bool, detail: str = "") -> bool:
+    """记录一条**会失败**的断言。
+
+    与 `note()` 的区别就是这一点：`note()` 只打印。
+    两者并存是必要的 —— 走查里大量输出是给人看的观察值，
+    而这里输出的是"必须成立"的条件。
+    """
+
+    suffix = f"  {detail}" if detail else ""
+    print(f"  [{'OK  ' if ok else 'FAIL'}] {label}{suffix}")
+
+    checked.append(label)
+
+    if not ok:
+        failures.append(label)
+
+    return ok
+
+
+# 走查**实际执行过**的断言。
+#
+# ## 为什么必须统计它
+#
+# 实测踩过两次：断言写好了，却因为分支没进到而**从未执行**
+# （一次藏在"有资料的项目"分支里，而库里一个含资料的项目都没有；
+# 一次被上游不可用的跳过逻辑挡住）。
+#
+# 那种情况最危险的地方是**它看起来是通过的** ——
+# 输出里没有 FAIL，而文档里记着这条回归已覆盖。
+# 因此收尾时统计条数，并在结论里明确报出来。
+checked: list[str] = []
 
 
 def note(text: str) -> None:
@@ -233,6 +280,250 @@ async def seed_unfinished_session() -> int | None:
 
     except Exception as exc:  # noqa: BLE001
         print(f"      造会话失败: {exc}")
+        return None
+
+
+async def seed_legacy_created_session() -> int | None:
+    """造一个**状态为 `created` 且已作答**的会话。
+
+    ## 为什么必须专门造这个
+
+    这是 **D58 的原始故障场景**：库里存在旧值 `created`
+    （迁移前的字面值），而**实际已答过题的会话也可能停在草稿态**。
+    历史页当时把它显示成"草稿 · —"，看起来打不开 ——
+    而它恰恰是用户最想找回来的。
+
+    该缺陷**只有看截图才发现**：走查当时只打印行数，
+    数字上完全看不出来。D58 的修复项 ③ 明确写了
+    "给走查补上「每行都必须有可点动作」的断言"。
+
+    但那条断言此前只是 `note()`、从不失败，**等于第 ③ 项从未生效**。
+    这个函数就是让那个场景**每次走查都会出现**，
+    从而让那条断言有真实的靶子。
+    """
+
+    try:
+        async with AsyncSessionLocal() as db:
+            user_id = (
+                await db.execute(
+                    sql_text(
+                        "SELECT id FROM users WHERE username = :u"
+                    ),
+                    {"u": ACCOUNT},
+                )
+            ).scalar_one()
+
+            project_id = (
+                await db.execute(
+                    sql_text(
+                        "SELECT id FROM projects "
+                        "WHERE owner_id = :u ORDER BY id LIMIT 1"
+                    ),
+                    {"u": user_id},
+                )
+            ).scalar_one_or_none()
+
+            if project_id is None:
+                return None
+
+            session_id = (
+                await db.execute(
+                    sql_text(
+                        "INSERT INTO interview_sessions "
+                        "(project_id, user_id, status, interview_type, "
+                        " target_role, current_question_index, "
+                        " max_questions, questions_asked, "
+                        " created_at, updated_at) "
+                        # 状态刻意用迁移前的旧字面值 `created`，
+                        # 而不是 `draft` —— D58 的触发条件正是这个旧值。
+                        "VALUES (:p, :u, 'created', 'technical', "
+                        " '后端工程师', 3, 8, 3, now(), now()) "
+                        "RETURNING id"
+                    ),
+                    {"p": project_id, "u": user_id},
+                )
+            ).scalar_one()
+
+            # 3 道已作答的题：与 `questions_asked=3` 一致。
+            # 数字对不上会让"已作答 3 / 8"与列表里的其他数字矛盾，
+            # 而那种矛盾在截图里看不出来。
+            for index in range(3):
+                question_id = (
+                    await db.execute(
+                        sql_text(
+                            "INSERT INTO interview_questions "
+                            "(session_id, question, question_type, "
+                            " question_index, context, "
+                            " evidence_chunk_ids, is_general, "
+                            " created_at) "
+                            "VALUES (:s, :q, 'technical', :i, NULL, "
+                            " '{}', true, now()) RETURNING id"
+                        ),
+                        {
+                            "s": session_id,
+                            "q": f"走查用（旧状态）第 {index + 1} 题。",
+                            "i": index,
+                        },
+                    )
+                ).scalar_one()
+
+                await db.execute(
+                    sql_text(
+                        "INSERT INTO interview_answers "
+                        "(question_id, answer, created_at) "
+                        "VALUES (:q, '走查用的回答。', now())"
+                    ),
+                    {"q": question_id},
+                )
+
+            await db.commit()
+
+        return session_id
+
+    except Exception as exc:  # noqa: BLE001
+        print(f"      造旧状态会话失败: {exc}")
+        return None
+
+
+async def check_upload_accept(page, note, check) -> None:
+    """校验文件选择框的 `accept` 不承诺后端不支持的类型（D55）。
+
+    抽成函数是因为它要在**两个分支**里调用：有资料的项目、
+    以及"没有含资料的项目"时的回退路径。
+
+    为什么不把它留在原来的分支里：实测那条断言一直藏在
+    "有资料的项目"分支里，而开发库里一个含资料的项目都没有 ——
+    于是它**从未执行过**，而文档里记着这条回归已覆盖。
+    """
+
+    from app.services.document_parser import DocumentParser
+
+    file_input = await page.query_selector("#doc-file")
+
+    if file_input is None:
+        # 页面上没有上传控件：说明连项目页都没进到，
+        # 那属于前提缺失而不是失败。
+        note("找不到文件选择框，跳过 accept 校验")
+        return
+
+    accept = await file_input.get_attribute("accept")
+    note(f"accept 属性: {accept}")
+
+    # **D55 的回归**：界面当时写着支持 PDF/DOCX，而后端只认 TXT/MD，
+    # 用户上传简历直接失败，错误信息却指向"暂不支持的文件类型"，
+    # 看起来像用户的文件有问题。
+    #
+    # 判据是"界面承诺的每一项后端都支持"，而不是硬编码一份列表 ——
+    # 后者在后端新增类型时反而会变成错误的期望。
+    ui_suffixes = {
+        item.strip().lower()
+        for item in (accept or "").split(",")
+        if item.strip()
+    }
+    backend_suffixes = {
+        item.lower() for item in DocumentParser.SUPPORTED_SUFFIXES
+    }
+
+    unsupported = ui_suffixes - backend_suffixes
+
+    check(
+        "界面 accept 不承诺后端不支持的类型（D55）",
+        ui_suffixes and not unsupported,
+        f"界面多承诺了 {sorted(unsupported)}"
+        if unsupported
+        else f"界面 {sorted(ui_suffixes)} 后端均支持",
+    )
+
+
+async def seed_paused_session() -> int | None:
+    """造一个 `paused` 会话，用于验证"继续面试"按钮真的能恢复。
+
+    ## 为什么值得专门测
+
+    **D56 的发源地**：`finish_interview` 曾假设会话处于活跃态，
+    而 paused 会话在界面上**没有可走的路** —— 用户答完题想结束时
+    被卡住。修复后界面上出现了"继续面试"按钮，
+    但**那条路径从未被自动验证过**。
+
+    严格按暂停流程写全三个字段（`resume_status` / `pause_reason` /
+    `paused_at`），否则恢复时会被状态机拒绝 ——
+    那样测的就不是界面，而是我造的数据不合规。
+    """
+
+    try:
+        async with AsyncSessionLocal() as db:
+            user_id = (
+                await db.execute(
+                    sql_text(
+                        "SELECT id FROM users WHERE username = :u"
+                    ),
+                    {"u": ACCOUNT},
+                )
+            ).scalar_one()
+
+            project_id = (
+                await db.execute(
+                    sql_text(
+                        "SELECT id FROM projects "
+                        "WHERE owner_id = :u ORDER BY id LIMIT 1"
+                    ),
+                    {"u": user_id},
+                )
+            ).scalar_one_or_none()
+
+            if project_id is None:
+                return None
+
+            session_id = (
+                await db.execute(
+                    sql_text(
+                        "INSERT INTO interview_sessions "
+                        "(project_id, user_id, status, interview_type, "
+                        " target_role, current_question_index, "
+                        " max_questions, questions_asked, "
+                        " resume_status, pause_reason, paused_at, "
+                        " created_at, updated_at) "
+                        "VALUES (:p, :u, 'paused', 'technical', "
+                        " '后端工程师', 1, 8, 1, 'asking', "
+                        " '走查用暂停', now(), now(), now()) "
+                        "RETURNING id"
+                    ),
+                    {"p": project_id, "u": user_id},
+                )
+            ).scalar_one()
+
+            question_id = (
+                await db.execute(
+                    sql_text(
+                        "INSERT INTO interview_questions "
+                        "(session_id, question, question_type, "
+                        " question_index, context, evidence_chunk_ids, "
+                        " is_general, created_at) "
+                        "VALUES (:s, :q, 'technical', 0, NULL, "
+                        " '{}', true, now()) RETURNING id"
+                    ),
+                    {
+                        "s": session_id,
+                        "q": "走查用（暂停态）的问题。",
+                    },
+                )
+            ).scalar_one()
+
+            await db.execute(
+                sql_text(
+                    "INSERT INTO interview_answers "
+                    "(question_id, answer, created_at) "
+                    "VALUES (:q, '走查用的回答。', now())"
+                ),
+                {"q": question_id},
+            )
+
+            await db.commit()
+
+        return session_id
+
+    except Exception as exc:  # noqa: BLE001
+        print(f"      造暂停会话失败: {exc}")
         return None
 
 
@@ -635,6 +926,9 @@ async def main() -> int:
     # 否则它变成局部变量，而读取发生在赋值之前会抛 UnboundLocalError。
     global skipped_interview
 
+    # 在 try 之外初始化：finally 里要用它清理探查造的会话。
+    paused_session_id: int | None = None
+
     original_hash = await set_password(TEMP_PASSWORD)
 
     # 在 try 之外初始化：finally 里要用它清理走查创建的会话，
@@ -746,6 +1040,16 @@ async def main() -> int:
             seeded_session_id = await seed_unfinished_session()
             note(f"造了一场未完成会话 {seeded_session_id}")
 
+            # 另外造一场 **D58 场景**的会话：状态是迁移前的旧值
+            # `created`、但已经答过 3 题。
+            #
+            # 为什么要专门造：这个场景是 D58 的触发条件，
+            # 而它**不会自然出现**（新会话不再写 `created`）。
+            # 不造的话，"每行都能点开"这条断言就没有真实的靶子 ——
+            # 而 D58 的修复项 ③ 恰恰要求这条断言存在。
+            legacy_session_id = await seed_legacy_created_session()
+            note(f"造了一场旧状态（created + 已作答）会话 {legacy_session_id}")
+
             try:
                 await page.goto(
                     f"{BASE}/history", wait_until="networkidle"
@@ -786,7 +1090,11 @@ async def main() -> int:
                     #
                     # 这条是**看截图才发现**的：早期只打印行数，
                     # 而"已作答 3 题却显示 —（打不开）"这种问题
-                    # 数字上完全看不出来。因此显式断言动作存在。
+                    # 数字上完全看不出来。
+                    #
+                    # ⚠️ 它此前只是 `note()`，从不失败 —— 于是
+                    # D58 的记录里写着"补上断言"，而实际上第 ③ 项
+                    # 从未生效。现在改为 `check()`。
                     actionless = []
                     for index, row in enumerate(rows):
                         text = " ".join(
@@ -798,9 +1106,12 @@ async def main() -> int:
                         ):
                             actionless.append(index)
 
-                    note(
-                        f"缺少可点动作的行: "
-                        f"{actionless if actionless else '无'}"
+                    check(
+                        "历史页每一行都有可点动作（不是「—」）",
+                        not actionless,
+                        f"缺动作的行: {actionless}"
+                        if actionless
+                        else f"检查了 {len(rows)} 行",
                     )
 
                 await shot(page, "04-history")
@@ -827,6 +1138,7 @@ async def main() -> int:
 
             finally:
                 await cleanup_session(seeded_session_id)
+                await cleanup_session(legacy_session_id)
 
             # ---------------- 能力画像页 ----------------
             print()
@@ -1027,6 +1339,36 @@ async def main() -> int:
 
             if target_project_id is None:
                 note("没有含资料的项目，跳过资料页断言")
+
+                # ⚠️ 但 **D55 的 accept 校验不该被跳过**。
+                #
+                # 它检查的是"界面有没有承诺后端做不到的事"，
+                # 而那个 `accept` 属性是**静态渲染**的 ——
+                # 与项目里有没有资料无关。
+                #
+                # 实测：这条断言此前一直藏在"有资料的项目"分支里，
+                # 而开发库中 `mindflow` 名下一个含资料的项目都没有，
+                # 于是它**从未执行过**。从不执行的断言等于没有。
+                #
+                # 注意必须**先回首页**：此刻页面多半停在
+                # `/profile`（上一个小节留下的），那里没有项目链接。
+                await page.goto(f"{BASE}/", wait_until="networkidle")
+                await page.wait_for_timeout(1500)
+
+                fallback_project = await page.query_selector(
+                    "a[href^='/projects/']"
+                )
+
+                if fallback_project:
+                    href = await fallback_project.get_attribute("href")
+                    await page.goto(
+                        f"{BASE}{href}", wait_until="networkidle"
+                    )
+                    await page.wait_for_timeout(1500)
+
+                    await check_upload_accept(page, note, check)
+                else:
+                    note("首页上没有项目链接，仍无法校验 accept")
             else:
                 await page.goto(
                     f"{BASE}/projects/{target_project_id}",
@@ -1059,6 +1401,8 @@ async def main() -> int:
                 if file_input:
                     accept = await file_input.get_attribute("accept")
                     note(f"accept 属性: {accept}")
+
+                await check_upload_accept(page, note, check)
 
                 rows = await page.query_selector_all(
                     ".stack .row-between"
@@ -1296,6 +1640,81 @@ async def main() -> int:
                     note(f"未进入报告页，当前 URL: {page.url}")
                     await shot(page, "05-not-report")
 
+            # ---------------- 暂停会话的恢复路径 ----------------
+            #
+            # 独立于"能否开始新面试"：它验证的是**恢复路径**，
+            # 而那条路径在 D56 里曾完全走不通 —— paused 会话在界面上
+            # 没有可点的动作，用户答完题想结束时被卡住。
+            #
+            # 恢复要调模型生成下一题，因此上游不可用时它也走不通；
+            # 那与 `skipped_interview` 同属**前提缺失**，故一并跳过。
+            if not skipped_interview:
+                print()
+                print("=" * 74)
+                print("8.1 暂停会话的恢复路径（D56 的回归）")
+                print("=" * 74)
+
+                paused_session_id = await seed_paused_session()
+                note(f"造了一场暂停态会话 {paused_session_id}")
+
+                if paused_session_id:
+                    await page.goto(
+                        f"{BASE}/interviews/{paused_session_id}",
+                        wait_until="networkidle",
+                    )
+                    await page.wait_for_timeout(2000)
+
+                    resume_button = page.locator(
+                        "button", has_text="继续面试"
+                    )
+                    has_resume = await resume_button.count() > 0
+
+                    check(
+                        "暂停态会话显示「继续面试」按钮",
+                        has_resume,
+                        "D56 的修复点：此前 paused 会话没有可走的动作",
+                    )
+
+                    if has_resume:
+                        await resume_button.click()
+
+                        try:
+                            await page.wait_for_function(
+                                "() => !document.body.innerText"
+                                ".includes('paused')",
+                                timeout=90_000,
+                            )
+                            left_paused = True
+                        except Exception as exc:  # noqa: BLE001
+                            note(
+                                f"等待恢复超时: {type(exc).__name__}"
+                            )
+                            left_paused = False
+
+                        await page.wait_for_timeout(1500)
+
+                        body = await page.text_content("body") or ""
+
+                        check(
+                            "点击后离开暂停态",
+                            left_paused and "paused" not in body,
+                            "仍含 paused"
+                            if "paused" in body
+                            else "已恢复",
+                        )
+
+                        textarea = await page.query_selector("#answer")
+
+                        check(
+                            "恢复后可以继续作答",
+                            textarea is not None
+                            and await textarea.is_enabled(),
+                            "输入框存在且可用",
+                        )
+
+                    await cleanup_session(paused_session_id)
+                    paused_session_id = None
+
             # ---------------- 控制台 ----------------
             print()
             print("=" * 74)
@@ -1350,6 +1769,11 @@ async def main() -> int:
             await cleanup_session(walkthrough_session_id)
             print(f"  已清理走查会话 {walkthrough_session_id}")
 
+        # 暂停态探查也会造一场（它在面试页小节里），同样要收尾。
+        if paused_session_id:
+            await cleanup_session(paused_session_id)
+            print(f"  已清理暂停态走查会话 {paused_session_id}")
+
         # 顺带清掉其它被中断的运行留下的会话与孤儿向量。
         #
         # 只清本账号 + 明确是测试产生的会话：保留会话 1、2
@@ -1384,6 +1808,18 @@ async def main() -> int:
     print(f"  控制台错误: {len(unexpected_errors)}")
     print(f"  页面异常: {len(page_errors)}")
 
+    # 断言**执行条数**也必须报出来。
+    #
+    # 只有"0 项失败"是不够的：断言可能因为分支没进到而
+    # 从未执行 —— 那种情况的输出与"全部通过"完全一样。
+    print(f"  断言执行: {len(checked)} 项（失败 {len(failures)}）")
+
+    if failures:
+        print()
+        print(f"  断言失败 {len(failures)} 项：")
+        for item in failures:
+            print(f"    - {item}")
+
     if skipped_interview:
         print()
         print(
@@ -1391,7 +1827,9 @@ async def main() -> int:
             "本次结论**不完整**，恢复端点后需重跑"
         )
 
-    ok = not unexpected_errors and not page_errors
+    # 三类都算失败：控制台非预期错误、页面异常、断言失败。
+    # 缺任何一类都会让"走查发现了问题却成功退出"重新成立。
+    ok = not unexpected_errors and not page_errors and not failures
 
     # 落一份机器可读的结果，便于后续对照
     (SHOTS / "walkthrough.json").write_text(
@@ -1399,6 +1837,9 @@ async def main() -> int:
             {
                 "console_errors": console_errors,
                 "page_errors": page_errors,
+                "failures": failures,
+                "checked": checked,
+                "skipped_interview": skipped_interview,
                 "notes": notes,
             },
             ensure_ascii=False,
