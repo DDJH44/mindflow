@@ -17,6 +17,7 @@ import { useRouter } from 'vue-router'
 
 import { interviewApi } from '../api'
 import { ApiError } from '../api/http'
+import WaitingIndicator from '../components/WaitingIndicator.vue'
 import type {
   InterviewDetail,
   InterviewEvaluation,
@@ -244,9 +245,21 @@ onMounted(async () => {
               @click="finish"
             >
               <span v-if="finishing" class="spinner" />
-              结束并生成报告
+              {{ finishing ? '正在生成报告…' : '结束并生成报告' }}
             </button>
           </div>
+
+          <!-- 结束面试也要跑整场评价（实测约 10 秒），同样需要可见的等待 -->
+          <WaitingIndicator
+            :active="finishing"
+            :steps="[
+              '整理整场问答记录',
+              '评价各维度表现',
+              '生成优势与建议',
+            ]"
+            :reassure-after="30"
+            :show-duration-hint="false"
+          />
         </div>
 
         <div class="progress-track" style="margin-top: 12px">
@@ -318,10 +331,15 @@ onMounted(async () => {
             <span v-if="submitting" class="spinner" />
             {{ submitting ? '正在分析并追问…' : '提交回答' }}
           </button>
-          <span v-if="submitting" class="faint">
-            需要调用模型分析回答，通常十几秒。
-          </span>
         </div>
+
+        <!--
+          长等待提示。
+          此前这里只有一行静态文案（"通常十几秒"），
+          而实测耗时 4.9s ~ 60.8s —— 用户看不出是等待还是卡死。
+          见 `WaitingIndicator.vue` 头部关于"不假装知道服务端进度"的说明。
+        -->
+        <WaitingIndicator :active="submitting" />
       </div>
 
       <div v-else class="card">

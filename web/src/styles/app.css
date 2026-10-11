@@ -606,6 +606,71 @@ button:disabled {
   border-bottom: none;
 }
 
+/* ------------------------------------------------------ 长等待提示 */
+
+.waiting {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  /* 中性底色而不是主色浅蓝：主色在别处表示"可操作"，
+     而这里是**状态区** —— 用主色会让人以为可以点。 */
+  background: var(--bg);
+}
+
+/*
+  不确定进度条：来回流动，不按百分比填充。
+  百分比需要一个我们并不掌握的真实进度。
+*/
+.waiting-track {
+  margin-top: 10px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.waiting-track-fill {
+  width: 35%;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--primary);
+  animation: waiting-slide 1.4s ease-in-out infinite;
+}
+
+@keyframes waiting-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(385%);
+  }
+}
+
+.waiting-steps {
+  margin: 8px 0 0;
+  line-height: 1.6;
+}
+
+.waiting-reassure {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: 13px;
+}
+
+/* 尊重"减少动效"偏好：流动动画对前庭敏感的人不友好，
+   而这里的信息在静态下也完整。 */
+@media (prefers-reduced-motion: reduce) {
+  .waiting-track-fill {
+    animation: none;
+    width: 100%;
+    opacity: 0.5;
+  }
+}
+
 /* ------------------------------------------------------ 加载与居中 */
 
 .spinner {

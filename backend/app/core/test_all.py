@@ -86,6 +86,13 @@ MANUAL_SUITES: tuple[tuple[str, str], ...] = (
         "需要 8098 端口上一个切块器被打坏的后端"
         "（uv run python -m app.core.upload_with_broken_chunker）",
     ),
+    (
+        "test_waiting_ui",
+        "需要**慢响应**环境：uv run python -m app.core.slow_backend（8001）"
+        " + cd web && VITE_BACKEND_ORIGIN=http://127.0.0.1:8001 "
+        "npx vite --port 5174。"
+        "它必须测慢路径 —— 快响应下等待提示根本不显示",
+    ),
 )
 
 PASS = "PASS"
