@@ -61,6 +61,7 @@ SUITES: tuple[tuple[str, bool], ...] = (
     ("test_ability_profile", False),
     ("test_usage_quota", True),
     ("test_quota_refund", False),
+    ("test_knowledge_extraction", True),
     ("test_document_upload", True),
     ("test_resume_upload", True),
     # 会调用模型的套件

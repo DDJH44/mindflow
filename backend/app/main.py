@@ -14,6 +14,10 @@ from app.models.user import User
 from app.models.project import Project
 from app.models.document import Document
 from app.models.document_index_job import DocumentIndexJob
+from app.models.knowledge_graph import (
+    KnowledgeEntity,
+    KnowledgeRelation,
+)
 
 from app.routers.auth import router as auth_router
 from app.routers.projects import router as projects_router
