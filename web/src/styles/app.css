@@ -1,14 +1,19 @@
 /*
  * 应用样式。
  *
- * 与脚手架的 `style.css` 分开：那个文件属于 Vite 模板，
- * 保留它可以随时对照/回退，不删。
- *
  * 刻意不用 UI 组件库：当前只有几个页面，
  * 引一个组件库会带来一整套主题与覆盖规则，
  * 维护成本高于收益。等页面多起来再评估。
  *
- * 颜色与间距集中在 :root 变量里，避免各页面各写一套色值。
+ * 排版与颜色集中在 :root 变量里，避免各页面各写一套值。
+ * **字号与间距都走令牌**（2026-10-12 收敛）：
+ * 此前有 19 处硬编码 font-size、4 处游离值，
+ * 导致"改阶梯不生效"且无法静态断言一致性。
+ *
+ * ⚠️ 已删除 `src/style.css`（2026-10-12）：那是 Vite 脚手架的
+ * 模板样式，**从未被任何地方 import**。此前留着是为了"对照/回退"，
+ * 但实测它带来的只是困惑（新加入的人会以为它是生效的样式），
+ * 而回退有 git 就够了。
  */
 
 :root {
@@ -54,9 +59,16 @@
    * 六档。新增第七档意味着阶梯失效 ——
    * 一旦有第七档，就会有人加第八档。
    *
-   * ⚠️ 历史遗留：此前 CSS 里散落着 16/20/24/26px 四个值，
-   * 不在阶梯内。它们**尚未收敛**（见 UI_DESIGN.md §12 的检查项），
-   * 收敛时应当映射到最接近的一档，而不是新增档位。
+   * ⚠️ 收敛记录（2026-10-12）：此前 CSS 里散落着
+   * 16/20/24/26px 四个游离值，**已全部收敛**：
+   *
+   *     h1  20px → --fs-xl   (22px)  ← 原值比阶梯还小
+   *     h2  16px → --fs-lg   (18px)
+   *     .score-value       26px → --fs-display (26px)
+   *     .dimension-median  24px → --fs-display (26px)
+   *
+   * 前两个是**标题**，本该落在文本阶梯里 —— 收敛回去即可。
+   * 后两个是**大号数字强调**，不是文本层级，见下方 --fs-display。
    */
   --fs-xs: 12px;    /* 元信息、标签 */
   --fs-sm: 13px;    /* 辅助说明、次要按钮 */
@@ -64,6 +76,23 @@
   --fs-md: 15px;    /* 题目正文 */
   --fs-lg: 18px;    /* 卡片标题 */
   --fs-xl: 22px;    /* 页面标题 */
+
+  /*
+    大号数字强调。**不属于文本阶梯**。
+    
+    用途只有一类：报告里"综合 82"、"维度中位 76"这种
+    一眼要看到的数字。它们比页面标题还大是**有意**的 ——
+    报告页的主角是分数，不是标题。
+    
+    为什么单独设档而不是硬塞进 --fs-xl：那会从 26px 掉到 22px，
+    削弱报告页的视觉重心，而收益只是"档位少一个"。
+    判据是"这个值有没有独立语义"，而不是"数量越少越好"。
+    
+    两者必须**同时**收敛到这里：它们原本是 26 与 24，
+    差 2px 在视觉上无意义，却让"同一类东西用同一个值"
+    这条规则失效。
+  */
+  --fs-display: 26px;
 
   /* ---------------------------------------------------- 间距
    *
@@ -160,7 +189,7 @@ pre {
 
 .brand {
   font-weight: 600;
-  font-size: 15px;
+  font-size: var(--fs-md);
   color: var(--text);
   text-decoration: none;
   letter-spacing: 0.2px;
@@ -180,7 +209,7 @@ pre {
 .topnav a {
   color: var(--text-dim);
   text-decoration: none;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   padding: 2px 0;
   border-bottom: 2px solid transparent;
 }
@@ -204,7 +233,7 @@ pre {
 
 .who {
   color: var(--text-dim);
-  font-size: 13px;
+  font-size: var(--fs-sm);
 }
 
 .content {
@@ -222,19 +251,19 @@ pre {
 /* ------------------------------------------------------ 标题与卡片 */
 
 h1 {
-  font-size: 20px;
+  font-size: var(--fs-xl);
   margin: 0 0 4px;
   font-weight: 600;
 }
 
 h2 {
-  font-size: 16px;
+  font-size: var(--fs-lg);
   margin: 0 0 12px;
   font-weight: 600;
 }
 
 h3 {
-  font-size: 14px;
+  font-size: var(--fs-base);
   margin: 0 0 8px;
   font-weight: 600;
 }
@@ -261,12 +290,12 @@ h3 {
 
 .muted {
   color: var(--text-dim);
-  font-size: 13px;
+  font-size: var(--fs-sm);
 }
 
 .faint {
   color: var(--text-faint);
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
 
 .row {
@@ -303,7 +332,7 @@ h3 {
 
 label {
   display: block;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-dim);
   margin-bottom: 6px;
 }
@@ -389,7 +418,7 @@ button:disabled {
   border: none;
   padding: 0;
   color: var(--primary);
-  font-size: 13px;
+  font-size: var(--fs-sm);
 }
 
 .link:not(:disabled):hover {
@@ -401,7 +430,7 @@ button:disabled {
 .alert {
   padding: 10px 14px;
   border-radius: var(--radius-sm);
-  font-size: 13px;
+  font-size: var(--fs-sm);
   border: 1px solid transparent;
 }
 
@@ -435,7 +464,7 @@ button:disabled {
   display: inline-block;
   padding: 1px 8px;
   border-radius: 10px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   background: #eef0f3;
   color: var(--text-dim);
   white-space: nowrap;
@@ -492,7 +521,7 @@ button:disabled {
   padding: 28px;
   text-align: center;
   color: var(--text-faint);
-  font-size: 13px;
+  font-size: var(--fs-sm);
 }
 
 /* ------------------------------------------------------ 面试页 */
@@ -503,7 +532,7 @@ button:disabled {
   border-left: 3px solid var(--primary);
   border-radius: var(--radius);
   padding: 18px 20px;
-  font-size: 15px;
+  font-size: var(--fs-md);
   line-height: 1.75;
 }
 
@@ -546,13 +575,13 @@ button:disabled {
 }
 
 .score-value {
-  font-size: 26px;
+  font-size: var(--fs-display);
   font-weight: 600;
   line-height: 1.2;
 }
 
 .score-label {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-dim);
   margin-top: 2px;
 }
@@ -593,7 +622,7 @@ button:disabled {
 
 .evidence-text {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   line-height: 1.7;
   color: var(--text-dim);
   white-space: pre-wrap;
@@ -605,7 +634,7 @@ button:disabled {
   background: none;
   border: none;
   padding: 0;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--primary);
   cursor: pointer;
 }
@@ -629,7 +658,7 @@ button:disabled {
 }
 
 .dimension-label {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--text-dim);
 }
 
@@ -641,7 +670,7 @@ button:disabled {
 }
 
 .dimension-median {
-  font-size: 24px;
+  font-size: var(--fs-display);
   font-weight: 600;
   line-height: 1.2;
 }
@@ -662,7 +691,7 @@ button:disabled {
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: var(--fs-sm);
 }
 
 .data-table th,
@@ -676,7 +705,7 @@ button:disabled {
 .data-table th {
   color: var(--text-dim);
   font-weight: 500;
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
 
 .data-table tbody tr:last-child td {
@@ -735,7 +764,7 @@ button:disabled {
   border-radius: var(--radius-sm);
   background: var(--warn-soft);
   color: var(--warn);
-  font-size: 13px;
+  font-size: var(--fs-sm);
 }
 
 /* 尊重"减少动效"偏好：流动动画对前庭敏感的人不友好，

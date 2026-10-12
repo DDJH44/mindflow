@@ -15,6 +15,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 import { documentApi, projectApi } from '../api'
 import { ApiError } from '../api/http'
+import PageState from '../components/PageState.vue'
 import type {
   DocumentItem,
   DocumentType,
@@ -336,11 +337,9 @@ onMounted(load)
       </div>
     </div>
 
-    <div v-if="error" class="alert alert-error">{{ error }}</div>
-
-    <div v-if="loading" class="card">
-      <span class="spinner" />正在加载…
-    </div>
+    <template v-if="loading">
+      <PageState :error="error" />
+    </template>
 
     <template v-else>
       <!-- 索引状态：决定面试能否出好题 -->

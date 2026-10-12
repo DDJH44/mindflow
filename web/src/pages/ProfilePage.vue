@@ -18,6 +18,7 @@ import { computed, onMounted, ref } from 'vue'
 import { interviewApi, projectApi } from '../api'
 import { ApiError } from '../api/http'
 import type { AbilityProfile, Project } from '../api/types'
+import PageState from '../components/PageState.vue'
 import Sparkline from '../components/Sparkline.vue'
 
 const profile = ref<AbilityProfile | null>(null)
@@ -84,11 +85,9 @@ onMounted(load)
       </div>
     </div>
 
-    <div v-if="error" class="alert alert-error">{{ error }}</div>
-
-    <div v-if="loading" class="card">
-      <span class="spinner" />正在加载…
-    </div>
+    <template v-if="loading">
+      <PageState :error="error" />
+    </template>
 
     <template v-else-if="profile">
       <!-- 项目筛选 -->

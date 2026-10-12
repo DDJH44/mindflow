@@ -14,6 +14,7 @@ import { interviewApi } from '../api'
 import { ApiError } from '../api/http'
 import type { InterviewDetail } from '../api/types'
 import EvidencePanel from '../components/EvidencePanel.vue'
+import PageState from '../components/PageState.vue'
 
 const props = defineProps<{ id: number }>()
 
@@ -93,11 +94,9 @@ onMounted(load)
 
 <template>
   <div>
-    <div v-if="error" class="alert alert-error">{{ error }}</div>
-
-    <div v-if="loading" class="card">
-      <span class="spinner" />正在加载报告…
-    </div>
+    <template v-if="loading">
+      <PageState :error="error" loading-text="正在加载报告…" />
+    </template>
 
     <template v-else-if="session">
       <div class="page-head">

@@ -14,6 +14,7 @@ import { useRouter } from 'vue-router'
 
 import { interviewApi } from '../api'
 import { ApiError } from '../api/http'
+import PageState from '../components/PageState.vue'
 import type { InterviewSessionListItem } from '../api/types'
 
 const router = useRouter()
@@ -220,6 +221,16 @@ onMounted(load)
       </div>
     </div>
 
+    <!--
+      错误提示。**不能**用 `<PageState>` —— 它是"列表是否为空"
+      这条 `v-if / v-else-if` 链的头部，换成组件会打断链，
+      使下面的 `v-else-if="!items.length"` 失去条件
+      （实测：那会让空态与列表同时渲染，而类型检查先报
+      `TS18047`）。
+
+      因此约定：**分支条件必须留在原生元素上**；
+      组件只用于不承担分支条件的展示。
+    -->
     <div v-if="error" class="alert alert-error">{{ error }}</div>
 
     <!-- 筛选 -->
@@ -247,9 +258,8 @@ onMounted(load)
       </div>
     </div>
 
-    <div v-if="loading" class="card">
-      <span class="spinner" />正在加载…
-    </div>
+    <!-- 加载中 -->
+    <PageState v-if="loading" />
 
     <!-- 列表 -->
     <div v-else-if="!items.length" class="card">

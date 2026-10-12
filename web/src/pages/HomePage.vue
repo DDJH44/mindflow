@@ -11,6 +11,7 @@ import { useRouter } from 'vue-router'
 
 import { interviewApi, projectApi, usageApi } from '../api'
 import { ApiError } from '../api/http'
+import PageState from '../components/PageState.vue'
 import type { Project, Usage } from '../api/types'
 
 const router = useRouter()
@@ -158,11 +159,9 @@ onMounted(load)
       </p>
     </div>
 
-    <div v-if="error" class="alert alert-error">{{ error }}</div>
-
-    <div v-if="loading" class="card">
-      <span class="spinner" />正在加载…
-    </div>
+    <template v-if="loading">
+      <PageState :error="error" />
+    </template>
 
     <template v-else>
       <!-- 额度 -->

@@ -17,6 +17,7 @@ import { useRouter } from 'vue-router'
 
 import { interviewApi } from '../api'
 import { ApiError } from '../api/http'
+import PageState from '../components/PageState.vue'
 import WaitingIndicator from '../components/WaitingIndicator.vue'
 import type {
   InterviewDetail,
@@ -203,12 +204,23 @@ onMounted(async () => {
 
 <template>
   <div>
-    <div v-if="error" class="alert alert-error">{{ error }}</div>
+    <template v-if="loading">
+      <PageState
+        :error="error"
+        loading-text="正在加载面试…"
+      />
+    </template>
 
-    <div v-if="loading" class="card">
-      <span class="spinner" />正在加载面试…
-    </div>
+    <!--
+      ⚠️ `v-else-if` 必须挂在这个 `<template>` 上，而不是挂在
+      `<PageState>` 上。实测踩过：把 `v-else-if` 挂在组件上会让
+      Vue 的模板类型收窄失效 —— 后面的 `session.xxx` 全部报
+      `TS18047: 'session' is possibly 'null'`，因为编译器不再知道
+      这条分支里 `session` 非空。
 
+      因此约定：**分支条件留在原生元素/`<template>` 上，
+      组件只负责渲染它被给到的东西。**
+    -->
     <template v-else-if="session">
       <!-- 进度 -->
       <div class="card">

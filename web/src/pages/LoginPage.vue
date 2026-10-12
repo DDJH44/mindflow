@@ -12,6 +12,7 @@ import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { ApiError } from '../api/http'
+import PageState from '../components/PageState.vue'
 import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
@@ -74,9 +75,7 @@ async function submit() {
       </div>
 
       <form class="stack" @submit.prevent="submit">
-        <div v-if="error" class="alert alert-error">
-          {{ error }}
-        </div>
+        <PageState :error="error" />
 
         <div class="field">
           <label for="account">
