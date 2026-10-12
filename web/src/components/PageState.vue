@@ -48,10 +48,27 @@ withDefaults(
      * **具体文案对用户更有用**，因此不做成统一那一句。
      */
     loadingText?: string
+    /**
+     * 是否包含加载占位卡片。
+     *
+     * ⚠️ 这个开关是**踩出来的**（D66）：改成纯展示组件后，
+     * 加载卡片变成**无条件渲染**，而 **登录页根本没有 loading 状态**
+     * —— 它只需要错误提示。结果登录表单里永远挂着一张
+     * "正在加载…"，看起来像卡死了。
+     *
+     * 我当时的推理错误是：把"组件不判断条件"当成了
+     * "组件无条件渲染全部内容"。正确做法是**条件由调用方给** ——
+     * 而"这个页面有没有加载态"本身就是调用方才有的信息。
+     *
+     * 因此：登录页传 `false`；其余页面把它包在
+     * `<template v-if="loading">` 里，默认值正好够用。
+     */
+    showLoading?: boolean
   }>(),
   {
     error: '',
     loadingText: '正在加载…',
+    showLoading: true,
   },
 )
 </script>
@@ -70,7 +87,7 @@ withDefaults(
   -->
   <slot />
 
-  <div class="card">
+  <div v-if="showLoading" class="card">
     <span class="spinner" />{{ loadingText }}
   </div>
 </template>

@@ -75,7 +75,12 @@ async function submit() {
       </div>
 
       <form class="stack" @submit.prevent="submit">
-        <PageState :error="error" />
+        <!--
+          登录页**没有加载态**（表单提交时按钮置灰即可），
+          因此关掉加载占位 —— 否则会一直显示"正在加载…"，
+          看起来像卡死了。
+        -->
+        <PageState :error="error" :show-loading="false" />
 
         <div class="field">
           <label for="account">
