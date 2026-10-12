@@ -445,9 +445,23 @@ async def seed_paused_session() -> int | None:
     被卡住。修复后界面上出现了"继续面试"按钮，
     但**那条路径从未被自动验证过**。
 
-    严格按暂停流程写全三个字段（`resume_status` / `pause_reason` /
-    `paused_at`），否则恢复时会被状态机拒绝 ——
-    那样测的就不是界面，而是我造的数据不合规。
+    ## ⚠️ 状态必须自洽（实测踩过）
+
+    这个函数的第一版造了 **1 道已作答的题**，
+    却把 `current_question_index` 与 `questions_asked` 都设成 1 ——
+    那等于声称"第 2 题已经开始"，而第 2 题并不存在。
+
+    后果：恢复后会话是 `asking`，而前端"当前待回答的问题"
+    取的是**最后一道未作答的题**（见 `InterviewPage.vue` 的
+    `current`），一道都没有 → 界面永久停在
+    "当前没有待回答的问题"，而那个"刷新"按钮按了也没用。
+
+    走查因此稳定失败，而失败信息指向"恢复后不能作答"，
+    看起来像应用缺陷 —— 实际是**测试造了一个真实流程不会出现的状态**。
+
+    `resume_session` **只恢复状态、不生成题目**（设计如此），
+    因此暂停时必须有一道**待作答**的题，恢复后用户才接得上。
+    真实暂停正是这样：用户暂停在题目上。
     """
 
     try:
@@ -483,8 +497,11 @@ async def seed_paused_session() -> int | None:
                         " max_questions, questions_asked, "
                         " resume_status, pause_reason, paused_at, "
                         " created_at, updated_at) "
+                        # questions_asked=1：第 1 题已经问出去了。
+                        # current_question_index=0：当前正是第 1 题
+                        # （0 基），而它**尚未作答** —— 自洽。
                         "VALUES (:p, :u, 'paused', 'technical', "
-                        " '后端工程师', 1, 8, 1, 'asking', "
+                        " '后端工程师', 0, 8, 1, 'asking', "
                         " '走查用暂停', now(), now(), now()) "
                         "RETURNING id"
                     ),
@@ -492,30 +509,20 @@ async def seed_paused_session() -> int | None:
                 )
             ).scalar_one()
 
-            question_id = (
-                await db.execute(
-                    sql_text(
-                        "INSERT INTO interview_questions "
-                        "(session_id, question, question_type, "
-                        " question_index, context, evidence_chunk_ids, "
-                        " is_general, created_at) "
-                        "VALUES (:s, :q, 'technical', 0, NULL, "
-                        " '{}', true, now()) RETURNING id"
-                    ),
-                    {
-                        "s": session_id,
-                        "q": "走查用（暂停态）的问题。",
-                    },
-                )
-            ).scalar_one()
-
+            # 一道**未作答**的题 —— 恢复后它就是待回答的那道。
             await db.execute(
                 sql_text(
-                    "INSERT INTO interview_answers "
-                    "(question_id, answer, created_at) "
-                    "VALUES (:q, '走查用的回答。', now())"
+                    "INSERT INTO interview_questions "
+                    "(session_id, question, question_type, "
+                    " question_index, context, evidence_chunk_ids, "
+                    " is_general, created_at) "
+                    "VALUES (:s, :q, 'technical', 0, NULL, "
+                    " '{}', true, now())"
                 ),
-                {"q": question_id},
+                {
+                    "s": session_id,
+                    "q": "走查用（暂停态）的问题。",
+                },
             )
 
             await db.commit()
@@ -1703,13 +1710,49 @@ async def main() -> int:
                             else "已恢复",
                         )
 
+                        # ⚠️ "离开暂停态"与"可以作答"是两件事。
+                        #
+                        # 恢复会**调模型生成下一题**（实测 10–30 秒），
+                        # 而那期间作答框是禁用态。此前这里只固定等
+                        # 1.5 秒就断言"输入框可用"，于是稳定失败 ——
+                        # 而失败信息指向"恢复后不能作答"，
+                        # 看起来像应用缺陷，实际是**测试没等够**。
+                        #
+                        # 正确做法是等它**变成可用**，而不是等一个固定时长。
+                        answer_ready = False
+
+                        try:
+                            await page.wait_for_function(
+                                "() => {"
+                                "  const el = document"
+                                "    .querySelector('#answer');"
+                                "  return el && !el.disabled;"
+                                "}",
+                                timeout=120_000,
+                            )
+                            answer_ready = True
+                        except Exception as exc:  # noqa: BLE001
+                            note(
+                                f"等待作答框可用超时: {type(exc).__name__}"
+                            )
+
                         textarea = await page.query_selector("#answer")
+
+                        # `detail` 必须报**实际观察到的事实**，
+                        # 而不是复述断言意图 —— 后者在失败时
+                        # 提供不了任何排查线索。
+                        if textarea is None:
+                            observed = "页面上没有 #answer"
+                        elif await textarea.is_disabled():
+                            observed = "输入框存在但仍处于禁用态"
+                        else:
+                            observed = "输入框存在且可用"
 
                         check(
                             "恢复后可以继续作答",
                             textarea is not None
-                            and await textarea.is_enabled(),
-                            "输入框存在且可用",
+                            and not await textarea.is_disabled(),
+                            observed,
                         )
 
                     await cleanup_session(paused_session_id)

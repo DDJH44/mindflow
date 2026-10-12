@@ -1,0 +1,1073 @@
+{
+  "evaluation": {
+    "version": "v2",
+    "dataset_version": "v2",
+    "retrieval_version": "v1",
+    "created_at": "2026-10-12T16:06:59.765760",
+    "case_count": 23,
+    "corpus_seeded": true,
+    "corpus_documents": [
+      {
+        "name": "zhangming_resume.md",
+        "document_type": "resume",
+        "chars": 2677
+      },
+      {
+        "name": "senior_backend_jd.md",
+        "document_type": "jd",
+        "chars": 2649
+      },
+      {
+        "name": "knowledge_base_project.md",
+        "document_type": "project",
+        "chars": 2828
+      },
+      {
+        "name": "retrieval_service_code.md",
+        "document_type": "code",
+        "chars": 2817
+      }
+    ]
+  },
+  "retrieval_config": {
+    "top_k": 5,
+    "embedding_model": "text-embedding-v3",
+    "embedding_dimension": 1024,
+    "vector_store": "Milvus",
+    "collection": "mindflow_chunks_v2",
+    "metric_type": "COSINE",
+    "consistency_level": "Strong",
+    "retrieval_mode": "dense_only",
+    "rerank": false,
+    "score_normalization": null
+  },
+  "chunking": {
+    "chunk_size": 500,
+    "chunk_overlap": 100
+  },
+  "summary": {
+    "case_count": 23,
+    "successful_case_count": 23,
+    "failed_case_count": 0,
+    "chunk_metric_case_count": 23,
+    "document_level_only_case_count": 0,
+    "failures": [],
+    "document_metrics": {
+      "recall@1": 0.9565217391304348,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "mrr": 0.9782608695652174
+    },
+    "chunk_metrics": {
+      "recall@1": 0.6086956521739131,
+      "recall@3": 0.8695652173913043,
+      "recall@5": 0.9565217391304348,
+      "mrr": 0.7514492753623189
+    },
+    "filter_accuracy": 1.0,
+    "avg_latency_ms": 509.12782608695653,
+    "document_recall@5_by_document_type": {
+      "resume": 1.0,
+      "jd": 1.0,
+      "project": 1.0,
+      "code": 1.0,
+      "None": 1.0
+    },
+    "document_recall@5_by_difficulty": {
+      "hard": 1.0,
+      "medium": 1.0,
+      "easy": 1.0
+    }
+  },
+  "cases": [
+    {
+      "case_id": "resume_async_atomicity",
+      "query": "异步任务领取为什么要保证原子性？",
+      "document_name": "zhangming_resume.md",
+      "difficulty": "hard",
+      "expected_chunk_ids": [
+        5143
+      ],
+      "expected_document_ids": [
+        193
+      ],
+      "retrieved_chunk_ids": [
+        5143,
+        5146,
+        5144,
+        5145,
+        5142
+      ],
+      "retrieved_document_ids": [
+        193,
+        193,
+        193,
+        193,
+        193
+      ],
+      "project_id": 156,
+      "document_type": "resume",
+      "latency_ms": 565.83,
+      "filter_accuracy": 1.0,
+      "document_level_only": false,
+      "chunk_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      },
+      "document_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      }
+    },
+    {
+      "case_id": "resume_consistency_evidence",
+      "query": "向量库一致性级别的问题实测数据是什么？",
+      "document_name": "zhangming_resume.md",
+      "difficulty": "medium",
+      "expected_chunk_ids": [
+        5143
+      ],
+      "expected_document_ids": [
+        193
+      ],
+      "retrieved_chunk_ids": [
+        5143,
+        5144,
+        5142,
+        5146,
+        5145
+      ],
+      "retrieved_document_ids": [
+        193,
+        193,
+        193,
+        193,
+        193
+      ],
+      "project_id": 156,
+      "document_type": "resume",
+      "latency_ms": 595.65,
+      "filter_accuracy": 1.0,
+      "document_level_only": false,
+      "chunk_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      },
+      "document_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      }
+    },
+    {
+      "case_id": "resume_order_latency",
+      "query": "订单重构之后的延迟指标是多少？",
+      "document_name": "zhangming_resume.md",
+      "difficulty": "medium",
+      "expected_chunk_ids": [
+        5143
+      ],
+      "expected_document_ids": [
+        193
+      ],
+      "retrieved_chunk_ids": [
+        5143,
+        5144,
+        5142,
+        5146,
+        5141
+      ],
+      "retrieved_document_ids": [
+        193,
+        193,
+        193,
+        193,
+        193
+      ],
+      "project_id": 156,
+      "document_type": "resume",
+      "latency_ms": 597.52,
+      "filter_accuracy": 1.0,
+      "document_level_only": false,
+      "chunk_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      },
+      "document_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      }
+    },
+    {
+      "case_id": "resume_programming_languages",
+      "query": "候选人主力语言是哪个，用了多久？",
+      "document_name": "zhangming_resume.md",
+      "difficulty": "easy",
+      "expected_chunk_ids": [
+        5141
+      ],
+      "expected_document_ids": [
+        193
+      ],
+      "retrieved_chunk_ids": [
+        5142,
+        5141,
+        5145,
+        5143,
+        5144
+      ],
+      "retrieved_document_ids": [
+        193,
+        193,
+        193,
+        193,
+        193
+      ],
+      "project_id": 156,
+      "document_type": "resume",
+      "latency_ms": 397.09,
+      "filter_accuracy": 1.0,
+      "document_level_only": false,
+      "chunk_metrics": {
+        "recall@1": 0.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 0.5
+      },
+      "document_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      }
+    },
+    {
+      "case_id": "resume_expected_city",
+      "query": "候选人期望在哪些城市工作？",
+      "document_name": "zhangming_resume.md",
+      "difficulty": "easy",
+      "expected_chunk_ids": [
+        5141
+      ],
+      "expected_document_ids": [
+        193
+      ],
+      "retrieved_chunk_ids": [
+        5141,
+        5142,
+        5145,
+        5144,
+        5143
+      ],
+      "retrieved_document_ids": [
+        193,
+        193,
+        193,
+        193,
+        193
+      ],
+      "project_id": 156,
+      "document_type": "resume",
+      "latency_ms": 597.61,
+      "filter_accuracy": 1.0,
+      "document_level_only": false,
+      "chunk_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      },
+      "document_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      }
+    },
+    {
+      "case_id": "resume_weakness",
+      "query": "候选人自认不擅长什么？",
+      "document_name": "zhangming_resume.md",
+      "difficulty": "easy",
+      "expected_chunk_ids": [
+        5144
+      ],
+      "expected_document_ids": [
+        193
+      ],
+      "retrieved_chunk_ids": [
+        5145,
+        5144,
+        5146,
+        5141,
+        5142
+      ],
+      "retrieved_document_ids": [
+        193,
+        193,
+        193,
+        193,
+        193
+      ],
+      "project_id": 156,
+      "document_type": "resume",
+      "latency_ms": 596.7,
+      "filter_accuracy": 1.0,
+      "document_level_only": false,
+      "chunk_metrics": {
+        "recall@1": 0.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 0.5
+      },
+      "document_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      }
+    },
+    {
+      "case_id": "jd_vector_db",
+      "query": "岗位要求什么向量数据库经验？",
+      "document_name": "senior_backend_jd.md",
+      "difficulty": "easy",
+      "expected_chunk_ids": [
+        5147
+      ],
+      "expected_document_ids": [
+        194
+      ],
+      "retrieved_chunk_ids": [
+        5147,
+        5148,
+        5150,
+        5149,
+        5151
+      ],
+      "retrieved_document_ids": [
+        194,
+        194,
+        194,
+        194,
+        194
+      ],
+      "project_id": 156,
+      "document_type": "jd",
+      "latency_ms": 398.49,
+      "filter_accuracy": 1.0,
+      "document_level_only": false,
+      "chunk_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      },
+      "document_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      }
+    },
+    {
+      "case_id": "jd_evaluation_bonus",
+      "query": "什么样的评估经验算加分项？",
+      "document_name": "senior_backend_jd.md",
+      "difficulty": "medium",
+      "expected_chunk_ids": [
+        5147
+      ],
+      "expected_document_ids": [
+        194
+      ],
+      "retrieved_chunk_ids": [
+        5148,
+        5151,
+        5152,
+        5150,
+        5149
+      ],
+      "retrieved_document_ids": [
+        194,
+        194,
+        194,
+        194,
+        194
+      ],
+      "project_id": 156,
+      "document_type": "jd",
+      "latency_ms": 596.69,
+      "filter_accuracy": 1.0,
+      "document_level_only": false,
+      "chunk_metrics": {
+        "recall@1": 0.0,
+        "recall@3": 0.0,
+        "recall@5": 0.0,
+        "mrr": 0.0
+      },
+      "document_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      }
+    },
+    {
+      "case_id": "jd_stuck_task",
+      "query": "加分项里提到的任务卡住是指什么？",
+      "document_name": "senior_backend_jd.md",
+      "difficulty": "medium",
+      "expected_chunk_ids": [
+        5148
+      ],
+      "expected_document_ids": [
+        194
+      ],
+      "retrieved_chunk_ids": [
+        5152,
+        5149,
+        5148,
+        5151,
+        5150
+      ],
+      "retrieved_document_ids": [
+        194,
+        194,
+        194,
+        194,
+        194
+      ],
+      "project_id": 156,
+      "document_type": "jd",
+      "latency_ms": 397.54,
+      "filter_accuracy": 1.0,
+      "document_level_only": false,
+      "chunk_metrics": {
+        "recall@1": 0.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 0.3333333333333333
+      },
+      "document_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      }
+    },
+    {
+      "case_id": "jd_interview_rounds",
+      "query": "技术面试一共几轮，怎么安排的？",
+      "document_name": "senior_backend_jd.md",
+      "difficulty": "easy",
+      "expected_chunk_ids": [
+        5148
+      ],
+      "expected_document_ids": [
+        194
+      ],
+      "retrieved_chunk_ids": [
+        5148,
+        5150,
+        5149,
+        5151,
+        5152
+      ],
+      "retrieved_document_ids": [
+        194,
+        194,
+        194,
+        194,
+        194
+      ],
+      "project_id": 156,
+      "document_type": "jd",
+      "latency_ms": 398.03,
+      "filter_accuracy": 1.0,
+      "document_level_only": false,
+      "chunk_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      },
+      "document_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      }
+    },
+    {
+      "case_id": "jd_team_size",
+      "query": "团队多少人，负责什么方向？",
+      "document_name": "senior_backend_jd.md",
+      "difficulty": "easy",
+      "expected_chunk_ids": [
+        5148
+      ],
+      "expected_document_ids": [
+        194
+      ],
+      "retrieved_chunk_ids": [
+        5148,
+        5150,
+        5149,
+        5152,
+        5147
+      ],
+      "retrieved_document_ids": [
+        194,
+        194,
+        194,
+        194,
+        194
+      ],
+      "project_id": 156,
+      "document_type": "jd",
+      "latency_ms": 596.99,
+      "filter_accuracy": 1.0,
+      "document_level_only": false,
+      "chunk_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      },
+      "document_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      }
+    },
+    {
+      "case_id": "project_rrf_choice",
+      "query": "两路召回为什么用倒数排名融合而不是加权求和？",
+      "document_name": "knowledge_base_project.md",
+      "difficulty": "hard",
+      "expected_chunk_ids": [
+        5153
+      ],
+      "expected_document_ids": [
+        195
+      ],
+      "retrieved_chunk_ids": [
+        5155,
+        5154,
+        5158,
+        5157,
+        5153
+      ],
+      "retrieved_document_ids": [
+        195,
+        195,
+        195,
+        195,
+        195
+      ],
+      "project_id": 156,
+      "document_type": "project",
+      "latency_ms": 597.73,
+      "filter_accuracy": 1.0,
+      "document_level_only": false,
+      "chunk_metrics": {
+        "recall@1": 0.0,
+        "recall@3": 0.0,
+        "recall@5": 1.0,
+        "mrr": 0.2
+      },
+      "document_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      }
+    },
+    {
+      "case_id": "project_chunking_fix",
+      "query": "切块被截断的问题怎么修的？",
+      "document_name": "knowledge_base_project.md",
+      "difficulty": "medium",
+      "expected_chunk_ids": [
+        5154
+      ],
+      "expected_document_ids": [
+        195
+      ],
+      "retrieved_chunk_ids": [
+        5154,
+        5155,
+        5156,
+        5157,
+        5158
+      ],
+      "retrieved_document_ids": [
+        195,
+        195,
+        195,
+        195,
+        195
+      ],
+      "project_id": 156,
+      "document_type": "project",
+      "latency_ms": 397.59,
+      "filter_accuracy": 1.0,
+      "document_level_only": false,
+      "chunk_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      },
+      "document_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      }
+    },
+    {
+      "case_id": "project_refusal_tradeoff",
+      "query": "拒答阈值这个取舍是怎么权衡的？",
+      "document_name": "knowledge_base_project.md",
+      "difficulty": "hard",
+      "expected_chunk_ids": [
+        5155
+      ],
+      "expected_document_ids": [
+        195
+      ],
+      "retrieved_chunk_ids": [
+        5154,
+        5155,
+        5158,
+        5153,
+        5156
+      ],
+      "retrieved_document_ids": [
+        195,
+        195,
+        195,
+        195,
+        195
+      ],
+      "project_id": 156,
+      "document_type": "project",
+      "latency_ms": 398.33,
+      "filter_accuracy": 1.0,
+      "document_level_only": false,
+      "chunk_metrics": {
+        "recall@1": 0.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 0.5
+      },
+      "document_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      }
+    },
+    {
+      "case_id": "project_rejected_change",
+      "query": "有没有改动被评估集拦下来过？",
+      "document_name": "knowledge_base_project.md",
+      "difficulty": "medium",
+      "expected_chunk_ids": [
+        5155
+      ],
+      "expected_document_ids": [
+        195
+      ],
+      "retrieved_chunk_ids": [
+        5155,
+        5158,
+        5156,
+        5154,
+        5157
+      ],
+      "retrieved_document_ids": [
+        195,
+        195,
+        195,
+        195,
+        195
+      ],
+      "project_id": 156,
+      "document_type": "project",
+      "latency_ms": 397.47,
+      "filter_accuracy": 1.0,
+      "document_level_only": false,
+      "chunk_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      },
+      "document_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      }
+    },
+    {
+      "case_id": "project_orphan_vectors",
+      "query": "孤儿向量是怎么产生的，为什么难发现？",
+      "document_name": "knowledge_base_project.md",
+      "difficulty": "hard",
+      "expected_chunk_ids": [
+        5155
+      ],
+      "expected_document_ids": [
+        195
+      ],
+      "retrieved_chunk_ids": [
+        5156,
+        5155,
+        5157,
+        5158,
+        5153
+      ],
+      "retrieved_document_ids": [
+        195,
+        195,
+        195,
+        195,
+        195
+      ],
+      "project_id": 156,
+      "document_type": "project",
+      "latency_ms": 597.09,
+      "filter_accuracy": 1.0,
+      "document_level_only": false,
+      "chunk_metrics": {
+        "recall@1": 0.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 0.5
+      },
+      "document_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      }
+    },
+    {
+      "case_id": "project_lessons",
+      "query": "从这些坑里总结出的经验是什么？",
+      "document_name": "knowledge_base_project.md",
+      "difficulty": "easy",
+      "expected_chunk_ids": [
+        5156
+      ],
+      "expected_document_ids": [
+        195
+      ],
+      "retrieved_chunk_ids": [
+        5156,
+        5155,
+        5154,
+        5158,
+        5157
+      ],
+      "retrieved_document_ids": [
+        195,
+        195,
+        195,
+        195,
+        195
+      ],
+      "project_id": 156,
+      "document_type": "project",
+      "latency_ms": 397.95,
+      "filter_accuracy": 1.0,
+      "document_level_only": false,
+      "chunk_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      },
+      "document_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      }
+    },
+    {
+      "case_id": "code_filter_expression",
+      "query": "过滤表达式是怎么拼出来的？",
+      "document_name": "retrieval_service_code.md",
+      "difficulty": "easy",
+      "expected_chunk_ids": [
+        5160
+      ],
+      "expected_document_ids": [
+        196
+      ],
+      "retrieved_chunk_ids": [
+        5164,
+        5160,
+        5163,
+        5161,
+        5162
+      ],
+      "retrieved_document_ids": [
+        196,
+        196,
+        196,
+        196,
+        196
+      ],
+      "project_id": 156,
+      "document_type": "code",
+      "latency_ms": 596.99,
+      "filter_accuracy": 1.0,
+      "document_level_only": false,
+      "chunk_metrics": {
+        "recall@1": 0.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 0.5
+      },
+      "document_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      }
+    },
+    {
+      "case_id": "code_skip_deleted",
+      "query": "检索到已经被删除的片段怎么处理？",
+      "document_name": "retrieval_service_code.md",
+      "difficulty": "easy",
+      "expected_chunk_ids": [
+        5162
+      ],
+      "expected_document_ids": [
+        196
+      ],
+      "retrieved_chunk_ids": [
+        5162,
+        5161,
+        5160,
+        5163,
+        5164
+      ],
+      "retrieved_document_ids": [
+        196,
+        196,
+        196,
+        196,
+        196
+      ],
+      "project_id": 156,
+      "document_type": "code",
+      "latency_ms": 397.75,
+      "filter_accuracy": 1.0,
+      "document_level_only": false,
+      "chunk_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      },
+      "document_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      }
+    },
+    {
+      "case_id": "code_thin_reason",
+      "query": "为什么不让检索服务自己做重排和阈值过滤？",
+      "document_name": "retrieval_service_code.md",
+      "difficulty": "medium",
+      "expected_chunk_ids": [
+        5163
+      ],
+      "expected_document_ids": [
+        196
+      ],
+      "retrieved_chunk_ids": [
+        5163,
+        5164,
+        5159,
+        5160,
+        5162
+      ],
+      "retrieved_document_ids": [
+        196,
+        196,
+        196,
+        196,
+        196
+      ],
+      "project_id": 156,
+      "document_type": "code",
+      "latency_ms": 598.6,
+      "filter_accuracy": 1.0,
+      "document_level_only": false,
+      "chunk_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      },
+      "document_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      }
+    },
+    {
+      "case_id": "code_normalization_future",
+      "query": "将来做混合检索时分数归一化要注意什么？",
+      "document_name": "retrieval_service_code.md",
+      "difficulty": "hard",
+      "expected_chunk_ids": [
+        5164
+      ],
+      "expected_document_ids": [
+        196
+      ],
+      "retrieved_chunk_ids": [
+        5164,
+        5163,
+        5160,
+        5162,
+        5161
+      ],
+      "retrieved_document_ids": [
+        196,
+        196,
+        196,
+        196,
+        196
+      ],
+      "project_id": 156,
+      "document_type": "code",
+      "latency_ms": 596.81,
+      "filter_accuracy": 1.0,
+      "document_level_only": false,
+      "chunk_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      },
+      "document_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      }
+    },
+    {
+      "case_id": "code_limitations",
+      "query": "已知局限里列了哪几条？",
+      "document_name": "retrieval_service_code.md",
+      "difficulty": "easy",
+      "expected_chunk_ids": [
+        5164
+      ],
+      "expected_document_ids": [
+        196
+      ],
+      "retrieved_chunk_ids": [
+        5164,
+        5163,
+        5160,
+        5162,
+        5161
+      ],
+      "retrieved_document_ids": [
+        196,
+        196,
+        196,
+        196,
+        196
+      ],
+      "project_id": 156,
+      "document_type": "code",
+      "latency_ms": 397.82,
+      "filter_accuracy": 1.0,
+      "document_level_only": false,
+      "chunk_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      },
+      "document_metrics": {
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
+      }
+    },
+    {
+      "case_id": "cross_strong_consistency",
+      "query": "强一致性和十次命中的实测结论出自哪里？",
+      "document_name": "retrieval_service_code.md",
+      "difficulty": "medium",
+      "expected_chunk_ids": [
+        5163
+      ],
+      "expected_document_ids": [
+        196
+      ],
+      "retrieved_chunk_ids": [
+        5156,
+        5164,
+        5144,
+        5163,
+        5158
+      ],
+      "retrieved_document_ids": [
+        195,
+        196,
+        193,
+        196,
+        195
+      ],
+      "project_id": 156,
+      "document_type": null,
+      "latency_ms": 597.67,
+      "filter_accuracy": 1.0,
+      "document_level_only": false,
+      "chunk_metrics": {
+        "recall@1": 0.0,
+        "recall@3": 0.0,
+        "recall@5": 1.0,
+        "mrr": 0.25
+      },
+      "document_metrics": {
+        "recall@1": 0.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 0.5
+      }
+    }
+  ]
+}

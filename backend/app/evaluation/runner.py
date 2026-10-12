@@ -31,6 +31,7 @@ from pathlib import Path
 
 from sqlalchemy import select
 
+from app.core.config import settings
 from app.database.session import AsyncSessionLocal
 from app.evaluation.datasets import (
     DOCUMENTS,
@@ -484,8 +485,17 @@ class EvaluationRunner:
             },
             "retrieval_config": {
                 "top_k": 5,
-                "embedding_model": "text-embedding-v4",
-                "embedding_dimension": 1024,
+                # ⚠️ 必须读配置，**不能硬编码**。
+                #
+                # 实测踩过：这里原本写死 `"text-embedding-v4"`，
+                # 而换到 v3 重跑之后，报告里仍然记着 v4 ——
+                # 于是报告**声称的模型与实际用的模型不一致**。
+                #
+                # 后果很具体：两次报告看起来"只有一个变量不同"，
+                # 实际上那个变量根本没被记录。后来的人（或 AI）
+                # 会基于一个错误的对照做判断。
+                "embedding_model": settings.embedding_model,
+                "embedding_dimension": MilvusVectorStore.VECTOR_DIMENSION,
                 "vector_store": "Milvus",
                 "collection": MilvusVectorStore.COLLECTION_NAME,
                 "metric_type": "COSINE",
