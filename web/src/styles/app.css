@@ -33,6 +33,66 @@
   --radius: 8px;
   --radius-sm: 6px;
   --shadow: 0 1px 3px rgba(16, 24, 40, 0.06);
+
+  /* ---------------------------------------------------- 字族
+   *
+   * 保持系统字族：零加载成本、渲染最快。
+   * 中文 Web 字体动辄数 MB，而收益只是"看起来特别"——
+   * 那正是 docs/UI_DESIGN.md 要避免的方向。
+   */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    'PingFang SC', 'Microsoft YaHei', sans-serif;
+
+  /* 等宽只用于**数字与代码**：
+   * 比例字体下 "1024" 与 "1111" 宽度不同，
+   * 进度从 9/10 变成 10/10 时整行会跳动。 */
+  --font-mono: 'SF Mono', 'Cascadia Code', Consolas,
+    'Courier New', monospace;
+
+  /* ---------------------------------------------------- 字号阶梯
+   *
+   * 六档。新增第七档意味着阶梯失效 ——
+   * 一旦有第七档，就会有人加第八档。
+   *
+   * ⚠️ 历史遗留：此前 CSS 里散落着 16/20/24/26px 四个值，
+   * 不在阶梯内。它们**尚未收敛**（见 UI_DESIGN.md §12 的检查项），
+   * 收敛时应当映射到最接近的一档，而不是新增档位。
+   */
+  --fs-xs: 12px;    /* 元信息、标签 */
+  --fs-sm: 13px;    /* 辅助说明、次要按钮 */
+  --fs-base: 14px;  /* 正文默认 */
+  --fs-md: 15px;    /* 题目正文 */
+  --fs-lg: 18px;    /* 卡片标题 */
+  --fs-xl: 22px;    /* 页面标题 */
+
+  /* ---------------------------------------------------- 间距
+   *
+   * 只用 4 的倍数。出现 `padding: 10px 15px` 就说明
+   * 间距是随手调的，而不是按体系。 */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+
+  /* ---------------------------------------------------- 宽度
+   *
+   * 面试题目按 --w-read 约束：一行超过约 40 个汉字之后，
+   * 阅读时的回行定位会变难。这不是审美，是阅读效率。 */
+  --w-page: 960px;
+  --w-read: 720px;
+
+  /* ---------------------------------------------------- 动效
+   *
+   * 只用于传达"状态发生了变化"，不用于装饰。
+   * 不超过 400ms —— 用户是来答题的，不是来看动画的。 */
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --ease: cubic-bezier(0.2, 0, 0.2, 1);
+
+  /* 胶囊形只给 tag：表示"这是一个状态，不是一个按钮" */
+  --radius-pill: 999px;
 }
 
 * {
@@ -49,11 +109,28 @@ body {
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
-    'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-  font-size: 14px;
+  font-family: var(--font-sans);
+  font-size: var(--fs-base);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+}
+
+/*
+  `.num` 用于一切**数字**：分数、题号、耗时、计数、维度数。
+  等宽 + 表格数字，避免数字变化时整行跳动。
+*/
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+  代码片段（面试依据里可能包含代码）。
+  只换字族与底色，不改字号 —— 改动字号会破坏行高节奏。
+*/
+code,
+pre {
+  font-family: var(--font-mono);
 }
 
 #app {
