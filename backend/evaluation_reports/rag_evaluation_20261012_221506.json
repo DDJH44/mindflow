@@ -1,9 +1,9 @@
 {
   "evaluation": {
     "version": "v2",
-    "dataset_version": "v2",
+    "dataset_version": "v3-20261012-fixed-marker",
     "retrieval_version": "v1",
-    "created_at": "2026-10-12T16:06:59.765760",
+    "created_at": "2026-10-12T22:15:06.214804",
     "case_count": 23,
     "corpus_seeded": true,
     "corpus_documents": [
@@ -59,13 +59,13 @@
       "mrr": 0.9782608695652174
     },
     "chunk_metrics": {
-      "recall@1": 0.6086956521739131,
-      "recall@3": 0.8695652173913043,
-      "recall@5": 0.9565217391304348,
-      "mrr": 0.7514492753623189
+      "recall@1": 0.6521739130434783,
+      "recall@3": 0.9130434782608695,
+      "recall@5": 1.0,
+      "mrr": 0.7949275362318842
     },
     "filter_accuracy": 1.0,
-    "avg_latency_ms": 509.12782608695653,
+    "avg_latency_ms": 500.59391304347827,
     "document_recall@5_by_document_type": {
       "resume": 1.0,
       "jd": 1.0,
@@ -86,28 +86,28 @@
       "document_name": "zhangming_resume.md",
       "difficulty": "hard",
       "expected_chunk_ids": [
-        5143
+        5768
       ],
       "expected_document_ids": [
-        193
+        269
       ],
       "retrieved_chunk_ids": [
-        5143,
-        5146,
-        5144,
-        5145,
-        5142
+        5768,
+        5771,
+        5769,
+        5770,
+        5767
       ],
       "retrieved_document_ids": [
-        193,
-        193,
-        193,
-        193,
-        193
+        269,
+        269,
+        269,
+        269,
+        269
       ],
-      "project_id": 156,
+      "project_id": 183,
       "document_type": "resume",
-      "latency_ms": 565.83,
+      "latency_ms": 569.68,
       "filter_accuracy": 1.0,
       "document_level_only": false,
       "chunk_metrics": {
@@ -129,28 +129,28 @@
       "document_name": "zhangming_resume.md",
       "difficulty": "medium",
       "expected_chunk_ids": [
-        5143
+        5768
       ],
       "expected_document_ids": [
-        193
+        269
       ],
       "retrieved_chunk_ids": [
-        5143,
-        5144,
-        5142,
-        5146,
-        5145
+        5768,
+        5769,
+        5767,
+        5771,
+        5770
       ],
       "retrieved_document_ids": [
-        193,
-        193,
-        193,
-        193,
-        193
+        269,
+        269,
+        269,
+        269,
+        269
       ],
-      "project_id": 156,
+      "project_id": 183,
       "document_type": "resume",
-      "latency_ms": 595.65,
+      "latency_ms": 396.08,
       "filter_accuracy": 1.0,
       "document_level_only": false,
       "chunk_metrics": {
@@ -172,28 +172,28 @@
       "document_name": "zhangming_resume.md",
       "difficulty": "medium",
       "expected_chunk_ids": [
-        5143
+        5768
       ],
       "expected_document_ids": [
-        193
+        269
       ],
       "retrieved_chunk_ids": [
-        5143,
-        5144,
-        5142,
-        5146,
-        5141
+        5768,
+        5769,
+        5767,
+        5771,
+        5766
       ],
       "retrieved_document_ids": [
-        193,
-        193,
-        193,
-        193,
-        193
+        269,
+        269,
+        269,
+        269,
+        269
       ],
-      "project_id": 156,
+      "project_id": 183,
       "document_type": "resume",
-      "latency_ms": 597.52,
+      "latency_ms": 398.39,
       "filter_accuracy": 1.0,
       "document_level_only": false,
       "chunk_metrics": {
@@ -215,28 +215,28 @@
       "document_name": "zhangming_resume.md",
       "difficulty": "easy",
       "expected_chunk_ids": [
-        5141
+        5766
       ],
       "expected_document_ids": [
-        193
+        269
       ],
       "retrieved_chunk_ids": [
-        5142,
-        5141,
-        5145,
-        5143,
-        5144
+        5767,
+        5766,
+        5770,
+        5768,
+        5769
       ],
       "retrieved_document_ids": [
-        193,
-        193,
-        193,
-        193,
-        193
+        269,
+        269,
+        269,
+        269,
+        269
       ],
-      "project_id": 156,
+      "project_id": 183,
       "document_type": "resume",
-      "latency_ms": 397.09,
+      "latency_ms": 596.52,
       "filter_accuracy": 1.0,
       "document_level_only": false,
       "chunk_metrics": {
@@ -258,28 +258,28 @@
       "document_name": "zhangming_resume.md",
       "difficulty": "easy",
       "expected_chunk_ids": [
-        5141
+        5766
       ],
       "expected_document_ids": [
-        193
+        269
       ],
       "retrieved_chunk_ids": [
-        5141,
-        5142,
-        5145,
-        5144,
-        5143
+        5766,
+        5767,
+        5770,
+        5769,
+        5768
       ],
       "retrieved_document_ids": [
-        193,
-        193,
-        193,
-        193,
-        193
+        269,
+        269,
+        269,
+        269,
+        269
       ],
-      "project_id": 156,
+      "project_id": 183,
       "document_type": "resume",
-      "latency_ms": 597.61,
+      "latency_ms": 398.45,
       "filter_accuracy": 1.0,
       "document_level_only": false,
       "chunk_metrics": {
@@ -301,28 +301,28 @@
       "document_name": "zhangming_resume.md",
       "difficulty": "easy",
       "expected_chunk_ids": [
-        5144
+        5769
       ],
       "expected_document_ids": [
-        193
+        269
       ],
       "retrieved_chunk_ids": [
-        5145,
-        5144,
-        5146,
-        5141,
-        5142
+        5770,
+        5769,
+        5771,
+        5766,
+        5767
       ],
       "retrieved_document_ids": [
-        193,
-        193,
-        193,
-        193,
-        193
+        269,
+        269,
+        269,
+        269,
+        269
       ],
-      "project_id": 156,
+      "project_id": 183,
       "document_type": "resume",
-      "latency_ms": 596.7,
+      "latency_ms": 596.54,
       "filter_accuracy": 1.0,
       "document_level_only": false,
       "chunk_metrics": {
@@ -344,28 +344,28 @@
       "document_name": "senior_backend_jd.md",
       "difficulty": "easy",
       "expected_chunk_ids": [
-        5147
+        5772
       ],
       "expected_document_ids": [
-        194
+        270
       ],
       "retrieved_chunk_ids": [
-        5147,
-        5148,
-        5150,
-        5149,
-        5151
+        5772,
+        5773,
+        5775,
+        5774,
+        5776
       ],
       "retrieved_document_ids": [
-        194,
-        194,
-        194,
-        194,
-        194
+        270,
+        270,
+        270,
+        270,
+        270
       ],
-      "project_id": 156,
+      "project_id": 183,
       "document_type": "jd",
-      "latency_ms": 398.49,
+      "latency_ms": 397.25,
       "filter_accuracy": 1.0,
       "document_level_only": false,
       "chunk_metrics": {
@@ -387,35 +387,35 @@
       "document_name": "senior_backend_jd.md",
       "difficulty": "medium",
       "expected_chunk_ids": [
-        5147
+        5773
       ],
       "expected_document_ids": [
-        194
+        270
       ],
       "retrieved_chunk_ids": [
-        5148,
-        5151,
-        5152,
-        5150,
-        5149
+        5773,
+        5776,
+        5777,
+        5775,
+        5774
       ],
       "retrieved_document_ids": [
-        194,
-        194,
-        194,
-        194,
-        194
+        270,
+        270,
+        270,
+        270,
+        270
       ],
-      "project_id": 156,
+      "project_id": 183,
       "document_type": "jd",
-      "latency_ms": 596.69,
+      "latency_ms": 597.98,
       "filter_accuracy": 1.0,
       "document_level_only": false,
       "chunk_metrics": {
-        "recall@1": 0.0,
-        "recall@3": 0.0,
-        "recall@5": 0.0,
-        "mrr": 0.0
+        "recall@1": 1.0,
+        "recall@3": 1.0,
+        "recall@5": 1.0,
+        "mrr": 1.0
       },
       "document_metrics": {
         "recall@1": 1.0,
@@ -430,28 +430,28 @@
       "document_name": "senior_backend_jd.md",
       "difficulty": "medium",
       "expected_chunk_ids": [
-        5148
+        5773
       ],
       "expected_document_ids": [
-        194
+        270
       ],
       "retrieved_chunk_ids": [
-        5152,
-        5149,
-        5148,
-        5151,
-        5150
+        5777,
+        5774,
+        5773,
+        5776,
+        5775
       ],
       "retrieved_document_ids": [
-        194,
-        194,
-        194,
-        194,
-        194
+        270,
+        270,
+        270,
+        270,
+        270
       ],
-      "project_id": 156,
+      "project_id": 183,
       "document_type": "jd",
-      "latency_ms": 397.54,
+      "latency_ms": 396.81,
       "filter_accuracy": 1.0,
       "document_level_only": false,
       "chunk_metrics": {
@@ -473,28 +473,28 @@
       "document_name": "senior_backend_jd.md",
       "difficulty": "easy",
       "expected_chunk_ids": [
-        5148
+        5773
       ],
       "expected_document_ids": [
-        194
+        270
       ],
       "retrieved_chunk_ids": [
-        5148,
-        5150,
-        5149,
-        5151,
-        5152
+        5773,
+        5775,
+        5774,
+        5776,
+        5777
       ],
       "retrieved_document_ids": [
-        194,
-        194,
-        194,
-        194,
-        194
+        270,
+        270,
+        270,
+        270,
+        270
       ],
-      "project_id": 156,
+      "project_id": 183,
       "document_type": "jd",
-      "latency_ms": 398.03,
+      "latency_ms": 398.62,
       "filter_accuracy": 1.0,
       "document_level_only": false,
       "chunk_metrics": {
@@ -516,28 +516,28 @@
       "document_name": "senior_backend_jd.md",
       "difficulty": "easy",
       "expected_chunk_ids": [
-        5148
+        5773
       ],
       "expected_document_ids": [
-        194
+        270
       ],
       "retrieved_chunk_ids": [
-        5148,
-        5150,
-        5149,
-        5152,
-        5147
+        5773,
+        5775,
+        5774,
+        5777,
+        5772
       ],
       "retrieved_document_ids": [
-        194,
-        194,
-        194,
-        194,
-        194
+        270,
+        270,
+        270,
+        270,
+        270
       ],
-      "project_id": 156,
+      "project_id": 183,
       "document_type": "jd",
-      "latency_ms": 596.99,
+      "latency_ms": 598.05,
       "filter_accuracy": 1.0,
       "document_level_only": false,
       "chunk_metrics": {
@@ -559,28 +559,28 @@
       "document_name": "knowledge_base_project.md",
       "difficulty": "hard",
       "expected_chunk_ids": [
-        5153
+        5778
       ],
       "expected_document_ids": [
-        195
+        271
       ],
       "retrieved_chunk_ids": [
-        5155,
-        5154,
-        5158,
-        5157,
-        5153
+        5780,
+        5779,
+        5783,
+        5782,
+        5778
       ],
       "retrieved_document_ids": [
-        195,
-        195,
-        195,
-        195,
-        195
+        271,
+        271,
+        271,
+        271,
+        271
       ],
-      "project_id": 156,
+      "project_id": 183,
       "document_type": "project",
-      "latency_ms": 597.73,
+      "latency_ms": 595.95,
       "filter_accuracy": 1.0,
       "document_level_only": false,
       "chunk_metrics": {
@@ -602,28 +602,28 @@
       "document_name": "knowledge_base_project.md",
       "difficulty": "medium",
       "expected_chunk_ids": [
-        5154
+        5779
       ],
       "expected_document_ids": [
-        195
+        271
       ],
       "retrieved_chunk_ids": [
-        5154,
-        5155,
-        5156,
-        5157,
-        5158
+        5779,
+        5780,
+        5781,
+        5782,
+        5783
       ],
       "retrieved_document_ids": [
-        195,
-        195,
-        195,
-        195,
-        195
+        271,
+        271,
+        271,
+        271,
+        271
       ],
-      "project_id": 156,
+      "project_id": 183,
       "document_type": "project",
-      "latency_ms": 397.59,
+      "latency_ms": 597.83,
       "filter_accuracy": 1.0,
       "document_level_only": false,
       "chunk_metrics": {
@@ -645,28 +645,28 @@
       "document_name": "knowledge_base_project.md",
       "difficulty": "hard",
       "expected_chunk_ids": [
-        5155
+        5780
       ],
       "expected_document_ids": [
-        195
+        271
       ],
       "retrieved_chunk_ids": [
-        5154,
-        5155,
-        5158,
-        5153,
-        5156
+        5779,
+        5780,
+        5783,
+        5778,
+        5781
       ],
       "retrieved_document_ids": [
-        195,
-        195,
-        195,
-        195,
-        195
+        271,
+        271,
+        271,
+        271,
+        271
       ],
-      "project_id": 156,
+      "project_id": 183,
       "document_type": "project",
-      "latency_ms": 398.33,
+      "latency_ms": 597.06,
       "filter_accuracy": 1.0,
       "document_level_only": false,
       "chunk_metrics": {
@@ -688,28 +688,28 @@
       "document_name": "knowledge_base_project.md",
       "difficulty": "medium",
       "expected_chunk_ids": [
-        5155
+        5780
       ],
       "expected_document_ids": [
-        195
+        271
       ],
       "retrieved_chunk_ids": [
-        5155,
-        5158,
-        5156,
-        5154,
-        5157
+        5780,
+        5783,
+        5781,
+        5779,
+        5782
       ],
       "retrieved_document_ids": [
-        195,
-        195,
-        195,
-        195,
-        195
+        271,
+        271,
+        271,
+        271,
+        271
       ],
-      "project_id": 156,
+      "project_id": 183,
       "document_type": "project",
-      "latency_ms": 397.47,
+      "latency_ms": 399.04,
       "filter_accuracy": 1.0,
       "document_level_only": false,
       "chunk_metrics": {
@@ -731,28 +731,28 @@
       "document_name": "knowledge_base_project.md",
       "difficulty": "hard",
       "expected_chunk_ids": [
-        5155
+        5780
       ],
       "expected_document_ids": [
-        195
+        271
       ],
       "retrieved_chunk_ids": [
-        5156,
-        5155,
-        5157,
-        5158,
-        5153
+        5781,
+        5780,
+        5782,
+        5783,
+        5778
       ],
       "retrieved_document_ids": [
-        195,
-        195,
-        195,
-        195,
-        195
+        271,
+        271,
+        271,
+        271,
+        271
       ],
-      "project_id": 156,
+      "project_id": 183,
       "document_type": "project",
-      "latency_ms": 597.09,
+      "latency_ms": 595.42,
       "filter_accuracy": 1.0,
       "document_level_only": false,
       "chunk_metrics": {
@@ -774,28 +774,28 @@
       "document_name": "knowledge_base_project.md",
       "difficulty": "easy",
       "expected_chunk_ids": [
-        5156
+        5781
       ],
       "expected_document_ids": [
-        195
+        271
       ],
       "retrieved_chunk_ids": [
-        5156,
-        5155,
-        5154,
-        5158,
-        5157
+        5781,
+        5780,
+        5779,
+        5783,
+        5782
       ],
       "retrieved_document_ids": [
-        195,
-        195,
-        195,
-        195,
-        195
+        271,
+        271,
+        271,
+        271,
+        271
       ],
-      "project_id": 156,
+      "project_id": 183,
       "document_type": "project",
-      "latency_ms": 397.95,
+      "latency_ms": 399.13,
       "filter_accuracy": 1.0,
       "document_level_only": false,
       "chunk_metrics": {
@@ -817,28 +817,28 @@
       "document_name": "retrieval_service_code.md",
       "difficulty": "easy",
       "expected_chunk_ids": [
-        5160
+        5785
       ],
       "expected_document_ids": [
-        196
+        272
       ],
       "retrieved_chunk_ids": [
-        5164,
-        5160,
-        5163,
-        5161,
-        5162
+        5789,
+        5785,
+        5788,
+        5786,
+        5787
       ],
       "retrieved_document_ids": [
-        196,
-        196,
-        196,
-        196,
-        196
+        272,
+        272,
+        272,
+        272,
+        272
       ],
-      "project_id": 156,
+      "project_id": 183,
       "document_type": "code",
-      "latency_ms": 596.99,
+      "latency_ms": 397.22,
       "filter_accuracy": 1.0,
       "document_level_only": false,
       "chunk_metrics": {
@@ -860,28 +860,28 @@
       "document_name": "retrieval_service_code.md",
       "difficulty": "easy",
       "expected_chunk_ids": [
-        5162
+        5787
       ],
       "expected_document_ids": [
-        196
+        272
       ],
       "retrieved_chunk_ids": [
-        5162,
-        5161,
-        5160,
-        5163,
-        5164
+        5787,
+        5786,
+        5785,
+        5788,
+        5789
       ],
       "retrieved_document_ids": [
-        196,
-        196,
-        196,
-        196,
-        196
+        272,
+        272,
+        272,
+        272,
+        272
       ],
-      "project_id": 156,
+      "project_id": 183,
       "document_type": "code",
-      "latency_ms": 397.75,
+      "latency_ms": 596.85,
       "filter_accuracy": 1.0,
       "document_level_only": false,
       "chunk_metrics": {
@@ -903,28 +903,28 @@
       "document_name": "retrieval_service_code.md",
       "difficulty": "medium",
       "expected_chunk_ids": [
-        5163
+        5788
       ],
       "expected_document_ids": [
-        196
+        272
       ],
       "retrieved_chunk_ids": [
-        5163,
-        5164,
-        5159,
-        5160,
-        5162
+        5788,
+        5789,
+        5784,
+        5785,
+        5787
       ],
       "retrieved_document_ids": [
-        196,
-        196,
-        196,
-        196,
-        196
+        272,
+        272,
+        272,
+        272,
+        272
       ],
-      "project_id": 156,
+      "project_id": 183,
       "document_type": "code",
-      "latency_ms": 598.6,
+      "latency_ms": 397.51,
       "filter_accuracy": 1.0,
       "document_level_only": false,
       "chunk_metrics": {
@@ -946,28 +946,28 @@
       "document_name": "retrieval_service_code.md",
       "difficulty": "hard",
       "expected_chunk_ids": [
-        5164
+        5789
       ],
       "expected_document_ids": [
-        196
+        272
       ],
       "retrieved_chunk_ids": [
-        5164,
-        5163,
-        5160,
-        5162,
-        5161
+        5789,
+        5788,
+        5785,
+        5787,
+        5786
       ],
       "retrieved_document_ids": [
-        196,
-        196,
-        196,
-        196,
-        196
+        272,
+        272,
+        272,
+        272,
+        272
       ],
-      "project_id": 156,
+      "project_id": 183,
       "document_type": "code",
-      "latency_ms": 596.81,
+      "latency_ms": 398.06,
       "filter_accuracy": 1.0,
       "document_level_only": false,
       "chunk_metrics": {
@@ -989,28 +989,28 @@
       "document_name": "retrieval_service_code.md",
       "difficulty": "easy",
       "expected_chunk_ids": [
-        5164
+        5789
       ],
       "expected_document_ids": [
-        196
+        272
       ],
       "retrieved_chunk_ids": [
-        5164,
-        5163,
-        5160,
-        5162,
-        5161
+        5789,
+        5788,
+        5785,
+        5787,
+        5786
       ],
       "retrieved_document_ids": [
-        196,
-        196,
-        196,
-        196,
-        196
+        272,
+        272,
+        272,
+        272,
+        272
       ],
-      "project_id": 156,
+      "project_id": 183,
       "document_type": "code",
-      "latency_ms": 397.82,
+      "latency_ms": 597.66,
       "filter_accuracy": 1.0,
       "document_level_only": false,
       "chunk_metrics": {
@@ -1032,28 +1032,28 @@
       "document_name": "retrieval_service_code.md",
       "difficulty": "medium",
       "expected_chunk_ids": [
-        5163
+        5788
       ],
       "expected_document_ids": [
-        196
+        272
       ],
       "retrieved_chunk_ids": [
-        5156,
-        5164,
-        5144,
-        5163,
-        5158
+        5781,
+        5789,
+        5769,
+        5788,
+        5783
       ],
       "retrieved_document_ids": [
-        195,
-        196,
-        193,
-        196,
-        195
+        271,
+        272,
+        269,
+        272,
+        271
       ],
-      "project_id": 156,
+      "project_id": 183,
       "document_type": null,
-      "latency_ms": 597.67,
+      "latency_ms": 597.56,
       "filter_accuracy": 1.0,
       "document_level_only": false,
       "chunk_metrics": {

@@ -13,6 +13,26 @@ class InterviewContextBuilder:
         "code",
     ]
 
+    # 每个材料类型取多少块进上下文。
+    #
+    # ⚠️ 这个值有**实测依据**，不是拍的
+    # （`app/core/measure_context_k.py`）。按产品实际用法
+    # （四类型各取 k 块、全部喂给模型）测"答案是否进入上下文"：
+    #
+    #     k=1  0.652      k=3  0.957  ← 此前的值
+    #     k=2  0.913      k=4  0.957
+    #                     k=5  1.000  ← 首次达到满分
+    #
+    # k=4 没有提升而 k=5 有 —— 那个用例的答案恰好排在第 5。
+    # 因此取 5 是"刚好够"，而不是取 10：
+    # 上下文越长，模型越容易漏掉中间位置的信息。
+    #
+    # **为什么不做 LLM 重排**：实测重排在**产品指标上是净负收益**
+    # （救回 0 例、弄丢 1 例，`app/core/test_rerank_context.py`），
+    # 而单次重排中位 19.6 秒。多取两块更好、更便宜、
+    # 且不引入新的失败模式（重排超时、JSON 解析失败）。
+    DEFAULT_LIMIT_PER_TYPE = 5
+
     def __init__(self, db: AsyncSession):
         self.retrieval_service = RetrievalService(db)
 
@@ -20,7 +40,7 @@ class InterviewContextBuilder:
         self,
         project_id: int,
         query: str,
-        limit_per_type: int = 3,
+        limit_per_type: int = DEFAULT_LIMIT_PER_TYPE,
     ) -> dict:
         """
         根据项目和问题，检索不同类型的候选人资料。

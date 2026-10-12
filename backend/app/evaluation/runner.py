@@ -469,7 +469,14 @@ class EvaluationRunner:
         report = {
             "evaluation": {
                 "version": "v2",
-                "dataset_version": "v2",
+                # 数据集版本在 2026-10-12 修正过一处**错误 marker**：
+                # `jd_evaluation_bonus` 原本指向"任职要求 六、具备良好的
+                # 沟通能力"，而那**不回答**"加分项里的评估经验"这个问题。
+                #
+                # 因此 v2 之前生成的报告与之后**不可直接比较** ——
+                # 分子（"命中期望块"）的定义变了。
+                # 版本号就是给这种不可比性做标记用的。
+                "dataset_version": "v3-20261012-fixed-marker",
                 "retrieval_version": "v1",
                 "created_at": datetime.now().isoformat(),
                 "case_count": len(results),

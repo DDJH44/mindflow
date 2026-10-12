@@ -1,6 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.models.document_chunk import DocumentChunk
 from app.services.milvus_vector_store import MilvusVectorStore
 from app.services.openai_embedding_service import OpenAIEmbeddingService
@@ -18,9 +19,20 @@ class RetrievalService:
         limit: int = 5,
         project_id: int | None = None,
         document_type: str | None = None,
+        rerank: bool | None = None,
     ) -> list[dict]:
+        """检索。`rerank=None` 时跟随 `settings.rerank_enabled`。
+
+        显式传 `rerank=False` 让评估可以在同一进程里
+        对比"开与不开"的结果 —— 那是判断它值不值得的唯一办法。
+        """
+
         if not query.strip():
             raise ValueError("检索问题不能为空")
+
+        use_rerank = (
+            settings.rerank_enabled if rerank is None else rerank
+        )
 
         query_vector = await self.embedding_service.embed_text(query)
 
@@ -42,9 +54,20 @@ class RetrievalService:
             else None
         )
 
+        # 需要重排时先取更多候选。
+        #
+        # 取与 `limit` 相同的数量等于**只换顺序、不换集合** ——
+        # 重排的最大价值恰恰来自更大的候选池
+        # （基线显示正确答案常在 top-5 内但排在第 2–5 位）。
+        search_limit = (
+            max(limit, settings.rerank_candidates)
+            if use_rerank
+            else limit
+        )
+
         results = await self.vector_store.search(
             vector=query_vector,
-            limit=limit,
+            limit=search_limit,
             filters=filter_expression,
         )
 
@@ -89,4 +112,13 @@ class RetrievalService:
                 }
             )
 
-        return retrieved_chunks
+        if not use_rerank:
+            return retrieved_chunks[:limit]
+
+        from app.services.rerank_service import RerankService
+
+        return await RerankService().rerank(
+            query=query,
+            candidates=retrieved_chunks,
+            top_k=limit,
+        )
