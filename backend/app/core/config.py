@@ -31,9 +31,43 @@ class Settings(BaseSettings):
     # =====================
     # JWT 配置
     # =====================
+    # 签名密钥。**必须是随机值，且不能提交到仓库。**
+    #
+    # ⚠️ 实测坑：`.env` 里长期留着
+    # `mindflow_2026_development_secret_key_change_later` ——
+    # 一个**看起来像配置、实际是占位符**的值。
+    # 这种值最危险的地方是它**能正常工作**：
+    # 本地开发、测试、甚至部署都不会报错，
+    # 直到有人用它伪造出合法的登录令牌。
+    #
+    # 生成方式（见 `app/core/generate_secret.py`）：
+    #     uv run python -m app.core.generate_secret
+    #
+    # 启动时会校验它（见 `main.py` 的 `_check_secret_key`）：
+    # **非 development 环境下用占位值会拒绝启动**。
     secret_key: str
 
     algorithm: str = "HS256"
+
+    # =====================
+    # CORS
+    # =====================
+    # 允许的跨域来源，逗号分隔。**默认空 = 不启用 CORS**。
+    #
+    # 为什么默认空是**正确**的：前端把 `/api` 代理到后端
+    # （见 `web/vite.config.ts`），因此浏览器看到的是**同源**请求，
+    # 根本不需要 CORS。
+    #
+    # 而"为了省事加一个 `allow_origins=["*"]`"是个常见错误：
+    # 那会让**任意网站**都能带着用户的凭据调这个 API。
+    #
+    # 只有前端与后端**不同源**部署时才需要配置，例如：
+    #     CORS_ALLOW_ORIGINS=https://mindflow.example.com
+    cors_allow_origins: str = ""
+
+    # =====================
+    # 嵌入配置
+    # =====================
 
     embedding_api_key: str = ""
     embedding_base_url: str = ""

@@ -34,6 +34,7 @@
 
 import argparse
 import asyncio
+import os
 import re
 import subprocess
 import sys
@@ -68,6 +69,13 @@ SUITES: tuple[tuple[str, bool], ...] = (
     # 限流：注册按 IP、上传按用户。断言里包含一条**设计选择**
     # （Redis 不可用时必须拒绝，不能静默放行）。
     ("test_rate_limit", False),
+    # 启动守卫与 CORS：占位密钥在生产环境必须**拒绝启动**；
+    # 运行时不得允许任意来源（读配置看不出"*"挂错位置）。
+    ("test_secret_and_cors", False),
+    # dotenv 隔离（D69）：`pymilvus` 导入时会 `load_dotenv()`
+    # 把 `.env` 注入 `os.environ`，而环境变量**优先级高于** `.env`
+    # → 曾导致子进程用旧密钥签发令牌、一批套件报 401。
+    ("test_dotenv_isolation", False),
     ("test_document_upload", True),
     ("test_resume_upload", True),
     # 会调用模型的套件
@@ -138,10 +146,72 @@ def extract_counts(output: str) -> str:
     return f"{passed}/{total}"
 
 
+def reset_rate_limits() -> None:
+    """清掉 Redis 里的限流计数。**只给门禁在跑套件前调用。**
+
+    ## 为什么需要它
+
+    限流是**安全控制**，而套件测的是**行为**。实测多个套件累计上传
+    超过"30 次/小时"的限额，于是套件报 429，失败信息是
+    「操作过于频繁」—— 完全指向被测代码之外。
+
+    ## 为什么由门禁统一清，而不是让每个套件自己清
+
+    让套件各自清会产生**隐藏的清理依赖**：清少了互相消耗、
+    清多了误删真实计数，而且每个新套件都要记得这件事。
+
+    ## 为什么不靠"测试模式"关掉限流
+
+    我第一版加了个 `TESTING` 环境变量来关限流，但它**不生效** ——
+    因为限流判断发生在**运行中的后端进程**里，而后端是用
+    `start-all.ps1` 启动的（没设那个变量）。
+    从测试进程设环境变量只能影响**测试自己**，
+    影响不到另一个进程里的判断。
+
+    这是个值得记住的教训：**先问清"是谁在做这个判断"**，
+    再决定在哪里改。
+
+    ## 为什么不干脆调高限额
+
+    那会削弱生产默认值。而"测试要跑几十次上传"本身是
+    测试的特性，不是生产的特性 —— 不该为它放宽线上配置。
+
+    Redis 不可用时**静默跳过**：限流本身 fail-closed，
+    而门禁不该因为清理失败就中断（套件会自己报出真实问题）。
+    """
+
+    try:
+        from app.core.rate_limit import get_redis
+
+        async def _clear() -> int:
+            client = get_redis()
+            removed = 0
+
+            async for key in client.scan_iter(match="ratelimit:*"):
+                await client.delete(key)
+                removed += 1
+
+            await client.aclose()
+            return removed
+
+        asyncio.run(_clear())
+
+    except Exception:  # noqa: BLE001
+        # 清理失败不拦停门禁 —— 套件会自己暴露真实问题
+        pass
+
+
 def run_suite(name: str) -> tuple[str, str, float]:
     """跑一个套件，返回 (状态, 说明, 耗时秒)。"""
 
     started = time.monotonic()
+
+    # 每个套件前清一次限流计数 —— 避免套件之间互相消耗额度。
+    #
+    # 放在这里（而不是每个套件内部）是因为：限流判断发生在
+    # **运行中的后端**里，因此只能在"发请求之前"清，
+    # 而门禁是唯一知道"什么时候要开始一个新套件"的地方。
+    reset_rate_limits()
 
     process = subprocess.run(
         [sys.executable, "-m", f"app.core.{name}"],
