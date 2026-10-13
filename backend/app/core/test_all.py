@@ -62,6 +62,9 @@ SUITES: tuple[tuple[str, bool], ...] = (
     ("test_usage_quota", True),
     ("test_quota_refund", False),
     ("test_knowledge_extraction", True),
+    # 上传体积上限：四条防线分别在请求头、读取流、字符数、块数。
+    # 必须走**真实 HTTP**，否则会绕过第一层（头部早退）。
+    ("test_upload_limits", True),
     ("test_document_upload", True),
     ("test_resume_upload", True),
     # 会调用模型的套件

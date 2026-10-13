@@ -2,10 +2,19 @@ from pathlib import Path
 from typing import Literal
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    Request,
+    UploadFile,
+    status,
+)
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.database.session import get_db
 from app.repositories.document_repository import DocumentRepository
 from app.repositories.project_repository import ProjectRepository
@@ -46,6 +55,75 @@ def _discard_upload(file_path: Path) -> None:
     except OSError:
         # 删不掉不影响对用户的响应，最坏情况是留一个孤儿文件
         pass
+
+
+def _too_large(limit_bytes: int) -> HTTPException:
+    """构造统一的 413 响应。
+
+    用 **413 Content Too Large** 而不是 400：
+    这是"体积超限"这一类问题，客户端与代理都能识别它，
+    而 400 会和"文件类型不对"混在一起。
+    """
+
+    return HTTPException(
+        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+        detail=(
+            f"文件超过上限 {limit_bytes // (1024 * 1024)} MB。"
+            "请拆分后再上传（例如只上传与岗位最相关的部分）。"
+        ),
+    )
+
+
+async def _read_upload_capped(
+    file: UploadFile,
+    file_path: Path,
+    limit_bytes: int,
+) -> int:
+    """**边写边计数**地把上传流写入磁盘，超过上限立即中止。
+
+    返回实际写入的字节数。
+
+    ## 为什么不能等读完再判断
+
+    `Content-Length` 头可以**谎报**（客户端可以不发、也可以发假的），
+    因此头部检查只是"早退优化"，不是安全边界。
+    真正的边界必须在**读取流的过程中**建立 ——
+    否则一个谎报为 1KB 的 10GB 请求会把磁盘写满。
+
+    ## 为什么超限时要删掉已写的部分
+
+    分块读取意味着**可能已经写了一半**。若不清理，
+    一次被拒绝的上传会留下半个文件 ——
+    那正是本仓库里 69 个孤儿文件的来源之一。
+
+    注意：`UploadFile` 先被 Starlette 落到临时文件，
+    因此"超大请求"在到达本函数之前就已经被 SpooledTemporaryFile
+    接收过一次。要彻底避免那一步，需要限制请求体大小
+    （见 `check_upload_limits.py` 的说明）。
+    """
+
+    written = 0
+
+    try:
+        with file_path.open("wb") as buffer:
+            while chunk := await file.read(1024 * 1024):
+                written += len(chunk)
+
+                # 先判断再写：避免为"注定要被拒绝"的数据落盘
+                if written > limit_bytes:
+                    raise _too_large(limit_bytes)
+
+                buffer.write(chunk)
+
+    except HTTPException:
+        _discard_upload(file_path)
+        raise
+
+    except Exception:
+        _discard_upload(file_path)
+        raise
+
+    return written
 
 
 @router.get(
@@ -274,12 +352,30 @@ async def enqueue_index_job(db, document_id: int) -> None:
 )
 async def upload_document(
     project_id: int,
+    request: Request,
     file: UploadFile = File(...),
     document_type: Literal["resume", "jd", "project", "code", "other"] = "other",
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
     """上传项目文档"""
+
+    # 0. 体积第一道（最便宜）：看请求头。
+    #
+    # `Content-Length` **可以谎报**（客户端可以不发、也可以发假的），
+    # 因此这一层只是"早退优化" —— 让诚实的客户端尽快收到明确的
+    # 拒绝，而不是先上传几百 MB 再被拒。
+    #
+    # **真正的边界在读取流的过程中建立**（见 `_read_upload_capped`）。
+    content_length = request.headers.get("content-length")
+
+    if content_length and content_length.isdigit():
+        # 多部分表单还有边界与头部开销，留一点余量，
+        # 否则一个正好 5MB 的文件会被误拒。
+        overhead_allowance = 8 * 1024
+
+        if int(content_length) > settings.max_upload_bytes + overhead_allowance:
+            raise _too_large(settings.max_upload_bytes)
 
     # 1. 检查项目
     project_repository = ProjectRepository(db)
@@ -332,11 +428,15 @@ async def upload_document(
 
     file_path = UPLOAD_DIR / stored_filename
 
-    # 5. 保存文件
-    with file_path.open("wb") as buffer:
-
-        while chunk := await file.read(1024 * 1024):
-            buffer.write(chunk)
+    # 5. 保存文件 —— 边写边计数，超过上限立即中止并清理。
+    #
+    # 这里是**真正的安全边界**：头部检查可以谎报，
+    # 而这里数的是实际读到的字节。
+    await _read_upload_capped(
+        file=file,
+        file_path=file_path,
+        limit_bytes=settings.max_upload_bytes,
+    )
 
     # 6. 解析文档 —— 在建记录**之前**做。
     #
@@ -369,6 +469,27 @@ async def upload_document(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"文件解析出错（{type(exc).__name__}）：{exc}",
         ) from exc
+
+    # 6.1 解析出的**字符数**也要受限。
+    #
+    # 为什么字节数够了还要查字符数：**两者的关系不固定**。
+    # 一个 5MB 的扫描版 PDF 可能一个字都抽不出来（零成本），
+    # 而一个几百 KB 的纯文本能抽出几十万字符 ——
+    # 而**字符数才决定块数，块数才决定嵌入调用次数**。
+    #
+    # 这一层在**建记录之前**：否则会留下一条注定失败、
+    # 又要用户在界面上手动删的记录。
+    if len(content) > settings.max_document_chars:
+        _discard_upload(file_path)
+
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=(
+                f"文件解析出 {len(content)} 字符，"
+                f"超过上限 {settings.max_document_chars}。"
+                "请拆分后再上传。"
+            ),
+        )
 
     # 7. 创建数据库记录（此时已确认内容可解析）
     document_repository = DocumentRepository(db)
@@ -417,6 +538,33 @@ async def upload_document(
                     f"文档解析出 {len(content)} 字符，但切不出任何文本块。"
                     "请确认内容是有效文本；若确实如此，这是服务端的"
                     "切块问题，请反馈。"
+                ),
+            )
+
+        # 守卫：**块数**必须受限 —— 这是防"烧钱"的最后一道。
+        #
+        # 块数 = 嵌入 API 调用次数，而嵌入是**按量计费**的。
+        # 字符数上限已经间接约束了块数，但两者是**两套参数**：
+        # 字符上限在 `settings`，切块大小在 `ChunkingService`。
+        # 若将来有人把 `chunk_size` 调小（例如 100），
+        # 同样的字符数会切出 5 倍块数 —— 而字符上限不会察觉。
+        #
+        # 因此这一层不是冗余，它守的是**另一个变量**。
+        #
+        # 放在切块之后、写库之前：此时记录已建（无法回头），
+        # 所以标 failed 而不是丢弃 —— 与上面"切不出块"同一处理方式。
+        if len(chunks) > settings.max_chunks_per_document:
+            document.status = "failed"
+
+            await db.commit()
+            await db.refresh(document)
+
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=(
+                    f"文档会切出 {len(chunks)} 个文本块，"
+                    f"超过上限 {settings.max_chunks_per_document}。"
+                    "该文件过大或过于密集，请拆分后再上传。"
                 ),
             )
 
