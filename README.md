@@ -23,7 +23,32 @@
 
 ## 一、启动
 
-需要 **3 个终端**（Docker 常驻，不占终端）。
+### 推荐：一键脚本
+
+```powershell
+powershell -File scripts\start-all.ps1
+```
+
+它会依次：启动 Docker Desktop（如未运行）→ 起 5 个容器 →
+起后端 → 起前端 → **验证两个 health 端点**。
+冷启动实测约 **36 秒**。
+
+服务以**独立进程**运行（脱离当前终端），日志写到 `.logs\`：
+
+```powershell
+powershell -File scripts\stop-all.ps1              # 只停后端与前端
+powershell -File scripts\stop-all.ps1 -Containers  # 连容器一起停
+```
+
+> ⚠️ 用 `powershell` 而不是 `pwsh`：本机是 **Windows PowerShell 5.1**，
+> 没有安装 PowerShell 7。脚本对两者都兼容，但**文件必须以
+> UTF-8 with BOM 保存** —— 见下方"已知的坑"。
+
+---
+
+### 手动启动（需要 3 个终端）
+
+改动脚本或排查问题时用这个。
 
 ### 1. Docker 容器
 
@@ -75,7 +100,6 @@ docker compose up -d
 cd D:\yuxi\MindFlow\backend
 uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 --no-access-log
 ```
-
 **两个参数不要改：**
 
 - `--no-access-log` —— 应用自己已经记录访问日志（带 `request_id`）。
@@ -279,7 +303,75 @@ uv run alembic downgrade -1     # 回退一步
 
 ---
 
-## 八、当前状态
+## 八、已知的坑
+
+### 8.1 `.ps1` 脚本必须是 UTF-8 **with BOM**
+
+本机是 **Windows PowerShell 5.1**（没有安装 PowerShell 7 的 `pwsh`）。
+5.1 读 `.ps1` 时，若文件**没有 BOM**，会按**本地代码页**解析 ——
+于是中文被截断成乱码：
+
+```text
+"  完成。"    →   瀹屾垚銆?      ← 解析失败
+```
+
+报错是 `字符串缺少终止符` 与 `意外的标记 }`：
+
+> ⚠️ **看起来像括号不配对，实际是编码问题。**
+> 这个误导性很强 —— 人会去数括号，而不是去查编码。
+
+**防止复发**：`scripts\*.ps1` 必须以 UTF-8 with BOM 保存。
+用编辑器保存时注意选带 BOM 的 UTF-8，
+或者直接跑这个脚本（它同时做语法检查）：
+
+```powershell
+powershell -File scripts\add-bom.ps1              # 处理 scripts\*.ps1
+powershell -File scripts\add-bom.ps1 某文件.ps1   # 处理指定文件
+```
+
+> ⚠️ 它**只加 BOM，不掩盖别的编码问题** ——
+> 若文件不是合法 UTF-8，它会报错并跳过，
+> 而不是硬加 BOM 让问题更难查。
+
+**改完 `.ps1` 必须复查**：BOM 还在、语法能过。
+`add-bom.ps1` 两者都做，因此改完脚本跑一次它就够了。
+
+### 8.2 `Start-Process` 不要配 `-RedirectStandardOutput`
+
+它会让 PowerShell **等进程结束**再继续（因为它要读完那个流）。
+而后端与前端都是**长期运行**的进程 ——
+于是启动脚本会**永远卡住**，而服务其实已经起来了
+（日志里能看到 `Uvicorn running on …`）。
+
+`scripts\start-all.ps1` 的做法是交给 `cmd /c` 自己重定向：
+
+```powershell
+Start-Process -FilePath "cmd.exe" `
+    -ArgumentList @("/c", "uv run uvicorn … > `"$LogDir\backend.log`" 2> `"…`"") `
+    -WorkingDirectory $BackendDir -WindowStyle Hidden
+```
+
+### 8.3 `docker compose` 的进度输出会走 stderr
+
+PowerShell 会把原生命令的 stderr 当作 `NativeCommandError`。
+若脚本设了 `$ErrorActionPreference = "Stop"`，
+**一句进度信息就会终止整个脚本**（实测踩过）。
+
+因此在调用 `docker compose` 时临时放宽该设置，
+改用 `$LASTEXITCODE` 判断真实成败 ——
+**不要**为此把全局设置改成 `Continue`，那会让真正的失败被静默跳过。
+
+### 8.4 后台进程活不过一轮对话
+
+AI 助手在会话里启动的服务**挂在会话进程树上**，
+会话结束就被清理。因此启动服务请**自己执行** `start-all.ps1`，
+它启动的进程是独立的。
+
+---
+
+---
+
+## 九、当前状态
 
 - **MVP 已达成**：上传资料 → 开始面试 → 逐题作答（含自动追问）
   → 结束 → 报告，七个页面覆盖全链路
