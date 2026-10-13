@@ -194,10 +194,34 @@ class InterviewEvaluator:
             seed=seed,
         )
 
-        evaluation = parse_model_json(
-            result,
-            InterviewEvaluationResult,
-        )
+        try:
+            evaluation = parse_model_json(
+                result,
+                InterviewEvaluationResult,
+            )
+        except Exception as exc:
+            # 解析失败时必须把**模型实际输出了什么**记下来。
+            #
+            # 实测教训：门禁汇总里只显示
+            # `1 validation error for InterviewEvaluationResult`，
+            # 而**看不到模型到底返回了什么** —— 于是那条失败
+            # 无法排查（重跑又通过了，属于偶发）。
+            #
+            # `parse_model_json` 的消息里带了原始内容的前 300 字符，
+            # 但那部分在错误消息的**第二行**，
+            # 而汇总通常只显示第一行。
+            #
+            # 因此完整输出记进 warning 日志：它是排查的唯一依据。
+            logger.warning(
+                "整场评价解析失败（第 %d 次采样）：%s: %s\n"
+                "--- 模型原始输出（共 %d 字符）---\n%s",
+                sample_index + 1,
+                type(exc).__name__,
+                str(exc)[:200],
+                len(result),
+                result[:2000],
+            )
+            raise
 
         # 防御：缺少锚点会让派生分数静默变成 0，
         # 也就是把"评价失败"伪装成"表现很差"。

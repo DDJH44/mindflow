@@ -65,6 +65,9 @@ SUITES: tuple[tuple[str, bool], ...] = (
     # 上传体积上限：四条防线分别在请求头、读取流、字符数、块数。
     # 必须走**真实 HTTP**，否则会绕过第一层（头部早退）。
     ("test_upload_limits", True),
+    # 限流：注册按 IP、上传按用户。断言里包含一条**设计选择**
+    # （Redis 不可用时必须拒绝，不能静默放行）。
+    ("test_rate_limit", False),
     ("test_document_upload", True),
     ("test_resume_upload", True),
     # 会调用模型的套件

@@ -14,6 +14,7 @@ from fastapi import (
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import rate_limit
 from app.core.config import settings
 from app.database.session import get_db
 from app.repositories.document_repository import DocumentRepository
@@ -395,6 +396,27 @@ async def upload_document(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="无权访问该项目",
+        )
+
+    # 2.1 限流：按用户。
+    #
+    # 这是**直接花钱**的那条路径（切块 → 逐块嵌入调用）。
+    # D67 的体积上限挡的是"一个请求很大"，
+    # 而这一条挡的是"很多次请求" —— 两者缺一不可。
+    #
+    # 放在所有权检查**之后**：那样未授权的请求会先拿到 403，
+    # 而不是消耗掉限流额度（否则别人可以用 404/403 请求
+    # 把某个用户的额度耗光）。
+    if settings.rate_limit_enabled:
+        await rate_limit.enforce(
+            rate_limit.RateLimit(
+                times=settings.rate_limit_upload_times,
+                seconds=settings.rate_limit_upload_seconds,
+                scope="upload",
+                by="user",
+            ),
+            request,
+            user_id=current_user.id,
         )
 
     # 3. 获取文件扩展名

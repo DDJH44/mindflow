@@ -2020,6 +2020,11 @@ completeness A=17  B=4   B+=9  C=20 D=10
       **全部送进按量计费的嵌入 API**，而注册开放、无限流。
 - [x] **孤儿上传文件清理（D68）**：删除文档时未删磁盘文件，
       实测积了 70 个孤儿 / 5.44 MB（含用户真实简历 PDF）。
+- [x] **限流**：注册/登录按 IP、上传与开始面试按用户。
+      用 Redis（多副本下内存计数会失效）；
+      **fail-closed**（Redis 不可用时拒绝，而不是静默放行）。
+- [ ] `SECRET_KEY` 仍是 `.env` 里的占位值（含 `change_later`），
+      且 **CORS 未配置**。本地不影响，但**部署前必须处理**。
 - [ ] 实现 Interview Planner 与 Summary Generator。
       （Summary 的**结构化内容**已随 D20 落库并在报告页展示；
       缺的是独立角色与 `plan_snapshot` 填充）

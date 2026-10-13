@@ -83,6 +83,20 @@ async def lifespan(app: FastAPI):
             except Exception as exc:  # noqa: BLE001
                 logger.error("索引 worker 退出时出错：%s", exc)
 
+        # 释放限流用的 Redis 连接池（§32）。
+        #
+        # 不释放的话，进程退出时连接不会被正常关闭，
+        # Redis 侧会留下一批"僵死"连接直到超时 ——
+        # 反复重启（开发时很常见）会积累到把连接数占满。
+        #
+        # 单独 try：清理失败不该让关闭流程报错。
+        try:
+            from app.core.rate_limit import close_redis
+
+            await close_redis()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("释放 Redis 连接池时出错：%s", exc)
+
 
 app = FastAPI(
     title=settings.app_name,

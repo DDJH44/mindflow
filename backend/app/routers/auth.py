@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import rate_limit
+from app.core.config import settings
 from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.schemas.user import UserResponse
@@ -30,8 +32,25 @@ router = APIRouter(
 )
 async def register(
     data: UserRegisterRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
+    # 限流：按 IP。
+    #
+    # **注册是最需要限的一条** —— 无限注册是"反复触发昂贵操作"
+    # （上传材料 → 切块 → 嵌入调用）的起点。
+    # 没有它，D67 的体积上限只挡得住"单个文件很大"，
+    # 却挡不住"注册很多账号、每个都传满额度的文件"。
+    if settings.rate_limit_enabled:
+        await rate_limit.enforce(
+            rate_limit.RateLimit(
+                times=settings.rate_limit_register_times,
+                seconds=settings.rate_limit_register_seconds,
+                scope="register",
+                by="ip",
+            ),
+            request,
+        )
 
     user_repository = UserRepository(db)
 
@@ -86,8 +105,21 @@ async def register(
 )
 async def login(
     data: UserLoginRequest,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
+    # 限流：按 IP。防**暴力破解口令** ——
+    # 没有它，脚本可以每秒试上千次密码。
+    if settings.rate_limit_enabled:
+        await rate_limit.enforce(
+            rate_limit.RateLimit(
+                times=settings.rate_limit_login_times,
+                seconds=settings.rate_limit_login_seconds,
+                scope="login",
+                by="ip",
+            ),
+            request,
+        )
 
     user_repository = UserRepository(db)
 

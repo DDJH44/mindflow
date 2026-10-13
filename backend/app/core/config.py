@@ -143,6 +143,34 @@ class Settings(BaseSettings):
     max_chunks_per_document: int = 500
 
     # =====================
+    # 限流（§32）
+    # =====================
+    # D67 修的是"**一个**请求能花很多钱"，而限流挡的是
+    # "**很多次**请求" —— 两者是配套的：注册开放且此前无限流，
+    # 意味着可以反复触发昂贵的上传与嵌入。
+    #
+    # 数值都很宽松：目的是**防滥用**，不是给正常用户添麻烦。
+    # 一个真实用户一天上传十几份材料、注册一次 —— 碰不到上限。
+    rate_limit_enabled: bool = True
+
+    # 注册：按 IP。这是最需要限的一条 ——
+    # 无限注册是"反复触发昂贵操作"的起点。
+    rate_limit_register_times: int = 5
+    rate_limit_register_seconds: int = 3600
+
+    # 登录：按 IP。防暴力破解口令。
+    rate_limit_login_times: int = 20
+    rate_limit_login_seconds: int = 3600
+
+    # 上传：按用户。这是**直接花钱**的那条（切块 → 嵌入调用）。
+    rate_limit_upload_times: int = 30
+    rate_limit_upload_seconds: int = 3600
+
+    # 开始面试：按用户。每场面试会多次调用 LLM 与嵌入。
+    rate_limit_start_interview_times: int = 10
+    rate_limit_start_interview_seconds: int = 3600
+
+    # =====================
     # 日志配置
     # =====================
     # 是否打印每条 SQL。
