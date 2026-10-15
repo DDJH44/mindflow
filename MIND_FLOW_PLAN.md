@@ -2053,14 +2053,13 @@ completeness A=17  B=4   B+=9  C=20 D=10
       （**日志与 request_id 已完成**，见 §16.3；其余仍缺）
 - [ ] Performance Refactor：消除 Chunk 创建后逐条 `refresh()` 的 N+1 查询。
       （实测仍在：`document_chunk_repository.py:88`）
-- [ ] **worker 的连接失效恢复**：实测日志出现
-      `worker 循环异常：asyncpg.InterfaceError: connection is closed`
-      （发生在租约恢复的 UPDATE 上）。
-      循环捕获了异常因此 worker 没死，但**这一次租约恢复被跳过了** ——
-      而它正是崩溃恢复所依赖的机制。
-      触发条件是 Docker 栈停了 10 小时导致连接被中断，
-      因此不是高频问题，但会让"自愈"在最需要的时候失效。
-      需要在连接失效时重建连接池并重试一次。
+- [x] ~~**worker 的连接失效恢复**~~ **已完成（见 §36）**。
+      实测日志 `worker 循环异常：asyncpg.InterfaceError: connection is closed`
+      出现在**租约恢复的 UPDATE** 上 —— 而租约恢复正是崩溃恢复
+      所依赖的机制。也就是说：**最需要它的时刻，它失效了。**
+      修法分三层：`pool_pre_ping` + `pool_recycle`（引擎层，
+      处理单个连接过期）与 **`dispose()` 重建池子**
+      （处理"整个池子的链路断了"），后者见 `app/core/db_recovery.py`。
 - [x] ~~`datetime.utcnow` 迁移~~ **已完成（见 §35）**。
       实测 **19 处**，全在模型层（此前文档写 9 处，低估了）。
       结论：**保持朴素 UTC 存储**，但把约定变成一个有名有据的模块

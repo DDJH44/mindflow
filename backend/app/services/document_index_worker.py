@@ -39,6 +39,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.core.db_recovery import recover, with_recovery
 from app.core.logging import get_logger
 
 logger = get_logger("app.index_worker")
@@ -68,34 +69,53 @@ class DocumentIndexWorker:
         """把租约超时、仍停在 `running` 的任务放回 `pending`。
 
         返回恢复的任务数。
+
+        ## 为什么包了 `with_recovery`
+
+        实测日志：Docker 栈停了 10 小时后，**这一步**抛了
+        `asyncpg.InterfaceError: connection is closed`。
+
+        `run_forever` 捕获了异常因此 worker 没死 ——
+        但**那一次租约恢复被跳过了**，而它正是**崩溃恢复所依赖
+        的机制**。也就是说：**最需要它的时刻，它失效了。**
+
+        包上 `with_recovery` 后，这种情况会重建连接池并重试一次，
+        于是"自愈"不再挑时机。
         """
 
-        async with self.session_factory() as db:
-            result = await db.execute(
-                text(
-                    """
-                    UPDATE document_index_jobs
-                    SET status = 'pending',
-                        lease_expires_at = NULL,
-                        updated_at = now()
-                    WHERE status = 'running'
-                      AND lease_expires_at IS NOT NULL
-                      AND lease_expires_at < now()
-                    RETURNING id, document_id
-                    """
+        async def _run() -> int:
+            async with self.session_factory() as db:
+                result = await db.execute(
+                    text(
+                        """
+                        UPDATE document_index_jobs
+                        SET status = 'pending',
+                            lease_expires_at = NULL,
+                            updated_at = now()
+                        WHERE status = 'running'
+                          AND lease_expires_at IS NOT NULL
+                          AND lease_expires_at < now()
+                        RETURNING id, document_id
+                        """
+                    )
                 )
-            )
-            recovered = list(result.all())
-            await db.commit()
+                recovered = list(result.all())
+                await db.commit()
+
+            return len(recovered), recovered
+
+        count, recovered = await with_recovery(
+            "租约恢复", _run
+        )
 
         if recovered:
             logger.warning(
                 "恢复了 %d 个租约超时的索引任务：%s",
-                len(recovered),
+                count,
                 [(row[0], row[1]) for row in recovered],
             )
 
-        return len(recovered)
+        return count
 
     async def claim_one(self) -> tuple[int, int] | None:
         """原子地领一个待处理任务。返回 (job_id, document_id)。
@@ -298,6 +318,19 @@ class DocumentIndexWorker:
                 # 循环本身不能因为单次异常而退出 ——
                 # 否则一次数据库抖动就会让所有文档永久卡住。
                 logger.error("worker 循环异常：%s", exc)
+
+                # 若是连接失效，**重建连接池**。
+                #
+                # 为什么必须在这里做，而不只是记日志：
+                # 只记日志的话，池子里的死连接会一直存在，
+                # 于是**每一轮**都失败一次 —— 表现为
+                # "worker 还活着但什么都不做"，
+                # 而那比 worker 直接崩溃更难发现。
+                #
+                # `recover` 内部会判断"这到底是不是连接故障"，
+                # 不是则什么也不做（不会掩盖真实缺陷）。
+                await recover(exc)
+
                 handled = False
 
             if not handled:

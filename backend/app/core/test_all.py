@@ -81,6 +81,10 @@ SUITES: tuple[tuple[str, bool], ...] = (
     # —— 最后一条会在有人改成 `timestamptz` 时失败，
     # 逼人明确决定（那时 `utc_now()` 的朴素值会被隐式当本地时间解释）。
     ("test_time_convention", False),
+    # 连接失效恢复（§36）：用 `pg_terminate_backend` **真的**踢掉连接，
+    # 验证"检测 → 重建池子 → 重试一次"这条链路，
+    # 并断言业务异常**不会**被误判为连接故障（不吞真缺陷）。
+    ("test_db_recovery", False),
     ("test_document_upload", True),
     ("test_resume_upload", True),
     # 会调用模型的套件
