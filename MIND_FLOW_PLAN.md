@@ -2051,8 +2051,10 @@ completeness A=17  B=4   B+=9  C=20 D=10
 - [ ] 把评估公共模块（如 `model_json.py`）移出 `app/core/`。
 - [ ] 补齐 API、测试、日志、指标、权限与安全治理。
       （**日志与 request_id 已完成**，见 §16.3；其余仍缺）
-- [ ] Performance Refactor：消除 Chunk 创建后逐条 `refresh()` 的 N+1 查询。
-      （实测仍在：`document_chunk_repository.py:88`）
+- [x] ~~Performance Refactor：消除 Chunk 创建后逐条 `refresh()` 的 N+1~~
+      **已完成（见 §37）**。实测：**500 块 = 501 次查询 → 1 次**；
+      延迟 1000 块从 **1064ms → 58ms**（18 倍）。
+      原因是那 N 次 `refresh` **完全多余**（表里没有服务端生成的列）。
 - [x] ~~**worker 的连接失效恢复**~~ **已完成（见 §36）**。
       实测日志 `worker 循环异常：asyncpg.InterfaceError: connection is closed`
       出现在**租约恢复的 UPDATE** 上 —— 而租约恢复正是崩溃恢复

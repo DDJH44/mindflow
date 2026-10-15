@@ -85,6 +85,9 @@ SUITES: tuple[tuple[str, bool], ...] = (
     # 验证"检测 → 重建池子 → 重试一次"这条链路，
     # 并断言业务异常**不会**被误判为连接故障（不吞真缺陷）。
     ("test_db_recovery", False),
+    # 切块写入效率：断言查询次数不随块数线性增长（防 N+1 回归），
+    # 且返回值（id / created_at）仍可用**且读取不触发查询**。
+    ("test_chunk_insert_efficiency", False),
     ("test_document_upload", True),
     ("test_resume_upload", True),
     # 会调用模型的套件
