@@ -2061,10 +2061,11 @@ completeness A=17  B=4   B+=9  C=20 D=10
       触发条件是 Docker 栈停了 10 小时导致连接被中断，
       因此不是高频问题，但会让"自愈"在最需要的时候失效。
       需要在连接失效时重建连接池并重试一次。
-- [ ] `datetime.utcnow` 在 Python 3.12+ 已弃用（**实测 19 处**，全在模型层 ——
-      此前本文档写的是 9 处，低估了），
-      需迁移为时区感知时间。注意 DB 列当前是 `TIMESTAMP WITHOUT TIME ZONE`，
-      因此**要么保持 naive-UTC、要么连同列类型一起迁移**，不能只改一半。
+- [x] ~~`datetime.utcnow` 迁移~~ **已完成（见 §35）**。
+      实测 **19 处**，全在模型层（此前文档写 9 处，低估了）。
+      结论：**保持朴素 UTC 存储**，但把约定变成一个有名有据的模块
+      （`app/core/time_convention.py`）—— 而不是迁移 20 个列到
+      `timestamptz`（理由见 §35，含"为什么迁移换来的只是写法更好看"）。
 - [ ] `app/evaluation/runner.py` 中硬编码的 `retrieval_config` / `data_coverage` 改为从数据集派生。
 
 ### 明确不做 🔴

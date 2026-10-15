@@ -76,6 +76,11 @@ SUITES: tuple[tuple[str, bool], ...] = (
     # 把 `.env` 注入 `os.environ`，而环境变量**优先级高于** `.env`
     # → 曾导致子进程用旧密钥签发令牌、一批套件报 401。
     ("test_dotenv_isolation", False),
+    # 时间约定（§35）：存储是**朴素 UTC**。断言应用代码无已弃用的
+    # `utcnow`、服务器时区是 UTC、20 个时间列都是 `without time zone`
+    # —— 最后一条会在有人改成 `timestamptz` 时失败，
+    # 逼人明确决定（那时 `utc_now()` 的朴素值会被隐式当本地时间解释）。
+    ("test_time_convention", False),
     ("test_document_upload", True),
     ("test_resume_upload", True),
     # 会调用模型的套件

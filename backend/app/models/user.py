@@ -3,6 +3,7 @@ from datetime import datetime
 from sqlalchemy import Integer, String, text
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.time_convention import utc_now
 from app.database.base import Base
 
 
@@ -70,5 +71,5 @@ class User(Base):
     )
 
     created_at: Mapped[datetime] = mapped_column(
-        default=datetime.utcnow
+        default=utc_now
     )
