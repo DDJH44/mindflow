@@ -58,6 +58,49 @@ from app.evaluation.metrics import (
 EVALUATION_PROJECT_PREFIX = "__rag_eval__"
 
 
+# ============================================================ 评估参数
+#
+# ⚠️ **这些值的唯一来源就是这里。**
+#
+# 为什么必须是常量：报告的全部价值就是"记录了什么配置"。
+# 而 D63 已经证明过一次后果 —— 报告里写死 `text-embedding-v4`，
+# 换到 v3 重跑后报告**仍然声称用的是 v4**，
+# 于是两次报告看起来"只有一个变量不同"，
+# 而那个变量根本没被记录。
+#
+# 实测更糟的一点：本次排查发现报告里的 `chunk_overlap` 写的
+# 是 **100**，而实际调用传的是 **0** —— 也就是说报告**当时就是错的**，
+# 不是"将来可能错"。
+#
+# 修法不是"记得同步改两处"，而是让**实际调用与报告读同一个常量**。
+# 那样它们**在结构上不可能不一致**。
+
+# 切块参数（评估用）。
+#
+# 注意：这里刻意 **overlap = 0**，与产品默认的
+# `ChunkingService.DEFAULT_CHUNK_OVERLAP = 100` **不同**。
+#
+# 原因：评估要看**定位能力**（哪个块含答案），
+# 重叠会让同一个答案出现在相邻块里，
+# 从而让"命中"变得容易、指标偏乐观。
+# 因此评估路径用无重叠切块，而报告必须如实记录这一点。
+EVAL_CHUNK_SIZE = 500
+EVAL_CHUNK_OVERLAP = 0
+
+# 单次检索取回的块数。
+#
+# ⚠️ 它与**产品路径**的 `DEFAULT_LIMIT_PER_TYPE` **不是同一件事**：
+#
+# | 路径 | 含义 |
+# | --- | --- |
+# | 评估（本常量）| 对**一个**已指定 `document_type` 的检索取 5 块 |
+# | 产品（`InterviewContextBuilder.DEFAULT_LIMIT_PER_TYPE`）| 对**每种**文档类型各取 5 块 |
+#
+# 两者数值恰好都是 5，但语义不同 —— 因此报告里必须把
+# "这是哪条路径"写清楚，否则读者会以为评估测的是产品路径。
+EVAL_RETRIEVAL_LIMIT = 5
+
+
 class EvaluationRunner:
     """RAG Evaluation Runner（自带语料版）。"""
 
@@ -105,8 +148,10 @@ class EvaluationRunner:
             for document_spec in DOCUMENTS:
                 chunks = ChunkingService.split_text(
                     document_spec.content,
-                    chunk_size=500,
-                    chunk_overlap=0,
+                    # 用模块级常量 —— 报告读的是同一个来源，
+                    # 因此两者不可能不一致（见文件头的说明）。
+                    chunk_size=EVAL_CHUNK_SIZE,
+                    chunk_overlap=EVAL_CHUNK_OVERLAP,
                 )
 
                 document = Document(
@@ -275,7 +320,7 @@ class EvaluationRunner:
         async with AsyncSessionLocal() as db:
             results = await RetrievalService(db).retrieve(
                 query=case.query,
-                limit=5,
+                limit=EVAL_RETRIEVAL_LIMIT,
                 project_id=self.project_id,
                 document_type=case.document_type,
             )
@@ -491,14 +536,19 @@ class EvaluationRunner:
                 ],
             },
             "retrieval_config": {
-                "top_k": 5,
+                # ⚠️ 全部来自模块级常量 —— 与实际调用**同一个来源**。
+                #
+                # 实测踩过两次（同类问题）：
+                # - D63：这里写死 `"text-embedding-v4"`，换 v3 后报告仍称 v4
+                # - 本次：这里写 `chunk_overlap: 100`，而实际传的是 0
+                #
+                # 根因相同：**报告里的值是手抄的，而不是从执行处读的**。
+                # 因此改为读常量，让"抄错"在结构上不可能发生。
+                "top_k": EVAL_RETRIEVAL_LIMIT,
                 # ⚠️ 必须读配置，**不能硬编码**。
                 #
-                # 实测踩过：这里原本写死 `"text-embedding-v4"`，
-                # 而换到 v3 重跑之后，报告里仍然记着 v4 ——
-                # 于是报告**声称的模型与实际用的模型不一致**。
-                #
-                # 后果很具体：两次报告看起来"只有一个变量不同"，
+                # 后果很具体：报告**声称的模型与实际用的模型不一致**时，
+                # 两次报告看起来"只有一个变量不同"，
                 # 实际上那个变量根本没被记录。后来的人（或 AI）
                 # 会基于一个错误的对照做判断。
                 "embedding_model": settings.embedding_model,
@@ -511,10 +561,43 @@ class EvaluationRunner:
                 "retrieval_mode": "dense_only",
                 "rerank": False,
                 "score_normalization": None,
+                # ---------------- 路径说明 ----------------
+                #
+                # 这一段是为了防止**误读**：`top_k: 5` 看起来与
+                # 产品的 `DEFAULT_LIMIT_PER_TYPE = 5` 一样，
+                # 但语义完全不同 ——
+                #
+                #   评估：对**一个**指定 document_type 的检索取 5 块
+                #   产品：对**每种**文档类型各取 5 块，再交给模型
+                #
+                # 不写清楚的话，读者会以为本报告测的是产品路径，
+                # 而那正是 §8.5 反复强调要避免的误读
+                # （产品指标 ≠ R@1）。
+                "path": {
+                    "name": "evaluation",
+                    "description": "单文档类型、单次检索、无上下文构建",
+                    "differs_from_product": True,
+                    "product_path": {
+                        "builder": "InterviewContextBuilder",
+                        "limit_per_type": 5,
+                        "note": (
+                            "产品按每种文档类型各取 limit_per_type 块，"
+                            "并把**全部**结果交给模型 —— "
+                            "因此本报告的 top_k 与产品的 k 不是同一指标"
+                        ),
+                    },
+                },
             },
             "chunking": {
-                "chunk_size": 500,
-                "chunk_overlap": 100,
+                # 同样读常量。这里的 overlap 是 0（评估用无重叠切块），
+                # 与 `ChunkingService.DEFAULT_CHUNK_OVERLAP = 100` 不同 ——
+                # 而第一版报告里错写成了 100。
+                "chunk_size": EVAL_CHUNK_SIZE,
+                "chunk_overlap": EVAL_CHUNK_OVERLAP,
+                "note": (
+                    "评估刻意用 overlap=0：重叠会让同一答案出现在"
+                    "相邻块中，使「命中」变容易、指标偏乐观"
+                ),
             },
             "summary": summary,
             "cases": [

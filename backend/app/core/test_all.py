@@ -88,6 +88,10 @@ SUITES: tuple[tuple[str, bool], ...] = (
     # 切块写入效率：断言查询次数不随块数线性增长（防 N+1 回归），
     # 且返回值（id / created_at）仍可用**且读取不触发查询**。
     ("test_chunk_insert_efficiency", False),
+    # 评估报告保真度（D70）：报告里的 chunk_size / chunk_overlap /
+    # top_k 必须与**实际执行**的参数一致。实测曾错记 overlap=100
+    # 而实际是 0 —— 判据取自实际切块产出，不是"常量等于常量"。
+    ("test_eval_report_fidelity", False),
     ("test_document_upload", True),
     ("test_resume_upload", True),
     # 会调用模型的套件
