@@ -41,7 +41,10 @@ from app.core.ui_walkthrough import (
 OUTPUT_DIR = Path(r"D:\yuxi\MindFlow\web\screenshots")
 
 
-async def main(session_id: int | None = None) -> int:
+async def main(
+    session_id: int | None = None,
+    report_id: int | None = None,
+) -> int:
     sys.path.insert(0, r"D:\yuxi\MindFlow\backend")
 
     from playwright.async_api import async_playwright
@@ -156,6 +159,31 @@ async def main(session_id: int | None = None) -> int:
                 except Exception as exc:  # noqa: BLE001
                     print(
                         f"  [!!] 06-interview-paused: "
+                        f"{type(exc).__name__}: {exc}"
+                    )
+
+            # ---------------- 报告页 ----------------
+            #
+            # 报告页有两条**只在报告页出现**的内容需要看：
+            #   ① 样本量提示（1–2 轮时警告"分数依据有限"）
+            #   ② 四维分数（实测纠纷：答"不知道"时曾四维全 15）
+            if report_id is not None:
+                try:
+                    await page.goto(
+                        f"{BASE}/interviews/{report_id}/report",
+                        wait_until="networkidle",
+                    )
+                    await page.wait_for_timeout(1500)
+
+                    await page.screenshot(
+                        path=str(OUTPUT_DIR / "07-report.png"),
+                        full_page=True,
+                    )
+                    print(f"  [OK] 07-report.png（会话 {report_id}）")
+
+                except Exception as exc:  # noqa: BLE001
+                    print(
+                        f"  [!!] 07-report: "
                         f"{type(exc).__name__}: {exc}"
                     )
 
@@ -281,7 +309,23 @@ if __name__ == "__main__":
             "用 seed_paused_session 造数据后传它的 id）"
         ),
     )
+    parser.add_argument(
+        "--report-id",
+        type=int,
+        default=None,
+        help=(
+            "额外截一张该会话的报告页。用于检查报告上的"
+            "样本量提示、分数展示等只在报告页出现的内容"
+        ),
+    )
 
     args = parser.parse_args()
 
-    sys.exit(asyncio.run(main(session_id=args.session_id)))
+    sys.exit(
+        asyncio.run(
+            main(
+                session_id=args.session_id,
+                report_id=args.report_id,
+            )
+        )
+    )

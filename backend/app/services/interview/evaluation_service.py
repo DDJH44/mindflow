@@ -68,12 +68,27 @@ class InterviewEvaluationService:
 
         interview_content = self._build_interview_content(rows)
 
+        # 有效作答轮次（有回答的题数）。
+        #
+        # 为什么必须传：rubric 的锚点都写「多数轮次」这类跨轮次口径，
+        # 而模型此前**不知道这次评的是几轮** —— 于是 1 题的评价
+        # 也会被说成「整场综合表现」。实测事故：一次 1 题面试
+        # （候选人答"不知道"）得到「综合 15 分」，
+        # 而报告里没有任何「本次只有 1 轮」的提示。
+        #
+        # ⚠️ `rows` 是 `(InterviewQuestion, InterviewAnswer)` 的元组列表
+        # （`outerjoin` 得来），因此 answer 在**第二项**。
+        # 若写成 `getattr(row, "answer", None)` 会永远得到 None ——
+        # 那不会报错，只会让 turn_count 恒为 0。
+        turn_count = sum(1 for _question, answer in rows if answer)
+
         # 线上评价路径，显式使用线上采样数（默认 1 次）。
         # 理由与逐轮分析相同：延迟优先，可复现性由离线评估保证
         # （见 MIND_FLOW_PLAN.md §8A.8）。
         evaluation = await self.evaluator.evaluate(
             interview_content=interview_content,
             repeats=online_evaluation_samples(),
+            turn_count=turn_count,
         )
 
         saved_evaluation = await self.evaluation_repository.create(

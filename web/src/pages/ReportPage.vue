@@ -75,6 +75,49 @@ const scoringHint = computed(() => {
   return `评分口径：${String(model ?? '默认模型')}，采样 ${String(samples ?? '?')} 次（离线口径多次采样，与线上单次不可直接比较）。`
 })
 
+/**
+ * 样本量提示。
+ *
+ * ## 为什么必须有
+ *
+ * 实测事故：一次面试**只答了 1 题**（回答是"不知道"），
+ * 报告上写着「综合 15」，读起来像"你整体表现很差" ——
+ * 而实际样本量是 1。
+ *
+ * 这违反了本项目的原则：**界面不得承诺系统做不到的事。**
+ * 一份 1 题的评价不能以"整场结论"的口吻呈现。
+ *
+ * ## 判据为什么用"已作答题数"
+ *
+ * 后端评价的 rubric 里，`overall` / `technical` / `project`
+ * 的档位都按"多数轮次"的口径描述。因此决定结论可靠性的
+ * 是**有回答的轮数**，而不是"生成了几道题" ——
+ * 生成了 8 题但只答了 1 题，结论的依据仍然只有 1 轮。
+ */
+const sampleSizeHint = computed(() => {
+  const answeredCount = questions.value.filter(
+    (item) => item.answer !== null,
+  ).length
+
+  if (answeredCount === 0) {
+    return '本次没有有效作答，四个维度的分数仅表示"未提供信息"。'
+  }
+
+  if (answeredCount <= 2) {
+    return `本次只有 ${answeredCount} 轮有效作答，样本量很少 —— 分数依据有限，不代表整体水平。`
+  }
+
+  return ''
+})
+
+/** 样本量是否不足（不足时用告警样式，避免被当成正常说明） */
+const sampleSizeTooSmall = computed(() => {
+  const answeredCount = questions.value.filter(
+    (item) => item.answer !== null,
+  ).length
+  return answeredCount <= 2
+})
+
 async function load() {
   loading.value = true
   error.value = ''
@@ -126,6 +169,24 @@ onMounted(load)
       </div>
 
       <template v-else>
+        <!--
+          样本量提示放在**分数上方**，而不是下方。
+          
+          实测事故：一次只答了 1 题（"不知道"）的面试，
+          报告上写着「综合 15」，读起来像"整体很差"。
+          放在下方会被忽略 —— 而它正是理解这四个数字的前提。
+        -->
+        <p
+          v-if="sampleSizeHint"
+          class="alert"
+          :class="
+            sampleSizeTooSmall ? 'alert-warn' : 'alert-info'
+          "
+          style="margin-bottom: 16px"
+        >
+          {{ sampleSizeHint }}
+        </p>
+
         <!-- 分数 -->
         <div class="score-grid">
           <div v-for="item in scores" :key="item.label" class="score-cell">

@@ -105,6 +105,11 @@ SUITES: tuple[tuple[str, bool], ...] = (
     ("test_interview_flow", True),
     ("test_status_history", True),
     ("test_paused_finish", True),
+    # 评分公平性（§38）：答"不知道"时 communication 不该是 D。
+    # 实测事故：1 题面试答"不知道"，四维全 D、全 15 分 ——
+    # 前三项正确，但沟通维度给 D 不公平（「不知道」是切题且清晰的）。
+    # 同时断言内容维度**仍是 D**（修复不能把"没有技术信息"洗成及格）。
+    ("test_evaluation_fairness", True),
     ("test_e2e_http", True),
 )
 
