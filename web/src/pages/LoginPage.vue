@@ -12,6 +12,7 @@ import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { ApiError } from '../api/http'
+import BrandMark from '../components/BrandMark.vue'
 import PageState from '../components/PageState.vue'
 import { useAuthStore } from '../stores/auth'
 
@@ -66,9 +67,18 @@ async function submit() {
 
 <template>
   <div class="center-page">
-    <div class="card auth-card">
+    <!--
+      只用 `auth-card`，**不叠加 `card`**。
+
+      两者都定义 padding 与圆角，叠加会让内边距忽大忽小
+      （取决于哪条规则胜出），而 `auth-card` 已自带完整外观。
+    -->
+    <div class="auth-card">
       <div class="page-head">
-        <h1>MindFlow</h1>
+        <h1 class="auth-brand">
+          <BrandMark />
+          <span>MindFlow</span>
+        </h1>
         <p class="muted">
           上传资料，完成一轮有依据的模拟面试。
         </p>
@@ -132,7 +142,12 @@ async function submit() {
         </button>
       </form>
 
-      <div class="row" style="margin-top: 16px">
+      <!--
+        `align-items: center` 是必须的：`.row` 默认 `align-items: center`
+        但 `span` 与 `button` 的行高不同，会出现"文字对不齐"的观感。
+        改用专门的 auth-switch 类，同时把行内 style 收进 CSS。
+      -->
+      <div class="auth-switch">
         <span class="muted">
           {{ isRegister ? '已有账号？' : '还没有账号？' }}
         </span>

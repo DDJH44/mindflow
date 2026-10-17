@@ -30,6 +30,7 @@ import time
 
 from sqlalchemy import text
 
+from app.core.cleanup_test_projects import TEST_PROJECT_PREFIX
 from app.database.session import AsyncSessionLocal
 
 
@@ -49,10 +50,16 @@ async def prepare(chunk_count: int) -> tuple[int, int]:
                 text(
                     "INSERT INTO projects (name, owner_id, status, "
                     "created_at, updated_at) "
-                    "VALUES ('延迟测量', :o, 'active', now(), now()) "
+                    "VALUES (:name, :o, 'active', now(), now()) "
                     "RETURNING id"
                 ),
-                {"o": owner_id},
+                {
+                    # 统一测试前缀 —— 见 `cleanup_test_projects`。
+                    # 早期版本用中文名，而清理有 bug 时这些项目
+                    # 会留在库里并直接显示在用户界面上。
+                    "name": f"{TEST_PROJECT_PREFIX}latency-measure",
+                    "o": owner_id,
+                },
             )
         ).scalar_one()
 

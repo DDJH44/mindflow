@@ -93,10 +93,26 @@ onMounted(load)
       <!-- 项目筛选 -->
       <div class="card">
         <div class="row-wrap">
+          <!--
+            ⚠️ 用 `chip` + `is-active`，**不用 `:disabled`**。
+
+            旧实现把"当前选中"表达成 `:disabled="selected === id"`，
+            这有两个问题：
+
+            ① `disabled` 会命中 `button:disabled { opacity: .5 }`
+               —— 于是**当前选中的按钮反而是最模糊的那个**，
+               用户第一眼会以为它不可用。
+            ② `disabled` 的按钮不可点、也不可聚焦（键盘不可达）。
+               而"点一下当前项"本该是幂等的无操作，不是禁用。
+
+            现在用 `aria-pressed` 表达选中语义 ——
+            那才是给读屏器的正确信息，视觉则用橙色左侧条 + 浅底。
+          -->
           <button
-            class="btn-ghost"
+            class="chip"
+            :class="{ 'is-active': selectedProjectId === null }"
             type="button"
-            :disabled="selectedProjectId === null"
+            :aria-pressed="selectedProjectId === null"
             @click="filterByProject(null)"
           >
             全部项目
@@ -104,9 +120,10 @@ onMounted(load)
           <button
             v-for="project in projects"
             :key="project.id"
-            class="btn-ghost"
+            class="chip"
+            :class="{ 'is-active': selectedProjectId === project.id }"
             type="button"
-            :disabled="selectedProjectId === project.id"
+            :aria-pressed="selectedProjectId === project.id"
             @click="filterByProject(project.id)"
           >
             {{ project.name }}

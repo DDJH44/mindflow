@@ -28,6 +28,7 @@ from collections import Counter
 
 from sqlalchemy import event, text
 
+from app.core.cleanup_test_projects import TEST_PROJECT_PREFIX
 from app.database.session import AsyncSessionLocal, engine
 
 
@@ -132,10 +133,18 @@ async def main() -> int:
                 text(
                     "INSERT INTO projects (name, owner_id, status, "
                     "created_at, updated_at) "
-                    "VALUES ('切块效率验证', :o, 'active', now(), now()) "
+                    "VALUES (:name, :o, 'active', now(), now()) "
                     "RETURNING id"
                 ),
-                {"o": owner_id},
+                {
+                    # 统一测试前缀 —— 见 `cleanup_test_projects`。
+                    #
+                    # 实测教训：早期版本用中文名（"切块效率验证"），
+                    # 而清理逻辑有 bug 时这些项目留在了库里，
+                    # 并在**用户的界面上**显示成三个同名空项目。
+                    "name": f"{TEST_PROJECT_PREFIX}chunk-insert-efficiency",
+                    "o": owner_id,
+                },
             )
         ).scalar_one()
 

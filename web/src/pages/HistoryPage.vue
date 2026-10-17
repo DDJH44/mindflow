@@ -237,9 +237,17 @@ onMounted(load)
     <div class="card">
       <div class="row-between">
         <div class="row">
+          <!--
+            开关型按钮：用 `.chip` 与项目筛选保持一致，
+            并用 `.is-active` 表示"当前已开启这个过滤"。
+            `aria-pressed` 把这个状态告诉读屏器 ——
+            光靠颜色变化，读屏器用户不知道它是什么状态。
+          -->
           <button
-            class="btn-ghost"
+            class="chip"
+            :class="{ 'is-active': onlyUnfinished }"
             type="button"
+            :aria-pressed="onlyUnfinished"
             :disabled="loading"
             @click="toggleFilter"
           >

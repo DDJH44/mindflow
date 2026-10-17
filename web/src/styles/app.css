@@ -11,39 +11,108 @@
  * 导致"改阶梯不生效"且无法静态断言一致性。
  *
  * ⚠️ 已删除 `src/style.css`（2026-10-12）：那是 Vite 脚手架的
- * 模板样式，**从未被任何地方 import**。此前留着是为了"对照/回退"，
- * 但实测它带来的只是困惑（新加入的人会以为它是生效的样式），
- * 而回退有 git 就够了。
+ * 模板样式，**从未被任何地方 import**。
+ *
+ * ================================================================
+ * 2026-10-15 视觉修订（见 docs/UI_DESIGN.md §1.1）
+ * ================================================================
+ *
+ * 用户的原话是"界面别扭 不太好看"。排查后确认：
+ * **问题不是不够花哨，而是没有一个可被记住的决定。**
+ * 那个 `#3b6fe0` 蓝是任何 SaaS 的默认值，全站靠卡片边框分隔，
+ * 视觉上没有焦点。
+ *
+ * 修订的三条（**其余排除清单一条都没放宽**）：
+ *
+ * ① **深色只用于结构**：顶栏。正文阅读区永远浅底
+ *    —— 面试要长时间阅读，深色底会降低可读性。
+ *
+ * ② **品牌色拆成两个职责**：
+ *    - `--ink`（石墨黑）承载结构
+ *    - `--accent`（琥珀橙）**只表示"当前 / 进行中"**
+ *    橙色出现超过三处就算错 —— 数量仍是两个，不是"到处点缀"。
+ *
+ * ③ **字号六档 → 八档**，新增页面标题与关键数字两档。
+ *    旧阶梯最高 22px，而页面标题与卡片标题只差 4px ——
+ *    那是"没有焦点"的直接原因。
+ *
+ * **没有放宽的**：不用渐变、不用毛玻璃、不用彩色光晕、
+ * 不用大圆角、不用阴影、不用 Emoji、不做装饰性动画。
  */
 
 :root {
-  --bg: #f5f6f8;
+  /* ---------------------------------------------------- 层次
+   *
+   * 三层底 + 一条极淡的线。
+   *
+   * **关键修订**：`--border` 从 #e3e5e9 调淡到 #e6e8ec，
+   * 并新增 `--border-strong`。原因是旧界面**给每个块都加了边框**，
+   * 整个页面像由盒子拼起来（用户说的"别扭"很大一部分来自这里）。
+   *
+   * 现在的规则：`--border` 只用来**分区**（表格行、列表项之间），
+   * 不用来"框住"内容；需要让元素看起来可点时用 `--border-strong`。
+   */
+  --bg: #f4f5f7;
   --surface: #ffffff;
-  --border: #e3e5e9;
-  --text: #1f2329;
-  --text-dim: #6b7280;
-  --text-faint: #9aa1ad;
+  --surface-sunk: #fafbfc;
+  --border: #e6e8ec;
+  --border-strong: #d5d8de;
 
-  --primary: #3b6fe0;
-  --primary-hover: #2f5fc7;
-  --primary-soft: #eef3fe;
+  /* ---------------------------------------------------- 文本三级
+   *
+   * 比旧值更深：旧 #1f2329 在浅底上对比度约 13:1，
+   * 新 #14171c 约 16:1 —— 长时间阅读更省力。
+   */
+  --text: #14171c;
+  --text-dim: #5b6270;
+  --text-faint: #8d94a1;
 
-  --ok: #1f9254;
-  --ok-soft: #eaf7f0;
-  --warn: #b7791f;
-  --warn-soft: #fdf6e7;
-  --danger: #c53030;
-  --danger-soft: #fdecec;
+  /* ---------------------------------------------------- 结构色
+   *
+   * 石墨黑。**不是"另一个品牌色"**，而是一个接近黑的中性色 ——
+   * 比纯黑柔和，比灰色有分量。
+   *
+   * 只出现在：顶栏底、深色状态条、最深一级文字。
+   * 不用作大面积装饰。
+   */
+  --ink: #12151a;
+  --ink-soft: #1c2027;
+
+  /* ---------------------------------------------------- 强调色
+   *
+   * 琥珀橙，**只表示"当前 / 进行中"**。
+   *
+   * ⚠️ 这是全站唯一允许的彩色强调。超过三处就是滥用 ——
+   * 那会让用户找不到"当前在哪"。
+   *
+   * 为什么是橙而不是蓝：蓝色是任何 SaaS 的默认值，没有辨识度；
+   * 橙色天然带"正在进行"的语义，且在深色顶栏上极亮。
+   */
+  --accent: #d9600f;
+  --accent-hover: #b9500b;
+  --accent-soft: #fdf1e7;
+
+  /* ---------------------------------------------------- 语义色
+   *
+   * **独立于强调色。** 不要用橙色表示成功/失败 ——
+   * 那会让"橙色"同时意味着"进行中"和"出错了"。
+   *
+   * 色值也调深了一档：旧值在浅底上对比不足（尤其 --warn #b7791f）。
+   */
+  --ok: #16794a;
+  --ok-soft: #e8f6ef;
+  --warn: #97620f;
+  --warn-soft: #fdf5e4;
+  --danger: #b3261e;
+  --danger-soft: #fdecea;
 
   --radius: 8px;
   --radius-sm: 6px;
-  --shadow: 0 1px 3px rgba(16, 24, 40, 0.06);
 
   /* ---------------------------------------------------- 字族
    *
    * 保持系统字族：零加载成本、渲染最快。
-   * 中文 Web 字体动辄数 MB，而收益只是"看起来特别"——
-   * 那正是 docs/UI_DESIGN.md 要避免的方向。
+   * 中文 Web 字体动辄数 MB，而收益只是"看起来特别"。
    */
   --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI',
     'PingFang SC', 'Microsoft YaHei', sans-serif;
@@ -56,66 +125,52 @@
 
   /* ---------------------------------------------------- 字号阶梯
    *
-   * 六档。新增第七档意味着阶梯失效 ——
-   * 一旦有第七档，就会有人加第八档。
+   * **八档**（2026-10-15 从六档扩展，理由见 UI_DESIGN.md §3.2）。
    *
-   * ⚠️ 收敛记录（2026-10-12）：此前 CSS 里散落着
-   * 16/20/24/26px 四个游离值，**已全部收敛**：
+   * 八档是**上限**，不是"以后可以加第九档"。
    *
-   *     h1  20px → --fs-xl   (22px)  ← 原值比阶梯还小
-   *     h2  16px → --fs-lg   (18px)
-   *     .score-value       26px → --fs-display (26px)
-   *     .dimension-median  24px → --fs-display (26px)
-   *
-   * 前两个是**标题**，本该落在文本阶梯里 —— 收敛回去即可。
-   * 后两个是**大号数字强调**，不是文本层级，见下方 --fs-display。
+   * 旧阶梯最高 22px，而页面标题与卡片标题（18px）只差 4px ——
+   * 视觉上几乎同级，这是"界面没有焦点"的直接原因。
    */
-  --fs-xs: 12px;    /* 元信息、标签 */
-  --fs-sm: 13px;    /* 辅助说明、次要按钮 */
-  --fs-base: 14px;  /* 正文默认 */
-  --fs-md: 15px;    /* 题目正文 */
-  --fs-lg: 18px;    /* 卡片标题 */
-  --fs-xl: 22px;    /* 页面标题 */
-
-  /*
-    大号数字强调。**不属于文本阶梯**。
-    
-    用途只有一类：报告里"综合 82"、"维度中位 76"这种
-    一眼要看到的数字。它们比页面标题还大是**有意**的 ——
-    报告页的主角是分数，不是标题。
-    
-    为什么单独设档而不是硬塞进 --fs-xl：那会从 26px 掉到 22px，
-    削弱报告页的视觉重心，而收益只是"档位少一个"。
-    判据是"这个值有没有独立语义"，而不是"数量越少越好"。
-    
-    两者必须**同时**收敛到这里：它们原本是 26 与 24，
-    差 2px 在视觉上无意义，却让"同一类东西用同一个值"
-    这条规则失效。
-  */
-  --fs-display: 26px;
+  --fs-xs: 12px; /* 元信息、标签 */
+  --fs-sm: 13px; /* 辅助说明、次要按钮 */
+  --fs-base: 14px; /* 正文默认 */
+  --fs-md: 15px; /* 题目正文 */
+  --fs-lg: 17px; /* 卡片标题 */
+  --fs-xl: 21px; /* 区块标题 */
+  --fs-2xl: 28px; /* 页面标题（新增）*/
+  --fs-hero: 44px; /* 关键数字（新增）*/
 
   /* ---------------------------------------------------- 间距
    *
    * 只用 4 的倍数。出现 `padding: 10px 15px` 就说明
-   * 间距是随手调的，而不是按体系。 */
+   * 间距是随手调的，而不是按体系。
+   *
+   * 新增 --sp-7：页面级留白需要比卡片内部大一档，
+   * 否则整页看起来"顶得慌"（旧版最宽只到 32px）。
+   */
   --sp-1: 4px;
   --sp-2: 8px;
   --sp-3: 12px;
   --sp-4: 16px;
   --sp-5: 24px;
   --sp-6: 32px;
+  --sp-7: 48px;
 
   /* ---------------------------------------------------- 宽度
    *
    * 面试题目按 --w-read 约束：一行超过约 40 个汉字之后，
-   * 阅读时的回行定位会变难。这不是审美，是阅读效率。 */
+   * 阅读时的回行定位会变难。这不是审美，是阅读效率。
+   */
   --w-page: 960px;
+  --w-wide: 1120px;
   --w-read: 720px;
 
   /* ---------------------------------------------------- 动效
    *
    * 只用于传达"状态发生了变化"，不用于装饰。
-   * 不超过 400ms —— 用户是来答题的，不是来看动画的。 */
+   * 不超过 400ms —— 用户是来答题的，不是来看动画的。
+   */
   --dur-fast: 120ms;
   --dur-base: 200ms;
   --ease: cubic-bezier(0.2, 0, 0.2, 1);
@@ -142,6 +197,7 @@ body {
   font-size: var(--fs-base);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /*
@@ -162,6 +218,14 @@ pre {
   font-family: var(--font-mono);
 }
 
+code {
+  background: var(--surface-sunk);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.92em;
+}
+
 #app {
   min-height: 100%;
 }
@@ -172,27 +236,69 @@ pre {
   flex-direction: column;
 }
 
-/* ------------------------------------------------------ 顶栏 */
+/* ------------------------------------------------------ 顶栏
+ *
+ * 2026-10-15：从白底 + 底部边框改为**石墨黑**。
+ *
+ * 这是全站唯一的深色区。理由：它给了产品一个"头"，
+ * 而旧版白底顶栏让它看起来像没有导航的普通表单页。
+ *
+ * 注意：**不用阴影、不用渐变**，就是一条纯色带 ——
+ * 深色本身就足以把自己与内容分开。
+ */
 
 .topbar {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 0 24px;
-  height: 52px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  gap: var(--sp-5);
+  padding: 0 var(--sp-5);
+  height: 54px;
+  background: var(--ink);
   position: sticky;
   top: 0;
   z-index: 10;
 }
 
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
   font-weight: 600;
   font-size: var(--fs-md);
-  color: var(--text);
+  color: #ffffff;
   text-decoration: none;
-  letter-spacing: 0.2px;
+  letter-spacing: 0.3px;
+}
+
+/*
+ * 品牌字标：三根递增竖条，末根用强调色。
+ *
+ * `currentColor` 让前两根自动跟随文字色（深色顶栏上即白色），
+ * 只有末根显式用 --accent —— 那是"进行中"的语义，
+ * 不能跟随文字色，否则在浅色底上会消失。
+ */
+.brandmark {
+  display: inline-flex;
+  align-items: center;
+  color: #ffffff;
+}
+
+.brandmark svg {
+  display: block;
+}
+
+.brandmark-tip {
+  fill: var(--accent);
+}
+
+/* 登录页的字标比顶栏大一号：它是这一页的唯一视觉焦点 */
+.auth-card .brandmark {
+  color: var(--text);
+}
+
+.auth-card .brandmark svg {
+  width: 22px;
+  height: 22px;
 }
 
 .spacer {
@@ -202,20 +308,21 @@ pre {
 .topnav {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-left: 8px;
+  gap: var(--sp-4);
+  margin-left: var(--sp-2);
 }
 
 .topnav a {
-  color: var(--text-dim);
+  color: rgba(255, 255, 255, 0.62);
   text-decoration: none;
   font-size: var(--fs-sm);
-  padding: 2px 0;
+  padding: 4px 0;
   border-bottom: 2px solid transparent;
+  transition: color var(--dur-fast) var(--ease);
 }
 
 .topnav a:hover {
-  color: var(--text);
+  color: #ffffff;
 }
 
 /*
@@ -224,60 +331,151 @@ pre {
  * 用 `.router-link-exact-active` 而不是 `.router-link-active`：
  * 首页路径是 `/`，vue-router 会认为它匹配**所有**路由，
  * 于是"开面试"在任何页面都高亮。
- * 历史页用 exact 也一样匹配得上。
+ *
+ * 用 --accent 而不是白色：白色只是"更亮"，
+ * 而橙色明确表示"你在这里"。
  */
 .topnav a.router-link-exact-active {
-  color: var(--primary);
-  border-bottom-color: var(--primary);
+  color: #ffffff;
+  border-bottom-color: var(--accent);
 }
 
 .who {
-  color: var(--text-dim);
+  color: rgba(255, 255, 255, 0.6);
   font-size: var(--fs-sm);
 }
+
+/* 顶栏里的次要按钮要适配深色底 */
+.topbar .btn-ghost {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.22);
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.topbar .btn-ghost:not(:disabled):hover {
+  border-color: rgba(255, 255, 255, 0.45);
+  color: #ffffff;
+}
+
+/*
+ * 顶栏里的 `.link` 也要适配深色底。
+ *
+ * ⚠️ 不加这条的话，"退出登录"会用 `--text`（近黑），
+ * 在石墨黑顶栏上**几乎看不见** —— 而它恰恰是唯一的登出入口。
+ * 这类"深色区里的文字没换色"是改深色主题最常见的疏漏。
+ */
+.topbar .link {
+  color: rgba(255, 255, 255, 0.72);
+  text-decoration-color: rgba(255, 255, 255, 0.28);
+}
+
+.topbar .link:not(:disabled):hover {
+  color: #ffffff;
+  text-decoration-color: var(--accent);
+}
+
+/*
+ * 整页布局（不加 max-width 约束）。
+ *
+ * 只给**自己负责整页视觉**的页面用（当前是登录页）。
+ *
+ * ⚠️ 为什么要单独一个类：登录页是整页深色，
+ * 若套进 `.content`（带 max-width 与 padding），
+ * 深色底就铺不满 —— 实测会出现一圈白边与底部灰条，
+ * 看起来像渲染坏了。这类问题**只有截图才看得见**，
+ * 类型检查与逻辑测试都不会报错。
+ */
+.page-full {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ------------------------------------------------------ 内容容器
+ *
+ * 2026-10-15：上下留白从 24px 提到 --sp-6 / --sp-7。
+ * 旧版内容紧贴顶栏，整页看起来"顶得慌"。
+ */
 
 .content {
   flex: 1;
   width: 100%;
-  max-width: 900px;
+  max-width: var(--w-page);
   margin: 0 auto;
-  padding: 24px;
+  padding: var(--sp-6) var(--sp-5) var(--sp-7);
 }
 
 .content-wide {
-  max-width: 1080px;
+  max-width: var(--w-wide);
 }
 
-/* ------------------------------------------------------ 标题与卡片 */
+/* ------------------------------------------------------ 标题
+ *
+ * 2026-10-15：页面标题从 22px → 28px，并加负字距。
+ *
+ * 负字距（letter-spacing: -0.02em）是让大字号看起来"紧凑有力"
+ * 而不是"松散放大"的关键 —— 很多界面看起来业余，
+ * 就是因为把字号放大而字距没跟着收。
+ */
 
 h1 {
-  font-size: var(--fs-xl);
-  margin: 0 0 4px;
+  font-size: var(--fs-2xl);
+  margin: 0 0 var(--sp-1);
   font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
 }
 
 h2 {
   font-size: var(--fs-lg);
-  margin: 0 0 12px;
+  margin: 0 0 var(--sp-3);
   font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
 }
 
 h3 {
   font-size: var(--fs-base);
-  margin: 0 0 8px;
+  margin: 0 0 var(--sp-2);
   font-weight: 600;
 }
 
 .page-head {
-  margin-bottom: 20px;
+  margin-bottom: var(--sp-5);
 }
+
+/*
+ * 页面副标题：紧跟在 h1 后面的一句说明。
+ *
+ * 用 --fs-md（15px）而不是 --fs-sm：
+ * 它是页面标题的"解释"，不是脚注。
+ */
+.page-head .muted {
+  font-size: var(--fs-md);
+  color: var(--text-dim);
+  max-width: var(--w-read);
+}
+
+/* ------------------------------------------------------ 卡片
+ *
+ * 2026-10-15：**去掉边框与阴影**，改为纯背景分层。
+ *
+ * 这是本次修订里视觉影响最大的一条。旧版每个卡片都有
+ * 1px 边框 + 浅阴影，于是整个页面像由几十个盒子拼起来 ——
+ * 用户说的"别扭"很大程度上来自这种"处处被框住"的感觉。
+ *
+ * 现在的规则：
+ *   - 卡片 = 白底，**无边框、无阴影**
+ *   - 层次靠 --bg（页面底）与 --surface（卡片）的对比
+ *   - 需要强调的卡片（如当前选中）才加边框，且用 --accent
+ *
+ * 这符合规范原意"靠层次而不是靠边框"——旧版自己违反了这条。
+ */
 
 .card {
   background: var(--surface);
-  border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 20px;
-  box-shadow: var(--shadow);
+  padding: var(--sp-5);
 }
 
 .card + .card,
@@ -285,7 +483,21 @@ h3 {
 .list + .card,
 .alert + .card,
 .card + .alert {
-  margin-top: 16px;
+  margin-top: var(--sp-4);
+}
+
+/*
+ * 卡片标题：一个小的"分区标签"。
+ *
+ * 用 --text-dim + 字距而不是加大字号：
+ * 卡片标题不该与页面标题竞争。
+ */
+.card > h2:first-child {
+  font-size: var(--fs-md);
+  color: var(--text-dim);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin-bottom: var(--sp-4);
 }
 
 .muted {
@@ -301,66 +513,125 @@ h3 {
 .row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--sp-3);
 }
 
 .row-between {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--sp-3);
 }
 
 .row-wrap {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--sp-3);
   flex-wrap: wrap;
 }
 
 .stack > * + * {
-  margin-top: 12px;
+  margin-top: var(--sp-3);
 }
 
 .grid-2 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: var(--sp-4);
 }
 
-/* ------------------------------------------------------ 表单 */
+/*
+ * 键盘焦点可见（UI_DESIGN.md §10.2 要求）。
+ *
+ * ## 为什么现在才补
+ *
+ * `input / textarea / select` 上写着 `outline: none`（为了去掉
+ * 浏览器默认的粗糙轮廓，改为自绘的 `:focus` 边框）。
+ * 但**只有鼠标/触摸用户**能被那个 `:focus` 样式服务到 ——
+ * 键盘用户看到的是同样的样式，而那并不足以表达"焦点在哪"。
+ *
+ * ⚠️ 实测：原 CSS 里 `:focus-visible` 出现 **0 次**，
+ * 而 `outline: none` 出现 1 次 —— 也就是说这个缺口**一直存在**，
+ * 只是没人报过。它不会报错，只是让键盘操作变难。
+ *
+ * ## 为什么用 --accent 而不是浏览器默认
+ *
+ * 2026-10-15 新增了**石墨黑顶栏**。浏览器默认的焦点轮廓在
+ * 深色底上可能几乎看不见，而顶栏里恰恰有 4 个可聚焦元素
+ * （品牌、三个导航、退出登录）。因此深色区单独用白色。
+ */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* 深色区上的焦点轮廓改用白色：橙色在石墨黑上够亮，
+   但白色更不可能被误认为装饰 */
+.topbar :focus-visible,
+.center-page :focus-visible {
+  outline-color: #ffffff;
+}
+
+/*
+ * 输入框**保留** `:focus-visible` 轮廓。
+ *
+ * 第一版我写了 `input:focus-visible { outline: none }`，
+ * 理由是"已经有边框变化 + 光晕"。但那个理由是错的：
+ * 自绘的 `:focus` 样式**鼠标用户也会看到**，
+ * 因此它不承载"这是键盘焦点"这个信息 —— 而那正是
+ * `:focus-visible` 存在的意义。去掉它等于让键盘用户
+ * 少了一层本可免费获得的提示。
+ *
+ * 轮廓用 `outline-offset: 2px` 与光晕区分开，两者不冲突。
+ */
+
+/* ------------------------------------------------------ 表单
+ *
+ * 2026-10-15：输入框边框改用 --border-strong。
+ * 用 --border（极淡）会让输入框"看起来不能点"。
+ */
 
 label {
   display: block;
   font-size: var(--fs-sm);
   color: var(--text-dim);
-  margin-bottom: 6px;
+  margin-bottom: var(--sp-2);
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
 
 input,
 textarea,
 select {
   width: 100%;
-  padding: 8px 10px;
-  border: 1px solid var(--border);
+  padding: 9px 12px;
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   font: inherit;
   color: var(--text);
   background: var(--surface);
   outline: none;
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
 }
 
 input:focus,
 textarea:focus,
 select:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--primary-soft);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 input:disabled,
 textarea:disabled,
 select:disabled {
-  background: #f7f8fa;
+  background: var(--surface-sunk);
+  color: var(--text-faint);
+}
+
+input::placeholder,
+textarea::placeholder {
   color: var(--text-faint);
 }
 
@@ -371,7 +642,38 @@ textarea {
 }
 
 .field + .field {
-  margin-top: 14px;
+  margin-top: var(--sp-4);
+}
+
+/*
+ * 浏览器默认的 file 输入框与整页完全不是一套。
+ *
+ * 实测：它是"界面看起来拼凑"的最明显一处 ——
+ * 一个灰底系统按钮夹在设计过的输入框中间。
+ * 这里把它变成与其它控件一致的外观（仍然保留原生行为）。
+ */
+input[type='file'] {
+  padding: 7px 10px;
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+input[type='file']::file-selector-button {
+  margin-right: var(--sp-3);
+  padding: 5px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--surface-sunk);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease);
+}
+
+input[type='file']::file-selector-button:hover {
+  border-color: var(--text-faint);
 }
 
 /* ------------------------------------------------------ 按钮 */
@@ -381,27 +683,39 @@ button {
   cursor: pointer;
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
-  padding: 8px 16px;
-  transition: background 0.15s, border-color 0.15s;
+  padding: 9px 18px;
+  font-weight: 600;
+  font-size: var(--fs-sm);
+  letter-spacing: 0.01em;
+  transition:
+    background var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
 }
 
 button:disabled {
   cursor: not-allowed;
-  opacity: 0.55;
+  opacity: 0.5;
 }
 
+/*
+ * 主要动作：琥珀橙。
+ *
+ * 为什么不用石墨黑：黑色按钮在浅底上"太重"，
+ * 会与正文抢注意力；而橙色明确表示"点这里会发生什么"。
+ */
 .btn-primary {
-  background: var(--primary);
-  color: #fff;
+  background: var(--accent);
+  color: #ffffff;
 }
 
 .btn-primary:not(:disabled):hover {
-  background: var(--primary-hover);
+  background: var(--accent-hover);
 }
 
 .btn-ghost {
   background: var(--surface);
-  border-color: var(--border);
+  border-color: var(--border-strong);
   color: var(--text);
 }
 
@@ -409,70 +723,139 @@ button:disabled {
   border-color: var(--text-faint);
 }
 
+/*
+ * 危险动作：默认**不**描红边。
+ *
+ * 实测问题：旧版"删除"按钮全是描边红框，一屏四个红框，
+ * 比内容还显眼。
+ *
+ * 规则：危险动作默认是弱化的（灰字），悬停时才显示危险色 ——
+ * 破坏性操作不该在视觉上抢注意力。
+ */
+.btn-danger {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-faint);
+  padding: 6px 10px;
+}
+
+.btn-danger:not(:disabled):hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
 .btn-block {
   width: 100%;
+}
+
+/*
+ * 筛选按钮（chip）。
+ *
+ * 用于"多个互斥选项里选一个"（项目筛选）。
+ *
+ * ⚠️ **不要用 `:disabled` 表达"当前选中"** —— 实测踩过：
+ * `disabled` 会命中 `button:disabled { opacity: .5 }`，
+ * 于是**当前选中的按钮反而是最模糊的**；
+ * 而且它不可点、不可聚焦（键盘不可达）。
+ *
+ * 正确做法：`.is-active` 负责视觉，`aria-pressed` 负责语义。
+ */
+.chip {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  color: var(--text-dim);
+  font-weight: 400;
+  padding: 6px 14px;
+}
+
+.chip:not(:disabled):hover {
+  border-color: var(--text-faint);
+  color: var(--text);
+}
+
+.chip.is-active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* 当前选中的 chip 不该因为"看起来已选中"而被当成禁用 */
+.chip:disabled {
+  opacity: 1;
+  cursor: default;
 }
 
 .link {
   background: none;
   border: none;
   padding: 0;
-  color: var(--primary);
+  color: var(--text);
   font-size: var(--fs-sm);
+  text-decoration: underline;
+  text-decoration-color: var(--border-strong);
+  text-underline-offset: 3px;
+  font-weight: 400;
 }
 
 .link:not(:disabled):hover {
-  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  color: var(--accent);
 }
 
 /* ------------------------------------------------------ 提示条 */
 
 .alert {
-  padding: 10px 14px;
+  padding: var(--sp-3) var(--sp-4);
   border-radius: var(--radius-sm);
   font-size: var(--fs-sm);
-  border: 1px solid transparent;
+  border-left: 3px solid transparent;
 }
 
 .alert-error {
   background: var(--danger-soft);
-  border-color: #f5c2c2;
+  border-left-color: var(--danger);
   color: var(--danger);
 }
 
 .alert-warn {
   background: var(--warn-soft);
-  border-color: #f0dca8;
+  border-left-color: var(--warn);
   color: var(--warn);
 }
 
 .alert-info {
-  background: var(--primary-soft);
-  border-color: #c9dafb;
-  color: var(--primary-hover);
+  background: var(--surface);
+  border-left-color: var(--ink);
+  color: var(--text-dim);
 }
 
 .alert-ok {
   background: var(--ok-soft);
-  border-color: #bfe6d0;
+  border-left-color: var(--ok);
   color: var(--ok);
 }
 
-/* ------------------------------------------------------ 标记 */
+/* ------------------------------------------------------ 标记
+ *
+ * 胶囊形只给 tag（功能性：表示"这是一个状态"）。
+ */
 
 .tag {
   display: inline-block;
-  padding: 1px 8px;
-  border-radius: 10px;
+  padding: 2px 9px;
+  border-radius: var(--radius-pill);
   font-size: var(--fs-xs);
+  font-weight: 600;
   background: #eef0f3;
   color: var(--text-dim);
   white-space: nowrap;
 }
 
 .tag-primary {
-  background: var(--primary-soft);
-  color: var(--primary-hover);
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 .tag-ok {
@@ -485,24 +868,31 @@ button:disabled {
   color: var(--warn);
 }
 
-/* ------------------------------------------------------ 列表 */
+/* ------------------------------------------------------ 列表
+ *
+ * 2026-10-15：去掉外层边框与圆角盒。
+ *
+ * 旧版列表是一个"框里装着带下划线的行"，看起来像表格。
+ * 新版：列表项之间用极淡的线分区，不套外框 ——
+ * 于是它读起来是"一列条目"，而不是"一个控件"。
+ */
 
 .list {
-  border: 1px solid var(--border);
+  margin-top: var(--sp-4);
+  background: var(--surface);
   border-radius: var(--radius);
   overflow: hidden;
-  background: var(--surface);
-  margin-top: 16px;
 }
 
 .list-item {
-  padding: 14px 16px;
+  padding: var(--sp-3) var(--sp-4);
   border-bottom: 1px solid var(--border);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--sp-3);
+  transition: background var(--dur-fast) var(--ease);
 }
 
 .list-item:last-child {
@@ -510,15 +900,22 @@ button:disabled {
 }
 
 .list-item:hover {
-  background: #fafbfc;
+  background: var(--surface-sunk);
 }
 
+/*
+ * 当前选中项：左侧 3px 橙色条 + 极浅底。
+ *
+ * 用左侧条而不是整块橙底：整块橙底会让文字对比下降，
+ * 而左侧条既明确又不影响阅读。
+ */
 .list-item.active {
-  background: var(--primary-soft);
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 
 .empty {
-  padding: 28px;
+  padding: var(--sp-6);
   text-align: center;
   color: var(--text-faint);
   font-size: var(--fs-sm);
@@ -528,62 +925,68 @@ button:disabled {
 
 .question-box {
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--primary);
+  border-left: 3px solid var(--accent);
   border-radius: var(--radius);
-  padding: 18px 20px;
+  padding: var(--sp-5);
   font-size: var(--fs-md);
   line-height: 1.75;
 }
 
 .progress-track {
   height: 6px;
-  background: #eceef1;
+  background: #e8eaee;
   border-radius: 3px;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  background: var(--primary);
-  transition: width 0.3s;
+  background: var(--accent);
+  transition: width var(--dur-base) var(--ease);
 }
 
 .history-item {
   border-left: 2px solid var(--border);
-  padding: 2px 0 2px 14px;
+  padding: 2px 0 2px var(--sp-4);
 }
 
 .history-item + .history-item {
-  margin-top: 16px;
+  margin-top: var(--sp-4);
 }
 
-/* ------------------------------------------------------ 报告页 */
+/* ------------------------------------------------------ 报告页
+ *
+ * 分数是报告页的主角。用 --fs-hero（44px）+ 等宽字族，
+ * 让它成为视觉锚点 —— 这是"新增第八档字号"的用途所在。
+ */
 
 .score-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--sp-3);
 }
 
 .score-cell {
   background: var(--surface);
-  border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 14px;
+  padding: var(--sp-4);
   text-align: center;
 }
 
 .score-value {
-  font-size: var(--fs-display);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-hero);
   font-weight: 600;
-  line-height: 1.2;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
 }
 
 .score-label {
   font-size: var(--fs-xs);
   color: var(--text-dim);
-  margin-top: 2px;
+  margin-top: var(--sp-1);
+  letter-spacing: 0.02em;
 }
 
 .bullet-list {
@@ -592,32 +995,32 @@ button:disabled {
 }
 
 .bullet-list li + li {
-  margin-top: 6px;
+  margin-top: var(--sp-2);
 }
 
 /* ------------------------------------------------------ 资料依据 */
 
 .evidence {
-  margin-top: 10px;
+  margin-top: var(--sp-3);
 }
 
 .evidence-item {
-  border-left: 2px solid var(--primary-soft);
-  background: #fafbfd;
+  border-left: 2px solid var(--accent-soft);
+  background: var(--surface-sunk);
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  padding: 8px 12px;
+  padding: var(--sp-2) var(--sp-3);
 }
 
 .evidence-item + .evidence-item {
-  margin-top: 8px;
+  margin-top: var(--sp-2);
 }
 
 .evidence-head {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-2);
   flex-wrap: wrap;
-  margin-bottom: 4px;
+  margin-bottom: var(--sp-1);
 }
 
 .evidence-text {
@@ -635,12 +1038,17 @@ button:disabled {
   border: none;
   padding: 0;
   font-size: var(--fs-xs);
-  color: var(--primary);
+  color: var(--text);
+  text-decoration: underline;
+  text-decoration-color: var(--border-strong);
+  text-underline-offset: 3px;
   cursor: pointer;
+  font-weight: 400;
 }
 
 .evidence-toggle:hover {
-  text-decoration: underline;
+  color: var(--accent);
+  text-decoration-color: var(--accent);
 }
 
 /* ------------------------------------------------------ 能力画像 */
@@ -648,37 +1056,41 @@ button:disabled {
 .dimension-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--sp-3);
 }
 
 .dimension-cell {
-  border: 1px solid var(--border);
+  background: var(--surface);
   border-radius: var(--radius);
-  padding: 12px;
+  padding: var(--sp-4);
 }
 
 .dimension-label {
-  font-size: var(--fs-sm);
+  font-size: var(--fs-xs);
   color: var(--text-dim);
+  letter-spacing: 0.02em;
 }
 
 .dimension-figure {
   display: flex;
   align-items: baseline;
-  gap: 6px;
-  margin: 4px 0 2px;
+  gap: var(--sp-2);
+  margin: var(--sp-2) 0 var(--sp-1);
 }
 
 .dimension-median {
-  font-size: var(--fs-display);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-hero);
   font-weight: 600;
-  line-height: 1.2;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
 }
 
 .dimension-spark {
   display: block;
-  color: var(--primary);
-  margin: 6px 0 2px;
+  color: var(--accent);
+  margin: var(--sp-2) 0 var(--sp-1);
   width: 100%;
   height: 40px;
 }
@@ -697,31 +1109,38 @@ button:disabled {
 .data-table th,
 .data-table td {
   text-align: left;
-  padding: 8px 10px;
+  padding: var(--sp-2) var(--sp-3);
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
 }
 
 .data-table th {
-  color: var(--text-dim);
-  font-weight: 500;
+  color: var(--text-faint);
+  font-weight: 600;
   font-size: var(--fs-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-bottom-color: var(--border-strong);
 }
 
 .data-table tbody tr:last-child td {
   border-bottom: none;
 }
 
+.data-table tbody tr:hover {
+  background: var(--surface-sunk);
+}
+
 /* ------------------------------------------------------ 长等待提示 */
 
 .waiting {
-  margin-top: 12px;
-  padding: 12px 14px;
-  border: 1px solid var(--border);
+  margin-top: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
   border-radius: var(--radius);
-  /* 中性底色而不是主色浅蓝：主色在别处表示"可操作"，
-     而这里是**状态区** —— 用主色会让人以为可以点。 */
+  /* 中性底色而不是强调色浅底：强调色在别处表示"可操作"，
+     而这里是**状态区** —— 用它会让人以为可以点。 */
   background: var(--bg);
+  border-left: 3px solid var(--border-strong);
 }
 
 /*
@@ -729,7 +1148,7 @@ button:disabled {
   百分比需要一个我们并不掌握的真实进度。
 */
 .waiting-track {
-  margin-top: 10px;
+  margin-top: var(--sp-3);
   height: 3px;
   border-radius: 2px;
   background: var(--border);
@@ -740,7 +1159,7 @@ button:disabled {
   width: 35%;
   height: 100%;
   border-radius: 2px;
-  background: var(--primary);
+  background: var(--accent);
   animation: waiting-slide 1.4s ease-in-out infinite;
 }
 
@@ -754,13 +1173,13 @@ button:disabled {
 }
 
 .waiting-steps {
-  margin: 8px 0 0;
+  margin: var(--sp-2) 0 0;
   line-height: 1.6;
 }
 
 .waiting-reassure {
-  margin: 10px 0 0;
-  padding: 8px 10px;
+  margin: var(--sp-3) 0 0;
+  padding: var(--sp-2) var(--sp-3);
   border-radius: var(--radius-sm);
   background: var(--warn-soft);
   color: var(--warn);
@@ -788,7 +1207,7 @@ button:disabled {
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
   vertical-align: -2px;
-  margin-right: 6px;
+  margin-right: var(--sp-2);
 }
 
 @keyframes spin {
@@ -797,15 +1216,75 @@ button:disabled {
   }
 }
 
+/*
+ * 登录页容器。
+ *
+ * 2026-10-15：从"浅灰底 + 居中卡片"改为**石墨黑底**。
+ *
+ * 这是全站唯一的整页深色区（与顶栏同一色）。
+ * 理由：登录页没有内容可读，因此深色不会伤害可读性，
+ * 而它给了产品一个"入口"的仪式感 —— 旧版一张小白卡浮在
+ * 巨大空白里，看起来像未完成的页面。
+ *
+ * **仍然不用渐变、不用光晕、不用毛玻璃。** 纯色。
+ */
 .center-page {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: var(--sp-5);
+  background: var(--ink);
 }
 
 .auth-card {
   width: 100%;
-  max-width: 380px;
+  max-width: 396px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: var(--sp-6);
+}
+
+.auth-card h1 {
+  font-size: var(--fs-xl);
+  margin-bottom: var(--sp-2);
+}
+
+/*
+ * 登录页的品牌行：字标 + 文字。
+ *
+ * `h1` 里包了组件与文本，因此必须显式设为 flex ——
+ * 否则 `<span>` 会掉到下一行。
+ */
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+/* 登录页的说明文字：紧跟标题，是"这是什么"的一句话 */
+.auth-card .muted {
+  display: block;
+  margin-bottom: var(--sp-5);
+  font-size: var(--fs-sm);
+}
+
+/*
+ * "还没有账号？去注册" 那一行。
+ *
+ * ⚠️ 用 `baseline` 而不是 `center`：
+ * 一个 `<span>`（13px）与一个带下划线的 `<button>`（13px）
+ * 行高不同，用 `center` 时下划线会让两者看起来错位。
+ * 按基线对齐才是文字并排的正确做法。
+ */
+.auth-switch {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  margin-top: var(--sp-4);
+}
+
+.auth-switch .muted {
+  display: inline;
+  margin-bottom: 0;
 }

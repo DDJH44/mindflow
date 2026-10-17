@@ -9,6 +9,7 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { useAuthStore } from './stores/auth'
+import BrandMark from './components/BrandMark.vue'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -25,7 +26,8 @@ function logout() {
   <div class="app">
     <header v-if="showChrome" class="topbar">
       <RouterLink class="brand" :to="{ name: 'home' }">
-        MindFlow
+        <BrandMark />
+        <span>MindFlow</span>
       </RouterLink>
 
       <!--
@@ -47,7 +49,22 @@ function logout() {
       </button>
     </header>
 
-    <main class="content">
+    <!--
+      登录页**不套 `.content`**。
+
+      `.content` 带 `max-width` 与左右 padding，而登录页是
+      **整页深色**布局 —— 套进去就会出现白边与底部灰条。
+      实测踩过：改成深色底之后，登录页四周出现一圈白边，
+      看起来像渲染坏了。
+
+      因此登录页自己负责整页布局（`page-full`），
+      其它页面才用 `.content` 约束阅读宽度。
+    -->
+    <main v-if="showChrome" class="content">
+      <RouterView />
+    </main>
+
+    <main v-else class="page-full">
       <RouterView />
     </main>
   </div>

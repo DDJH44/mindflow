@@ -483,9 +483,8 @@ onMounted(load)
                 重试索引
               </button>
               <button
-                class="btn-ghost"
+                class="btn-danger"
                 type="button"
-                style="color: var(--danger)"
                 :disabled="deletingId !== null || retryingId !== null"
                 @click="removeDocument(item)"
               >

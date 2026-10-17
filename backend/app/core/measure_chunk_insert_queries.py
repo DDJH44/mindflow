@@ -35,6 +35,7 @@ from collections import Counter
 
 from sqlalchemy import event, text
 
+from app.core.cleanup_test_projects import TEST_PROJECT_PREFIX
 from app.database.session import AsyncSessionLocal, engine
 
 
@@ -114,10 +115,20 @@ async def measure(chunk_count: int) -> tuple[int, Counter]:
                 text(
                     "INSERT INTO projects (name, owner_id, status, "
                     "created_at, updated_at) "
-                    "VALUES ('N+1 测量', :o, 'active', now(), now()) "
+                    "VALUES (:name, :o, 'active', now(), now()) "
                     "RETURNING id"
                 ),
-                {"o": owner_id},
+                {
+                    # 用统一测试前缀，便于 `cleanup_test_projects` 判定。
+                    #
+                    # 实测教训：早期版本用中文名（"N+1 测量"），
+                    # 而清理逻辑有 bug 时这些项目就留在了库里，
+                    # 直接显示在用户的界面上 —— 用户看到三个同名空项目，
+                    # 只会觉得产品坏了。**那与代码质量无关，
+                    # 纯粹是测试污染了用户数据。**
+                    "name": f"{TEST_PROJECT_PREFIX}n1-measure",
+                    "o": owner_id,
+                },
             )
         ).scalar_one()
 
