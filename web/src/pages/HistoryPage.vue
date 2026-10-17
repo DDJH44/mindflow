@@ -14,6 +14,7 @@ import { useRouter } from 'vue-router'
 
 import { interviewApi } from '../api'
 import { ApiError } from '../api/http'
+import { statusLabel } from '../api/labels'
 import PageState from '../components/PageState.vue'
 import type { InterviewSessionListItem } from '../api/types'
 
@@ -55,25 +56,13 @@ const RESUMABLE = new Set([
  *
  * 对"已作答但仍处于草稿态"的旧数据给出更准确的描述 ——
  * 一场答了 3 题的面试不该被叫作"草稿"。
+ *
+ * ⚠️ 映射本身已移到 `api/labels.ts`（**单一真相**）。
+ * 抽走的原因：`InterviewPage` 当时直接渲染了 `session.status`，
+ * 于是界面上出现英文 `paused` —— 而这里早就做对了。
+ * 同一个映射被抄在两处时，漏掉第三处不会报错，
+ * 只会让界面冒出一个英文单词。实测就是这么发现的。
  */
-const STATUS_LABEL: Record<string, string> = {
-  created: '未完成',
-  draft: '未开始',
-  preparing_context: '准备中',
-  planned: '已计划',
-  asking: '待作答',
-  waiting_for_answer: '待作答',
-  evaluating: '评价中',
-  summarizing: '生成总结',
-  completed: '已完成',
-  paused: '已暂停',
-  cancelled: '已取消',
-  failed: '失败',
-}
-
-function statusLabel(status: string): string {
-  return STATUS_LABEL[status] ?? status
-}
 
 function statusClass(status: string): string {
   if (status === 'completed') {

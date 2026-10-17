@@ -41,7 +41,7 @@ from app.core.ui_walkthrough import (
 OUTPUT_DIR = Path(r"D:\yuxi\MindFlow\web\screenshots")
 
 
-async def main() -> int:
+async def main(session_id: int | None = None) -> int:
     sys.path.insert(0, r"D:\yuxi\MindFlow\backend")
 
     from playwright.async_api import async_playwright
@@ -125,6 +125,39 @@ async def main() -> int:
 
             except Exception as exc:  # noqa: BLE001
                 print(f"  [!!] 05-project: {type(exc).__name__}: {exc}")
+
+            # ---------------- 面试页（暂停态） ----------------
+            #
+            # 暂停提示的三种分支**只在暂停态出现**，而正常流程
+            # 要走完整面试才会到那里。因此会话 id 由外部传入：
+            #
+            #     uv run python -m app.core.seed_paused_session
+            #     uv run python -m app.core.capture_screens --session-id 1391
+            #
+            # 为什么不在本脚本里造数据：截图脚本应当**只读** ——
+            # 一个会改数据的检查工具，迟早会在不该跑的时候被跑。
+            if session_id is not None:
+                try:
+                    await page.goto(
+                        f"{BASE}/interviews/{session_id}",
+                        wait_until="networkidle",
+                    )
+                    await page.wait_for_timeout(1800)
+
+                    await page.screenshot(
+                        path=str(OUTPUT_DIR / "06-interview-paused.png"),
+                        full_page=True,
+                    )
+                    print(
+                        f"  [OK] 06-interview-paused.png"
+                        f"（会话 {session_id}）"
+                    )
+
+                except Exception as exc:  # noqa: BLE001
+                    print(
+                        f"  [!!] 06-interview-paused: "
+                        f"{type(exc).__name__}: {exc}"
+                    )
 
             # ---------------- 度量：字号与颜色分布 ----------------
             print()
@@ -236,4 +269,19 @@ async def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(asyncio.run(main()))
+    import argparse
+
+    parser = argparse.ArgumentParser(description="逐页截图 + 计算样式度量")
+    parser.add_argument(
+        "--session-id",
+        type=int,
+        default=None,
+        help=(
+            "额外截一张该面试会话的页面（暂停态提示只在暂停态出现，"
+            "用 seed_paused_session 造数据后传它的 id）"
+        ),
+    )
+
+    args = parser.parse_args()
+
+    sys.exit(asyncio.run(main(session_id=args.session_id)))

@@ -145,6 +145,15 @@ MANUAL_SUITES: tuple[tuple[str, str], ...] = (
         "更具体的选择器会**静默覆盖**，两者都不报错，"
         "因此「源码看起来对」不能作为结论",
     ),
+    (
+        "test_status_labels",
+        "需要前端 :5173 + chromium + 一条 **paused** 会话。"
+        "验证英文状态枚举没有漏到界面上 —— 实测面试页曾直接渲染 "
+        "`{{ session.status }}` 导致显示 `paused`，"
+        "而历史页与项目页早就各自做过中文映射。"
+        "缺 paused 会话时明确跳过（退出码 2），"
+        "先跑 uv run python -m app.core.seed_paused_session",
+    ),
 )
 
 PASS = "PASS"
