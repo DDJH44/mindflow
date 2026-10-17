@@ -6,7 +6,7 @@
  * "我还有额度吗、给哪个项目、开多长"。
  * 拆成多个页面会让用户看不到额度就开始点。
  */
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { interviewApi, projectApi, usageApi } from '../api'
@@ -56,6 +56,49 @@ const quotaHint = computed(() => {
 })
 
 const canStart = computed(() => Boolean(usage.value?.allowed))
+
+/**
+ * 成本预估文案（由服务端给）。
+ *
+ * 与 `quotaHint` 的区别：
+ * - `quotaHint` 说"本月还剩多少"（静态事实）
+ * - 这个说"**这一场**够不够开完"（随题目上限变化）
+ */
+const costHint = computed(
+  () => usage.value?.cost_preview?.message ?? '',
+)
+
+const costFits = computed(
+  () => usage.value?.cost_preview?.fits ?? true,
+)
+
+/**
+ * 题目上限变化时重新读一次预估。
+ *
+ * 为什么要防抖：输入框每敲一个字符都会触发 `v-model.number`，
+ * 而每次都要发一个 HTTP 请求。300ms 足够覆盖正常输入速度，
+ * 又不至于让人等。
+ *
+ * 为什么不在前端自己算：规范化（把 9999 夹取成 30）与
+ * "断在第几题"都依赖后端常量 —— 各写一套迟早会不一致，
+ * 而那种不一致**不会报错**，只会让提示说错话。
+ */
+let costPreviewTimer: ReturnType<typeof setTimeout> | undefined
+
+watch(maxQuestions, (value) => {
+  if (costPreviewTimer) {
+    clearTimeout(costPreviewTimer)
+  }
+
+  costPreviewTimer = setTimeout(async () => {
+    try {
+      usage.value = await usageApi.current(value)
+    } catch {
+      // 预估失败不该打断用户 —— 它只是提示，
+      // 保留上一次的值比清空更不吓人。
+    }
+  }, 300)
+})
 
 async function load() {
   loading.value = true
@@ -277,8 +320,40 @@ onMounted(load)
               min="1"
               max="30"
             />
-            <p class="faint" style="margin: 6px 0 0">
+            <p
+              class="faint"
+              style="margin: 6px 0 0"
+            >
               含追问。达到上限会自动结束并给出评价。
+            </p>
+
+            <!--
+              成本预估。
+
+              ⚠️ 这一行的存在理由：`canStart` 只回答"**能不能开始**"，
+              而它回答"**能不能开完**" —— 两者不同，
+              而后者才会让用户白损失一场：
+
+                剩余 2 场、8 题时把上限设成 8 并开始 →
+                第 3 场能开，但第 9 题会被拒，面试中途断掉。
+
+              文案与判定都来自服务端（`cost_preview`），
+              前端只负责显示 —— 规范化（夹取越界值）与
+              "断在第几题"都依赖后端常量。
+            -->
+            <p
+              v-if="costHint && !costFits"
+              class="alert alert-warn"
+              style="margin: 8px 0 0"
+            >
+              {{ costHint }}
+            </p>
+            <p
+              v-else-if="costHint"
+              class="faint"
+              style="margin: 8px 0 0"
+            >
+              {{ costHint }}
             </p>
           </div>
         </div>

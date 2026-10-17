@@ -150,8 +150,24 @@ export const documentApi = {
 // ---------------------------------------------------------------- 额度
 
 export const usageApi = {
-  async current() {
-    const { data } = await http.get<Usage>('/usage')
+  /**
+   * 读当前账期的额度与成本预估。
+   *
+   * `maxQuestions` 传进来时，服务端按那个题目预算预估 ——
+   * 用户改了"题目数量上限"后前端应带它重新请求，
+   * 这样"能不能开完"的判定才跟着表单变。
+   *
+   * 判定逻辑**不复制到前端**：规范化（夹取越界值）与
+   * "断在第几题"的计算都依赖服务端的常量，
+   * 前端各算一套迟早会与后端不一致。
+   */
+  async current(maxQuestions?: number | null) {
+    const { data } = await http.get<Usage>('/usage', {
+      params:
+        maxQuestions === undefined || maxQuestions === null
+          ? undefined
+          : { max_questions: maxQuestions },
+    })
     return data
   },
 }

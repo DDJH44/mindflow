@@ -92,6 +92,10 @@ SUITES: tuple[tuple[str, bool], ...] = (
     # top_k 必须与**实际执行**的参数一致。实测曾错记 overlap=100
     # 而实际是 0 —— 判据取自实际切块产出，不是"常量等于常量"。
     ("test_eval_report_fidelity", False),
+    # 成本预估：回答"**能不能开完**"，而不只是"能不能开始"。
+    # 额度够开但不够开完时，面试会中途断掉而场次已经花掉 ——
+    # 那才是真正需要提前告知的情况。
+    ("test_interview_cost", False),
     ("test_document_upload", True),
     ("test_resume_upload", True),
     # 会调用模型的套件

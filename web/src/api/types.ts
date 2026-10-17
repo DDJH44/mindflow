@@ -304,6 +304,44 @@ export interface UsageMetricUsage {
 }
 
 /**
+ * 开一场面试的成本预估。
+ *
+ * ## 为什么它和 `allowed` 是两个不同的问题
+ *
+ * `allowed` 回答"**能不能开始**"，而它回答"**能不能开完**"。
+ *
+ * 实测陷阱：剩余 2 场、8 题时把题目上限设成 8 并开始 ——
+ * 第 3 场能开，但**第 9 题会被拒**，面试在中间断掉。
+ * 而那时场次已经花掉了，用户既没得到完整面试，也拿不回场次。
+ *
+ * 所以真正需要提前告知的是 `insufficient_questions` 这一种。
+ */
+export interface InterviewCostPreview {
+  /** 规范化之后的题目预算（用户可能设了越界值，服务端会夹取） */
+  questions: number
+  /** 这一场需要的场次（恒为 1） */
+  interviews: number
+  /** 是否够开完 */
+  fits: boolean
+  /**
+   * 不够时的原因。
+   *
+   * ⚠️ 值必须与后端 `interview_cost.estimate_cost` 返回的**完全一致**。
+   * 我第一版在这里写成 `'interviews' | 'questions'`，
+   * 而后端实际返回 `insufficient_interviews` / `insufficient_questions` ——
+   * 那样前端的所有判断都会**静默落空**（TypeScript 也发现不了，
+   * 因为两边都是合法字符串类型）。
+   *
+   * 这类"两端拼写不一致"是接口最常见的隐性缺陷之一。
+   */
+  blocked_by: 'insufficient_interviews' | 'insufficient_questions' | null
+  /** 会断在第几题（仅 `insufficient_questions` 时有值） */
+  truncates_at: number | null
+  /** 给用户看的一句话。**文案由服务端给** —— 它依赖规范化后的预算 */
+  message: string
+}
+
+/**
  * 额度视图。
  *
  * 后端**成对**返回场次与题目两份额度：任一先耗尽都会挡住用户，
@@ -316,4 +354,5 @@ export interface Usage {
   questions: UsageMetricUsage
   limited_by: 'interviews' | 'questions' | null
   allowed: boolean
+  cost_preview?: InterviewCostPreview | null
 }
