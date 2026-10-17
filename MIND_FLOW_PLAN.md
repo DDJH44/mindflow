@@ -1978,7 +1978,10 @@ completeness A=17  B=4   B+=9  C=20 D=10
 
 ### 当前进行中 🟡
 
-- [ ] 扩充并版本化 Interview Evaluation Dataset（当前 4 case / 6 轮，继续补方向）。
+- [x] ~~扩充并版本化 Interview Evaluation Dataset~~
+      **已扩充（2026-10-15）**：4 case / 6 轮 → **5 case / 8 轮**，
+      新增 `buzzword_dense_interview`（术语堆砌但缺实现细节）。
+      详见下方"后续待办"里同一条的完整记录。
 - [x] 建立"完整回答不该被冤枉"的上界对照 case（`rag_backend_senior_interview`）。
 - [x] `--repeats 10` 重跑稳定性，得到可信基线（结论见 §8A.5）。
 - [x] **提升评分一致性**：评分改为锚点制（ADR-016）+ 默认 3 次采样合并（ADR-017）。
@@ -2066,8 +2069,38 @@ completeness A=17  B=4   B+=9  C=20 D=10
 - [ ] **额度重置的运维入口**：`UsageService.reset` 已实现但无接口
       （有意不暴露给用户 —— 用户能自己重置就等于没有配额）。
 - [ ] 实现 `Interview Planner` 与计划快照填充（`plan_snapshot` 列已就绪但恒为空）。
-- [ ] 扩充并版本化 Interview Evaluation Dataset（当前 4 case / 6 轮，继续补 jd / project / code 方向）。
-- [ ] 扩 RAG Evaluation Dataset 到 jd / project / code 类型。
+- [x] ~~扩充并版本化 Interview Evaluation Dataset~~ **已扩充（2026-10-15）**。
+      **4 个 case / 6 轮 → 5 个 case / 8 轮**，新增
+      `buzzword_dense_interview`（术语堆砌但缺实现细节）。
+
+      为什么补这一种：现有 case 覆盖了"完整回答（不该被冤枉）"、
+      "回避回答（该低分）"、"短回答（该追问）"，**缺的是
+      "看起来很长、术语很密，但全是结论没有过程"** ——
+      那是真实面试里最常见、也最难被判对的一类：
+      只看过八股文的人能说出所有术语名，却答不出
+      "为什么这样选"与"实际遇到什么问题"。
+
+      判据取"**具体性**"而非"长度"：分析器应指出缺少取舍依据、
+      实测数据、故障处理，而**不该**因为它用了术语就给高分。
+
+      ⚠️ 过程中**判据本身被修了一次**：首轮实测的追问是
+      「能否具体讲讲你是如何设计 **Key** 以及设定 **TTL** 的？
+      如果遇到了**缓存击穿**…」—— 一次命中两个正确的技术点，
+      却只匹配到「具体」（hit_rate 0.0909），因为 `Key`/`TTL`/`击穿`
+      不在关键词表里。**那是判据的错，不是模型的错**（D64 同一个教训）。
+      补齐语义等价词后 hit_rate → 0.2143，判据才反映真实质量。
+
+- [x] ~~扩 RAG Evaluation Dataset 到 jd / project / code 类型~~
+      **实际已经全覆盖（23 个用例）**：resume 6 / jd 5 / project 6 /
+      code 5（另 1 个不限类型）。这条待办已过时。
+
+- [x] ~~扩充并版本化 Interview Evaluation Dataset（补 jd / project / code 方向）~~
+      **这条写错了** —— 该数据集**不按 document_type 分类**。
+      它评估的是**评估器本身**（题面理解、缺口识别、追问质量），
+      不是检索。按类型扩充对它不适用；真正的空白在**行为维度**，
+      已按上面的方式补上。
+      新增 `audit_datasets.py` 可以一眼看出两个数据集各覆盖什么，
+      避免再出现"按错的维度规划扩充"。
 - [ ] 可选：引入 embedding 做 `missing_points` 语义去重（D19，需先评估成本与收益）。
 
 > 已完成的项（评分一致性、状态机、证据引用、题目预算、
