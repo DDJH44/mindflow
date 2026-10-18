@@ -19,6 +19,12 @@
 | 前端 | Vue 3 + TypeScript + Vite（**无 UI 组件库**，手写 CSS）|
 | 模型 | LLM 与 Embedding 均走 OpenAI 兼容端点 |
 
+> **想让别人在线体验？** 见 [docs/DEPLOY.md](docs/DEPLOY.md)。
+>
+> ⚠️ 部署前必须先决定**谁能注册** —— 这个项目每道题都会真实调用
+> 你的 LLM 与嵌入 API，而注册开放意味着陌生人可以花你的额度。
+> 邀请码机制已实现（`REGISTRATION_REQUIRE_INVITE=true`）。
+
 ---
 
 ## 一、启动
@@ -196,6 +202,18 @@ uv run python -m app.evaluation.runner
 
 # 知识图谱：把材料抽成实体与关系（按需，不会自动跑）
 uv run python -m app.core.extract_knowledge --project <id> --dry-run
+
+# 邀请码：签发 / 列出 / 撤销（部署时用，见 docs/DEPLOY.md）
+uv run python -m app.core.manage_invites create --count 5 --note "内测" --expires-days 14
+uv run python -m app.core.manage_invites list --unused
+uv run python -m app.core.manage_invites revoke <码>
+
+# 清理测试/测量脚本留下的垃圾（默认只列出）
+uv run python -m app.core.cleanup_test_projects
+uv run python -m app.core.cleanup_test_sessions
+
+# 看数据集的覆盖情况（避免按错的维度规划扩充）
+uv run python -m app.core.audit_datasets
 ```
 
 ---

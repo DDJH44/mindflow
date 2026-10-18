@@ -1,5 +1,6 @@
 from collections import Counter
 
+from app.core.llm_errors import UpstreamLLMError
 from app.core.logging import get_logger
 from app.core.config import settings
 from app.core.model_json import parse_model_json
@@ -244,8 +245,12 @@ class InterviewAnswerAnalyzer:
                 )
 
         if not samples:
-            raise RuntimeError(
-                "回答分析全部采样失败：" + " | ".join(errors)
+            # 同 evaluator：抛专门的类型，否则上游超时会变成裸 500（D75）。
+            raise UpstreamLLMError(
+                "回答分析全部采样失败：" + " | ".join(errors),
+                cause_names=tuple(
+                    name.split(":")[0] for name in errors
+                ),
             )
 
         if len(samples) == 1:

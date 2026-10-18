@@ -1,0 +1,253 @@
+# 生产部署编排。
+#
+# ## 与开发用的 docker-compose.yml 的三处关键差异
+#
+# | 项 | 开发 | 生产 |
+# | --- | --- | --- |
+# | 基础设施端口 | 全部映射到宿主机 | **一个都不映射** |
+# | 数据库密码 | 硬编码 `mindflow_password` | 从 `.env.prod` 读 |
+# | 后端/前端 | 跑在宿主机 | 跑在容器里 |
+#
+# ### 第一条为什么最重要
+#
+# 开发文件把 5432 / 6379 / 19530 / 9000 全映射到了宿主机。
+# 在云服务器上，那意味着**数据库直接暴露在公网** ——
+# 任何人扫到 5432 就能连（密码还是 `mindflow_password`）。
+#
+# 这类事故不会报错：它只会在某天你发现数据没了。
+# 因此本文件里**没有任何 `ports:` 用于基础设施** ——
+# 它们只在 compose 的内部网络里互相可见。
+#
+# ### 唯一对外的端口是前端 nginx 的 80（以及 443，见 docs/DEPLOY.md）
+#
+# 用户 → nginx(80/443) → backend(内部) → postgres/redis/milvus(内部)
+#
+# ## 启动
+#
+#   cp .env.prod.example .env.prod   # 填好密钥
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# 详细步骤见 docs/DEPLOY.md。
+
+services:
+
+  # ================================================================
+  # 基础设施
+  # ================================================================
+
+  postgres:
+    image: postgres:16
+    container_name: mindflow-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mindflow}
+      POSTGRES_USER: ${POSTGRES_USER:-mindflow}
+      # ⚠️ 必须是 .env.prod 里生成的真密码，不能沿用开发值
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD 未设置}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # 没有 ports —— 只在内部网络可见
+    healthcheck:
+      test:
+        ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mindflow} -d ${POSTGRES_DB:-mindflow}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [internal]
+
+  redis:
+    image: redis:7
+    container_name: mindflow-redis
+    restart: unless-stopped
+    # 限流数据可以丢（窗口重置），因此不挂卷 ——
+    # 但这也意味着重启后所有限流计数归零，
+    # 那是可接受的（最多让某人多用几次）。
+    command:
+      [
+        "redis-server",
+        # 内存上限：限流计数很小，64 MB 足够。
+        # 设上限是为了防止某种异常写入把内存吃光。
+        "--maxmemory", "64mb",
+        "--maxmemory-policy", "allkeys-lru",
+      ]
+    # 没有 ports
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [internal]
+
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.5
+    container_name: mindflow-etcd
+    restart: unless-stopped
+    environment:
+      ETCD_AUTO_COMPACTION_MODE: revision
+      ETCD_AUTO_COMPACTION_RETENTION: "1000"
+      ETCD_QUOTA_BACKEND_BYTES: "4294967296"
+      ETCD_SNAPSHOT_COUNT: "50000"
+    command: >
+      etcd
+      --advertise-client-urls=http://0.0.0.0:2379
+      --listen-client-urls=http://0.0.0.0:2379
+      --data-dir=/etcd
+    volumes:
+      - etcd_data:/etcd
+    networks: [internal]
+
+  minio:
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    container_name: mindflow-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY 未设置}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY 未设置}
+    command: minio server /minio_data
+    volumes:
+      - minio_data:/minio_data
+    # 没有 ports —— MinIO 控制台不需要对外
+    networks: [internal]
+
+  milvus:
+    image: milvusdb/milvus:v2.5.6
+    container_name: mindflow-milvus
+    restart: unless-stopped
+    command: ["milvus", "run", "standalone"]
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+    volumes:
+      - milvus_data:/var/lib/milvus
+    # 没有 ports
+    depends_on:
+      etcd:
+        condition: service_started
+      minio:
+        condition: service_started
+    networks: [internal]
+
+  # ================================================================
+  # 应用
+  # ================================================================
+
+  # 一次性迁移任务。
+  #
+  # 为什么单独做一个服务而不是在 backend 启动时跑：
+  # 后端一旦要扩到多副本，多个容器同时执行 `alembic upgrade`
+  # 会互相冲突。用 `condition: service_completed_successfully`
+  # 让迁移先跑完、成功之后后端才启动 —— 这是 compose 的标准做法。
+  migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mindflow-migrate
+    restart: "no"
+    env_file: .env.prod
+    environment:
+      # 覆盖成容器网络里的地址（.env.prod 里写的是宿主机视角的 localhost）
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-mindflow}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-mindflow}
+      REDIS_URL: redis://redis:6379/0
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [internal]
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mindflow-backend
+    restart: unless-stopped
+    env_file: .env.prod
+    environment:
+      # 容器网络内的地址。
+      #
+      # ⚠️ 不能沿用 `.env` 里的 `localhost` —— 在后端容器里，
+      # localhost 指的是**它自己**，不是 postgres 容器。
+      # 这个错误表现为"连不上数据库"，而 docker ps 里一切正常。
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-mindflow}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-mindflow}
+      REDIS_URL: redis://redis:6379/0
+      MILVUS_HOST: milvus
+      MILVUS_PORT: "19530"
+      # 生产环境：占位 SECRET_KEY 会**拒绝启动**（见 app/main.py）
+      APP_ENV: production
+    volumes:
+      # ⚠️ 上传文件必须持久化。
+      #
+      # 不挂卷时，容器重建（重新部署、升级镜像）会让磁盘上的
+      # 用户资料全部丢失，而数据库里的记录还在 ——
+      # 于是每份资料都指向一个不存在的文件。
+      # 表现为"资料显示已索引，但面试只出通用题"。
+      - uploads_data:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      milvus:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      # internal：访问 postgres / redis / milvus
+      - internal
+      # egress：访问 LLM 与嵌入 API（它们都在公网）
+      #
+      # ⚠️ 少写这一条的话，internal 网络是 `internal: true`，
+      # **没有任何出站通道** —— 应用能启起来、能读数据库，
+      # 但每次调用模型都会超时。而错误信息是"上游服务不可用"，
+      # 看起来像对方挂了，实际上是容器被关在网里。
+      - egress
+
+  frontend:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: mindflow-frontend
+    restart: unless-stopped
+    # 唯一对外暴露的端口。
+    #
+    # 只听 127.0.0.1 还是 0.0.0.0 取决于是否有外层 TLS 终止：
+    # 直接用 certbot 在宿主机上配 HTTPS 时，nginx 需要对外；
+    # 若前面有云负载均衡，则只留 127.0.0.1 更安全。
+    # 见 docs/DEPLOY.md 的两种做法。
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    depends_on:
+      backend:
+        condition: service_started
+    networks:
+      # 只需要能访问 backend（同在 internal 网络上）。
+      # nginx 不需要访问互联网，因此不给 egress。
+      - internal
+
+# ================================================================
+# 网络与卷
+# ================================================================
+
+networks:
+  # `internal: true` —— 让这个网络**没有出站访问**。
+  #
+  # 为什么重要：数据库容器不需要访问互联网。
+  # 关掉之后，即使某个依赖被投毒（例如恶意镜像），
+  # 它也没有通道把数据外传。
+  #
+  # ⚠️ 但 backend 需要出站（调用 LLM 与嵌入 API），
+  # 因此 backend 与 frontend 必须同时加入一个非 internal 的网络。
+  internal:
+    driver: bridge
+    internal: true
+
+  # backend 的出口网络（能访问互联网，用于调用模型 API）
+  egress:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  etcd_data:
+  minio_data:
+  milvus_data:
+  # 用户上传的原始文件 —— 删掉它就等于删掉用户的资料
+  uploads_data:

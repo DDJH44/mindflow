@@ -47,7 +47,20 @@ from sqlalchemy import text
 
 from app.database.session import AsyncSessionLocal
 
-UPLOAD_DIR = Path(r"D:\yuxi\MindFlow\backend\uploads")
+# 上传目录。
+#
+# ⚠️ 这里原本硬编码 `D:\yuxi\MindFlow\backend\uploads` ——
+# 那在容器里会变成"目录不存在"，而本工具会**判定为没有孤儿**
+# 并安静退出。也就是说：部署到 Linux 之后，这个清理工具
+# 会一直"报告一切正常"，而实际什么都没检查。
+#
+# 这类"静默失效"比报错更危险 —— 报错会让人去查，
+# 静默通过会让人以为已经清理过了。
+#
+# 改为相对本文件的包根推导：
+#   app/core/cleanup_orphan_uploads.py → parents[2] = backend/
+# 本地与容器（WORKDIR=/app）都成立。
+UPLOAD_DIR = Path(__file__).resolve().parents[2] / "uploads"
 
 
 async def collect() -> tuple[list[Path], list[Path]]:

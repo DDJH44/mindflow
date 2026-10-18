@@ -28,6 +28,7 @@ from app.database.session import engine
 
 # 导入所有模型，确保 SQLAlchemy 注册它们
 from app.models.user import User
+from app.models.invite_code import InviteCode
 from app.models.project import Project
 from app.models.document import Document
 from app.models.document_index_job import DocumentIndexJob

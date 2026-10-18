@@ -8,6 +8,7 @@ from fastapi import (
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user
+from app.core.llm_errors import UpstreamLLMError
 from app.core.logging import get_logger
 from app.database.session import get_db
 from app.models.user import User
@@ -173,7 +174,27 @@ def _llm_error_or_none(exc: Exception) -> HTTPException | None:
     判据用**类名与 MRO 特征**而不是 `import openai`：
     本项目允许替换 LLM 实现（§24 换过端点），
     硬绑具体 SDK 的异常类会让替换后这个映射失效。
+
+    ## 为什么还要额外认 `UpstreamLLMError`（D75）
+
+    上面这条路只覆盖"**单次**调用失败"。而"回答分析"与"整场评价"
+    都会**多次采样**，全失败时抛的是聚合错误。聚合之后
+    `OpenAIError` 已经不在 MRO 里了 —— 类型信息只剩消息文本。
+
+    于是上游超时 → 聚合 → 普通 RuntimeError → 本函数不命中
+    → **仍然是裸 500**。实测：门禁里三个套件因此崩溃，
+    而它们的 503 分流逻辑根本没被触发。
+
+    现在聚合路径抛 `UpstreamLLMError`（继承 RuntimeError），
+    本函数额外认它，并**区分超时与限流**给出不同建议。
     """
+
+    # 聚合路径的专用类型：它能保留原始异常的类型名。
+    if isinstance(exc, UpstreamLLMError):
+        return HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=exc.describe(),
+        )
 
     names = {cls.__name__ for cls in type(exc).__mro__}
 
@@ -187,6 +208,20 @@ def _llm_error_or_none(exc: Exception) -> HTTPException | None:
             "RateLimitError",
         }
     )
+
+    if not is_llm_error:
+        # 再看一层原因链：有些包装异常会把原始异常放在 `__cause__`
+        # 或 `__context__` 里，而它们同样能说明"这是上游问题"。
+        for chained in (exc.__cause__, exc.__context__):
+            if chained is not None:
+                chained_names = {
+                    cls.__name__ for cls in type(chained).__mro__
+                }
+
+                if chained_names & {"OpenAIError", "APITimeoutError"}:
+                    is_llm_error = True
+                    exc = chained
+                    break
 
     if not is_llm_error:
         return None

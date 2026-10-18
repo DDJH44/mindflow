@@ -34,8 +34,9 @@ export const useAuthStore = defineStore('auth', () => {
     username: string,
     email: string,
     password: string,
+    inviteCode?: string,
   ) {
-    await authApi.register(username, email, password)
+    await authApi.register(username, email, password, inviteCode)
     await login(username, password)
   }
 

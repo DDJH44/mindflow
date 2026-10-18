@@ -1,0 +1,50 @@
+# 构建上下文排除清单。
+#
+# ## 为什么必须有它
+#
+# 后端的 Dockerfile 用的是**精确 COPY**（`COPY app ./app` 等），
+# 因此 `.venv` 本来就不会被打进最终镜像 —— 这一点已经验证过。
+#
+# 但"不进镜像"不等于"不该排除"：
+#
+# | 项 | 不排除的后果 |
+# | --- | --- |
+# | `.venv/`（276 MB）| 每次构建都要把它**传给 Docker daemon**（构建上下文传输），改一行代码就重传一次 |
+# | `.env` | 会留在构建缓存里。虽然最终镜像不含它，但 **`docker history` / 缓存层可以看到内容** |
+# | `uploads/` | 用户资料（含真实简历）被传进构建上下文；体积随使用增长 |
+# | `__pycache__/` | 与 Python 版本相关的字节码，混进去只会造成困惑 |
+# | `evaluation_reports/` | 数十 MB 的 JSON，构建时完全用不到 |
+#
+# 换句话说：这个文件主要是在保护 **密钥与用户数据**，
+# 以及让构建上下文保持很小。
+
+# 虚拟环境：容器内由 `uv sync` 重新创建
+.venv
+venv
+env
+
+# 环境变量与密钥
+.env
+.env.*
+!.env.example
+
+# 用户上传的文件 —— 属于用户数据，绝不该进镜像
+uploads
+
+# Python 缓存
+__pycache__
+*.py[cod]
+*.egg-info
+.pytest_cache
+.ruff_cache
+.mypy_cache
+
+# 评估产物与日志
+evaluation_reports
+*.log
+
+# 测试与编辑器
+.vscode
+.idea
+.DS_Store
+Thumbs.db

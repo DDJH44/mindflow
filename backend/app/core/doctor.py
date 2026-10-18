@@ -139,28 +139,76 @@ async def check_migrations() -> None:
 
 
 async def check_redis() -> None:
-    """Redis 配置是否存在。
+    """Redis 连通性 —— 它现在的用途是**限流**。
 
-    ⚠️ 这里**只检查配置，不声称它在被使用**。
+    ⚠️ 2026-10-15 之后这条检查的结论反过来了。
 
-    实测：`redis_url` 只出现在 `config.py` 与测试文本里，
-    业务代码从不使用它。因此"Redis 连得上"并不代表什么 ——
-    报 OK 会让人以为缓存已经在工作。
+    此前 `redis_url` 只出现在 `config.py` 与测试文本里，
+    业务代码从不使用它，因此旧版报的是
+    "已配置，但业务代码尚未使用"。
 
-    这个警告本身有价值：它让"启动了一堆用不上的容器"
-    这件事可见，而不是靠人记得。
+    现在 Redis 是**限流的唯一存储**（`app/core/rate_limit.py`）：
+    注册/登录按 IP、上传与开始面试按用户，都靠它计数。
+    因此它已经不是"用不上的容器"，而是**安全机制的前提**。
+
+    这带来一个必须写下来的后果：
+    **Redis 不可用时限流是 fail-closed 的** —— 相关端点返回 503，
+    而不是静默放行（静默失效会让人以为有保护，而实际没有）。
+
+    因此这里真的去 ping 一次，而不是只看配置有没有填。
     """
 
     if not settings.redis_url:
-        report("Redis", WARN, "未配置 redis_url")
+        report(
+            "Redis",
+            FAIL,
+            "未配置 redis_url —— 限流无法工作（相关端点会返回 503）",
+        )
         return
 
-    report(
-        "Redis",
-        WARN,
-        "已配置，但**业务代码尚未使用**"
-        "（检索与缓存都还没接入）—— 连得上不代表在用",
-    )
+    try:
+        import redis.asyncio as redis_asyncio
+
+        client = redis_asyncio.Redis.from_url(
+            settings.redis_url,
+            decode_responses=True,
+            socket_connect_timeout=3,
+        )
+
+        try:
+            started = time.perf_counter()
+            await client.ping()
+            elapsed_ms = (time.perf_counter() - started) * 1000
+        finally:
+            await client.aclose()
+
+        status = (
+            "已启用（限流）" if settings.rate_limit_enabled else "未启用"
+        )
+
+        # 连得上但限流被关掉 —— 这一条要显眼：
+        # 那意味着部署者以为有保护，实际没有任何限流。
+        if settings.rate_limit_enabled:
+            report(
+                "Redis",
+                OK,
+                f"{status}，{elapsed_ms:.0f}ms",
+            )
+        else:
+            report(
+                "Redis",
+                WARN,
+                "连得上，但 `RATE_LIMIT_ENABLED=false` —— "
+                "**当前没有任何限流**，公开部署时请打开",
+            )
+
+    except Exception as exc:  # noqa: BLE001
+        report(
+            "Redis",
+            FAIL,
+            f"连不上（{type(exc).__name__}）—— "
+            "限流是 fail-closed 的，注册/登录/上传会返回 503",
+        )
 
 
 async def check_milvus(with_vectors: bool = True) -> None:

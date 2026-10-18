@@ -96,6 +96,15 @@ SUITES: tuple[tuple[str, bool], ...] = (
     # 额度够开但不够开完时，面试会中途断掉而场次已经花掉 ——
     # 那才是真正需要提前告知的情况。
     ("test_interview_cost", False),
+    # 邀请码（注册控制）：一次性、并发安全、**事务原子性**。
+    # 最关键的断言是"占码失败时不留账号" —— 若"建用户"与
+    # "占码"各自提交，会留下一个没有邀请码但带完整额度的账号，
+    # 而发码的人根本不知道多了这么一个。
+    ("test_invite_codes", False),
+    # 上游失败的**聚合路径**也要映射成 503（D75）。
+    # 多次采样全失败时抛的是聚合错误，而它的 MRO 里没有
+    # OpenAIError —— 只修单次路径的话，上游超时仍是裸 500。
+    ("test_llm_error_aggregate", False),
     ("test_document_upload", True),
     ("test_resume_upload", True),
     # 会调用模型的套件

@@ -1,5 +1,6 @@
 from collections import Counter
 
+from app.core.llm_errors import UpstreamLLMError
 from app.core.logging import get_logger
 from app.core.config import settings
 from app.core.model_json import parse_model_json
@@ -210,8 +211,20 @@ class InterviewEvaluator:
                 )
 
         if not samples:
-            raise RuntimeError(
-                "整场评价全部采样失败：" + " | ".join(errors)
+            # 抛**专门的类型**而不是裸 RuntimeError。
+            #
+            # 原因（D75）：裸 RuntimeError 的 MRO 里没有
+            # `OpenAIError`，于是 `_llm_error_or_none` 的映射不命中，
+            # 上游超时会变成裸 500 —— 客户端分不清"上游抖动"
+            # 与"代码 bug"。实测就是三个套件因此崩溃。
+            #
+            # `UpstreamLLMError` 继承 RuntimeError，
+            # 因此既有的 `except RuntimeError` 分支行为不变。
+            raise UpstreamLLMError(
+                "整场评价全部采样失败：" + " | ".join(errors),
+                cause_names=tuple(
+                    name.split(":")[0] for name in errors
+                ),
             )
 
         if len(samples) == 1:

@@ -19,6 +19,7 @@ from app.schemas.auth import (
     UserLoginRequest,
     UserRegisterRequest,
 )
+from app.services import invite_service
 
 router = APIRouter(
     prefix="/api/auth",
@@ -54,6 +55,22 @@ async def register(
 
     user_repository = UserRepository(db)
 
+    # 邀请码：先做**格式与策略**检查，再动数据库。
+    #
+    # 顺序理由：邀请码不对时不该先花一次"用户名是否已存在"的查询，
+    # 更不该让攻击者通过"用户名已存在"这个错误反推
+    # 哪些用户名被占了。
+    invite_code = None
+
+    if settings.registration_require_invite:
+        if not data.invite_code or not data.invite_code.strip():
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="本次部署仅限持邀请码的用户注册",
+            )
+
+        invite_code = data.invite_code
+
     # 检查用户名
     existing_user = await user_repository.get_by_username(
         data.username
@@ -83,12 +100,37 @@ async def register(
         data.password
     )
 
-    # 创建用户
-    user = await user_repository.create(
-        username=data.username,
-        email=data.email,
-        password_hash=password_hash,
-    )
+    if invite_code is None:
+        # 未开启邀请制：沿用原来的直接创建。
+        user = await user_repository.create(
+            username=data.username,
+            email=data.email,
+            password_hash=password_hash,
+        )
+    else:
+        # 开启邀请制：建账号与占码在**同一个事务**里完成。
+        #
+        # 失败时整体回滚 —— 不会留下"没有邀请码的账号"，
+        # 也不会白白作废一条码。理由见
+        # `app/services/invite_service.py` 的模块文档。
+        try:
+            user = await invite_service.register_with_invite(
+                db,
+                username=data.username,
+                email=data.email,
+                password_hash=password_hash,
+                code=invite_code,
+            )
+        except invite_service.InviteCodeError as exc:
+            # 回滚：上面可能已经 flush 了一条 INSERT。
+            await db.rollback()
+
+            # 403 而不是 400：这不是"请求格式错误"，
+            # 而是"你没有权限用这个邀请码"。
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=str(exc),
+            ) from exc
 
     return {
         "message": "注册成功",
@@ -97,6 +139,24 @@ async def register(
             "username": user.username,
             "email": user.email,
         },
+    }
+
+
+@router.get("/registration-mode")
+async def get_registration_mode():
+    """告诉前端"注册是否需要邀请码"。
+
+    为什么需要这个端点：邀请码输入框应当**只在需要时显示**。
+    若前端一律显示，本地开发时会看到一个多余的必填项；
+    若一律不显示，开启邀请制后用户根本不知道要填什么 ——
+    而那时注册会失败，且失败原因看起来像"服务器坏了"。
+
+    这个端点不含敏感信息（只暴露一个布尔值），
+    因此不需要认证 —— 登录页本来就是未登录状态。
+    """
+
+    return {
+        "require_invite": settings.registration_require_invite,
     }
 
 @router.post(

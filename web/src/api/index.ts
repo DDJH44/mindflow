@@ -39,10 +39,37 @@ export const authApi = {
     return data
   },
 
-  async register(username: string, email: string, password: string) {
+  async register(
+    username: string,
+    email: string,
+    password: string,
+    inviteCode?: string,
+  ) {
     const { data } = await http.post<{ message: string; user: User }>(
       '/auth/register',
-      { username, email, password },
+      {
+        username,
+        email,
+        password,
+        // 只在有值时发送：留空字符串会让后端把"空"当成"用户填了个空码"，
+        // 于是报"邀请码无效"而不是"缺少邀请码" —— 后者才是真实原因。
+        ...(inviteCode ? { invite_code: inviteCode } : {}),
+      },
+    )
+    return data
+  },
+
+  /**
+   * 注册是否需要邀请码。
+   *
+   * 登录页据此决定要不要显示邀请码输入框。
+   * 不在前端写死"总是显示"：本地开发时会多一个没用的必填项；
+   * 也不写死"从不显示"：开启邀请制后用户不知道要填什么，
+   * 而失败原因看起来像"服务器坏了"。
+   */
+  async registrationMode() {
+    const { data } = await http.get<{ require_invite: boolean }>(
+      '/auth/registration-mode',
     )
     return data
   },
