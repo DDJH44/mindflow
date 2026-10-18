@@ -1288,3 +1288,20 @@ button:disabled {
   display: inline;
   margin-bottom: 0;
 }
+
+/* ------------------------------------------------------ 逐轮分析（报告页复盘） */
+
+/*
+ * 每一题的"当时被判定漏了什么"。
+ *
+ * 放在报告页（复盘）而不是作答过程中：面试中途把评分给候选人
+ * 看会干扰后续作答 —— 见 routers/interviews.py 的说明。
+ *
+ * 用左侧细线而不是卡片边框：它属于"这一题的附注"，
+ * 不该与题目本身竞争视觉层级。
+ */
+.answer-analysis {
+  margin-top: var(--sp-3);
+  padding-left: var(--sp-3);
+  border-left: 2px solid var(--border);
+}

@@ -40,6 +40,18 @@ class InterviewQuestionResponse(BaseModel):
     answer: str | None = None
     answered_at: datetime | None = None
 
+    # 该题作答的逐轮分析留档（复盘用）。
+    #
+    # 结构：`{missing_points: [...], anchors: {...}, sample_count: int}`
+    #
+    # ⚠️ 为 None 有两种含义，前端都应当**隐藏该区块**：
+    # ① 还没作答
+    # ② 记录早于本功能（历史数据）
+    #
+    # 刻意不区分这两种 —— 对用户来说它们的结果一样
+    # （没有复盘数据），而区分会多一个字段却没有可用动作。
+    analysis: dict | None = None
+
     model_config = ConfigDict(from_attributes=True)
 
     @property

@@ -123,6 +123,19 @@ class InterviewTurnService:
             repeats=online_analysis_samples(),
         )
 
+        # 4.1 把分析留档到回答记录（复盘用）。
+        #
+        # 为什么在这里而不是等流程结束：
+        # 这份分析**只在这一刻存在于内存里** —— 后面的追问生成、
+        # 状态转移一旦抛异常，它就永远丢了。先落盘再往下走。
+        #
+        # 为什么失败不中断：见 `save_analysis` 的说明 ——
+        # 它只影响"复盘数据"，而用户的回答已经落库。
+        await self.answer_service.save_analysis(
+            answer_id=saved_answer.id,
+            analysis=analysis,
+        )
+
         # 5. 判断是否还能继续出题。
         #
         # **必须先判断再转移**：这次 `→ evaluating` 的触发原因

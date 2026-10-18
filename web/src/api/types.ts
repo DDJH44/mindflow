@@ -70,6 +70,26 @@ export interface InterviewSession {
   updated_at: string
 }
 
+/**
+ * 某一轮作答的逐轮分析留档。
+ *
+ * 只保留**复盘时真正要看**的东西：漏了什么、三个维度的档位。
+ * 完整分析（原始提示词、模型输出）不存 —— 体积大且无复盘价值。
+ */
+export interface AnswerAnalysisSnapshot {
+  /** 这一轮回答被判定为缺失的点。 */
+  missing_points: string[]
+  /**
+   * 三个维度的档位（A/B/C/D）。
+   *
+   * 键名来自后端 `anchor_summary()`，例如
+   * `answer_quality` / `technical_depth` / `completeness`。
+   */
+  anchors: Record<string, string | null>
+  /** 采样次数。线上默认 1 次（延迟优先）。 */
+  sample_count: number | null
+}
+
 export interface InterviewQuestion {
   id: number
   session_id: number
@@ -87,6 +107,15 @@ export interface InterviewQuestion {
   /** 该题已有的回答（未作答为 null）。 */
   answer: string | null
   answered_at: string | null
+
+  /**
+   * 逐轮分析留档（复盘用）。
+   *
+   * `null` 有两种含义：还没作答，或记录早于该功能（历史数据）。
+   * 前端一律**隐藏该区块** —— 对用户来说两者结果相同，
+   * 而显示"无数据"会让人以为坏了。
+   */
+  analysis: AnswerAnalysisSnapshot | null
 }
 
 export interface InterviewEvaluation {

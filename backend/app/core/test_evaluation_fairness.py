@@ -170,15 +170,38 @@ async def main() -> int:
 
     # 1 题的评价被说成"整场综合表现"会误导用户：
     # 那读起来像"你整体很差"，而实际样本量是 1。
+    #
+    # ⚠️ 判据必须容忍**语序与空格的变化**（D64 的同一个教训）。
+    #
+    # 实测：这一条第一版用的是固定关键词
+    # `("1 轮", "一轮", "轮次", "样本", "题数", "仅一")`，
+    # 而模型实际说的是「在**仅有的1轮**中完全未能回应…」——
+    # 语义完全正确，但「1轮」之间没有空格，于是**判定失败**。
+    #
+    # 判据测的应当是"有没有说明样本量有限"，而不是
+    # "有没有用我预想的那几个字"。
+    import re
+
     reason = evaluation.anchor_reason or ""
 
-    mentions_sample = any(
-        keyword in reason
-        for keyword in ("1 轮", "一轮", "轮次", "样本", "题数", "仅一")
+    mentions_sample = bool(
+        re.search(r"\d+\s*轮", reason)
+        or any(
+            word in reason
+            for word in (
+                "样本",
+                "轮次",
+                "仅一",
+                "仅有一",
+                "只有一",
+                "唯一一",
+                "有效作答",
+            )
+        )
     )
 
     result.check(
-        "anchor_reason 提到轮次/样本量有限",
+        "anchor_reason 说明本轮次/样本量有限",
         mentions_sample,
         f"理由：{reason[:120]}",
     )

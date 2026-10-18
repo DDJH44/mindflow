@@ -118,6 +118,25 @@ const sampleSizeTooSmall = computed(() => {
   return answeredCount <= 2
 })
 
+/**
+ * 逐轮分析的维度名 → 中文。
+ *
+ * 这些键来自后端 `AnswerAnalysis.anchor_summary()`。
+ *
+ * ⚠️ 未命中时**回退成原键名**，而不是空白：
+ * 后端将来新增维度时，一个英文单词至少能让人搜到它，
+ * 空白则会让人以为界面坏了。
+ */
+const ANCHOR_LABELS: Record<string, string> = {
+  answer_quality: '回答质量',
+  technical_depth: '技术深度',
+  completeness: '完整性',
+}
+
+function anchorLabel(key: string): string {
+  return ANCHOR_LABELS[key] ?? key
+}
+
 async function load() {
   loading.value = true
   error.value = ''
@@ -290,6 +309,46 @@ onMounted(load)
             {{ item.answer }}
           </div>
           <div v-else class="faint" style="margin-top: 6px">未作答</div>
+
+          <!--
+            逐轮分析：这一题当时被判定"漏了什么"。
+
+            ⚠️ 为什么放在报告页而不是作答过程中：
+            面试中途把"技术深度偏低"给候选人看会干扰后续作答
+            （`routers/interviews.py` 里有这条刻意的决定）。
+            复盘时看才是学习价值。
+
+            `item.analysis` 为 null 时整块不渲染 ——
+            两种原因（未作答 / 历史记录）对用户结果相同，
+            显示"无数据"只会让人以为坏了。
+          -->
+          <div v-if="item.analysis" class="answer-analysis">
+            <div class="row-wrap" style="gap: 8px">
+              <span class="faint">这一题当时被判定：</span>
+              <span
+                v-for="(anchor, key) in item.analysis.anchors"
+                :key="key"
+                class="tag"
+              >
+                {{ anchorLabel(key) }} {{ anchor || '—' }}
+              </span>
+            </div>
+
+            <div
+              v-if="item.analysis.missing_points.length"
+              style="margin-top: 6px"
+            >
+              <span class="faint">
+                可以补充的 {{ item.analysis.missing_points.length }} 点：
+              </span>
+              <span class="muted">
+                {{ item.analysis.missing_points.join('、') }}
+              </span>
+            </div>
+            <div v-else class="faint" style="margin-top: 6px">
+              这一题没有明显缺口。
+            </div>
+          </div>
         </div>
       </div>
 

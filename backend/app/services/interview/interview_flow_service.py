@@ -208,6 +208,16 @@ class InterviewFlowService:
                     "answered_at": (
                         answer.created_at if answer else None
                     ),
+                    # 逐轮分析的留档（复盘用）。
+                    #
+                    # 只在**回答存在**时才有值；历史记录（本功能之前）
+                    # 为 None —— 那是事实，前端应据此隐藏该区块，
+                    # 而不是显示"无数据"让人以为坏了。
+                    "analysis": (
+                        getattr(answer, "analysis_snapshot", None)
+                        if answer
+                        else None
+                    ),
                 }
             )
 
