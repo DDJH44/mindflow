@@ -23,6 +23,7 @@ import type {
   ListInterviewsParams,
   NextStep,
   Project,
+  ProjectReadiness,
   StatusHistoryEntry,
   TokenResponse,
   Usage,
@@ -99,6 +100,19 @@ export const projectApi = {
 
   async detail(id: number) {
     const { data } = await http.get<Project>(`/projects/${id}`)
+    return data
+  },
+
+  /**
+   * 资料体检：哪些类型已索引、缺什么、面试会用哪些。
+   *
+   * 面试只检索四类材料且只检索已索引的，而这两点用户看不到 ——
+   * 于是"面试老问简历"会被理解成"面试质量不行"。
+   */
+  async readiness(id: number) {
+    const { data } = await http.get<ProjectReadiness>(
+      `/projects/${id}/readiness`,
+    )
     return data
   },
 }

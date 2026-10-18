@@ -280,6 +280,41 @@ export interface NextStep {
   session_count: number
 }
 
+/**
+ * 资料体检：这个项目的资料能不能支撑一场有依据的面试。
+ *
+ * 面试只检索四类材料（简历 / 岗位要求 / 项目材料 / 代码），
+ * 且只检索**已索引**的。这两点用户都看不到 ——
+ * 因此需要这个接口把结果明说出来。
+ */
+export interface ProjectReadiness {
+  types: {
+    type: string
+    label: string
+    total: number
+    indexed: number
+  }[]
+
+  indexed_types: string[]
+  missing_types: string[]
+
+  /** 是否有任何四类中的资料已索引（没有则面试只能出通用题）。 */
+  usable: boolean
+
+  /**
+   * 标记为「其他」的资料数量。
+   *
+   * ⚠️ 这类资料**不参与面试出题**（面试只按四类分别检索），
+   * 但它索引成功、在列表里显示"已索引·可检索" ——
+   * 因此必须单独告诉用户，否则会以为"我传了资料却没用上"。
+   */
+  other_total: number
+  other_indexed: number
+
+  /** 一句因果说明（为什么该补资料 / 为什么只能问简历）。 */
+  advice: string
+}
+
 export interface ListInterviewsParams {
   /** 只看还没结束的面试 —— 用于「找回没做完的」。 */
   unfinished_only?: boolean

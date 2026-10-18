@@ -20,12 +20,23 @@ import type {
   DocumentItem,
   DocumentType,
   Project,
+  ProjectReadiness,
 } from '../api/types'
 
 const props = defineProps<{ id: number }>()
 
 const project = ref<Project | null>(null)
 const documents = ref<DocumentItem[]>([])
+
+/**
+ * 资料体检结果（哪些类型已索引、缺什么）。
+ *
+ * 为什么需要：面试只能围绕**已索引**的资料提问，而"已索引"
+ * 是用户看不到的状态。实测某项目只有简历已索引，于是整场面试
+ * 都在问简历 —— 那看起来像"面试质量不行"，实际是资料没准备好。
+ */
+const readiness = ref<ProjectReadiness | null>(null)
+
 const loading = ref(true)
 const error = ref('')
 
@@ -175,12 +186,16 @@ async function load() {
   error.value = ''
 
   try {
-    const [detail, list] = await Promise.all([
+    const [detail, list, check] = await Promise.all([
       projectApi.detail(props.id),
       documentApi.list(props.id),
+      // 资料体检：与列表一起取，避免页面上出现"资料已加载但体检还没到"
+      // 的空档。失败时返回 null（只是不显示提示，不影响用资料）。
+      projectApi.readiness(props.id).catch(() => null),
     ])
     project.value = detail
     documents.value = list
+    readiness.value = check
 
     // 进入页面时如果还有未完成的索引（例如用户上次没等就关了
     // 页面），也要继续刷新 —— 否则他会看到一个永远不变的
@@ -342,12 +357,56 @@ onMounted(load)
     </template>
 
     <template v-else>
-      <!-- 索引状态：决定面试能否出好题 -->
+      <!--
+        资料体检：决定面试能否出好题。
+
+        此前这里只写"已有 N 份资料可被检索"—— 而那个数字有两个问题：
+        ① 它不区分**类型**。面试是按四类分别检索的，
+           只有简历也会显示"1 份可检索"，看起来完全没问题。
+        ② 它把「其他」类型也算进去了。而「其他」**不参与出题**，
+           于是用户会看到"1 份可检索"却永远问不到那份材料。
+
+        因此改为按类型给出体检结果，并把「其他」单独说明。
+      -->
+      <!--
+        ⚠️ 绿色的条件必须是"四类都齐"，不能只判 `usable`。
+
+        实测：只有简历已索引时 `usable` 为 true，于是提示是绿色的
+        「没问题」—— 而同一句话里写着"面试只能围绕简历提问"。
+        **颜色与文字互相矛盾**，用户会只看颜色。
+
+        因此：缺任何一类都用警告色 —— 那确实是"还能改进"的状态。
+      -->
       <div
         class="alert"
-        :class="indexedCount > 0 ? 'alert-ok' : 'alert-warn'"
+        :class="
+          readiness
+            ? readiness.usable && !readiness.missing_types.length
+              ? 'alert-ok'
+              : 'alert-warn'
+            : indexedCount > 0
+              ? 'alert-ok'
+              : 'alert-warn'
+        "
       >
-        <template v-if="indexedCount > 0">
+        <template v-if="readiness">
+          {{ readiness.advice }}
+
+          <!-- 每类的索引状况：一眼看出缺哪一类 -->
+          <div class="row-wrap" style="margin-top: 10px; gap: 8px">
+            <span
+              v-for="item in readiness.types"
+              :key="item.type"
+              class="tag"
+              :class="item.indexed > 0 ? 'tag-accent' : ''"
+            >
+              {{ item.label }}
+              {{ item.indexed > 0 ? `✓ ${item.indexed}` : '✗' }}
+            </span>
+          </div>
+        </template>
+
+        <template v-else-if="indexedCount > 0">
           已有 {{ indexedCount }} 份资料可被检索，面试会依据它们出题。
         </template>
         <template v-else>
