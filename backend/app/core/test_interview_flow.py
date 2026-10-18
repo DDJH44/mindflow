@@ -407,23 +407,19 @@ async def _run_checks():
 def _is_llm_error(exc: Exception) -> bool:
     """是否为上游 LLM 的失败。
 
-    判据用**类名与 MRO 特征**而不是 `import openai`：
-    本项目允许替换 LLM 实现（§24 换过端点），
-    硬绑具体 SDK 的异常类会让这个判断在换实现后失效。
+    ⚠️ 判据**集中在 `app/core/llm_errors.is_llm_error`**，这里只做转发。
+
+    此前本函数自己维护一份异常名清单，而路由里的
+    `_llm_error_or_none` 也维护一份。引入 `UpstreamLLMError`
+    （聚合路径专用）时只更新了路由那份 —— 于是本套件仍把它
+    当普通异常并以 exit=1 崩溃，失败信息看起来像**代码回归**。
+
+    同一个事实存在两处，改一处必然漏另一处。
     """
 
-    names = {cls.__name__ for cls in type(exc).__mro__}
+    from app.core.llm_errors import is_llm_error
 
-    return bool(
-        names
-        & {
-            "OpenAIError",
-            "APITimeoutError",
-            "APIConnectionError",
-            "APIStatusError",
-            "RateLimitError",
-        }
-    )
+    return is_llm_error(exc)
 
 
 def main_sync() -> int:

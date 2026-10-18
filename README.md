@@ -214,6 +214,13 @@ uv run python -m app.core.cleanup_test_sessions
 
 # 看数据集的覆盖情况（避免按错的维度规划扩充）
 uv run python -m app.core.audit_datasets
+
+# 检查卡在「正在评价」的会话。
+# 评价那一步失败（上游超时）会让会话停在 evaluating：
+# 用户在这个状态下无法作答也拿不到报告。界面已支持「重试生成报告」，
+# 服务器上可用本工具批量重试。
+uv run python -m app.core.check_stuck_sessions
+uv run python -m app.core.check_stuck_sessions --retry
 ```
 
 ---

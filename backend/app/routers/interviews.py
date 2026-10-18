@@ -8,7 +8,7 @@ from fastapi import (
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user
-from app.core.llm_errors import UpstreamLLMError
+from app.core.llm_errors import UpstreamLLMError, is_llm_error
 from app.core.logging import get_logger
 from app.database.session import get_db
 from app.models.user import User
@@ -196,34 +196,10 @@ def _llm_error_or_none(exc: Exception) -> HTTPException | None:
             detail=exc.describe(),
         )
 
-    names = {cls.__name__ for cls in type(exc).__mro__}
-
-    is_llm_error = bool(
-        names
-        & {
-            "OpenAIError",
-            "APITimeoutError",
-            "APIConnectionError",
-            "APIStatusError",
-            "RateLimitError",
-        }
-    )
-
-    if not is_llm_error:
-        # 再看一层原因链：有些包装异常会把原始异常放在 `__cause__`
-        # 或 `__context__` 里，而它们同样能说明"这是上游问题"。
-        for chained in (exc.__cause__, exc.__context__):
-            if chained is not None:
-                chained_names = {
-                    cls.__name__ for cls in type(chained).__mro__
-                }
-
-                if chained_names & {"OpenAIError", "APITimeoutError"}:
-                    is_llm_error = True
-                    exc = chained
-                    break
-
-    if not is_llm_error:
+    # 其余判断**集中在 `is_llm_error`**（同一事实只应存在一处）。
+    # 此前这里自己维护一份异常名清单，而测试里也有一份 ——
+    # 引入新类型时只更新了这里，测试那份就漏了。
+    if not is_llm_error(exc):
         return None
 
     detail = str(exc) or type(exc).__name__

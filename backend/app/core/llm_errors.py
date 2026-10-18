@@ -90,3 +90,63 @@ class UpstreamLLMError(RuntimeError):
             "调用模型失败。这是上游模型服务的临时问题，"
             "稍后重试即可，本次不消耗额度。"
         )
+
+
+# 上游 LLM 异常的类名特征。
+#
+# 用**类名与 MRO** 而不是 `import openai`：本项目允许替换 LLM 实现
+# （§24 换过端点），硬绑具体 SDK 会让判断在换实现后失效。
+LLM_ERROR_NAMES = frozenset(
+    {
+        "OpenAIError",
+        "APITimeoutError",
+        "APIConnectionError",
+        "APIStatusError",
+        "RateLimitError",
+    }
+)
+
+
+def is_llm_error(exc: BaseException) -> bool:
+    """判断异常是否表示"上游 LLM 不可用"。
+
+    ## 为什么要有这个函数（而不是各处自己判断）
+
+    这个判断原本被**写了两份**：路由里的 `_llm_error_or_none`
+    与 `test_interview_flow._is_llm_error`，各自维护一份异常名清单。
+
+    实测后果：引入 `UpstreamLLMError`（聚合路径专用）时只更新了
+    路由那一份 —— 于是测试仍把它当普通异常并以 exit=1 崩溃，
+    而失败信息看起来像代码回归。
+
+    **同一个事实存在两处，改一处必然漏另一处。**
+    因此判断集中到这里，两边都调它。
+
+    ## 判据顺序
+
+    1. `UpstreamLLMError` —— 聚合路径的专用类型，直接命中
+    2. 自身 MRO 里的类名
+    3. `__cause__` / `__context__` 链（有些包装异常只在链里
+       保留原始类型）
+    """
+
+    if isinstance(exc, UpstreamLLMError):
+        return True
+
+    if {cls.__name__ for cls in type(exc).__mro__} & LLM_ERROR_NAMES:
+        return True
+
+    for chained in (exc.__cause__, exc.__context__):
+        if chained is None:
+            continue
+
+        if isinstance(chained, UpstreamLLMError):
+            return True
+
+        if (
+            {cls.__name__ for cls in type(chained).__mro__}
+            & LLM_ERROR_NAMES
+        ):
+            return True
+
+    return False

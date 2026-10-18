@@ -209,6 +209,42 @@ async def main() -> int:
     # ================================================
     print()
     print("=" * 78)
+    print("⑤ 三处判断必须一致（防同一事实被写多处）")
+    print("=" * 78)
+
+    # 这个判断原本被写了两份：路由 `_llm_error_or_none` 与
+    # `test_interview_flow._is_llm_error`。引入 UpstreamLLMError 时
+    # 只更新了路由那份 —— 于是测试仍把它当普通异常并崩溃，
+    # 失败信息看起来像代码回归。
+    #
+    # 现在统一走 `llm_errors.is_llm_error`。这一条断言两边结论相同,
+    # 任何人都不能再悄悄分叉。
+    from app.core.llm_errors import is_llm_error
+    from app.core.test_interview_flow import _is_llm_error
+
+    samples = [
+        UpstreamLLMError("x", cause_names=("APITimeoutError",)),
+        UpstreamLLMError("x", cause_names=("RateLimitError",)),
+        ValueError("业务错误"),
+        RuntimeError("普通错误"),
+    ]
+
+    disagreements = [
+        f"{type(exc).__name__}: 统一={is_llm_error(exc)} "
+        f"测试侧={_is_llm_error(exc)}"
+        for exc in samples
+        if is_llm_error(exc) != _is_llm_error(exc)
+    ]
+
+    result.check(
+        "统一判据与测试侧判据结论一致",
+        not disagreements,
+        f"不一致 {disagreements}" if disagreements else "四处一致",
+    )
+
+    # ================================================
+    print()
+    print("=" * 78)
     passed = len(result.rows) - len(result.failed)
     print(f"通过 {passed} / {len(result.rows)}")
 

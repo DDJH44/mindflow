@@ -84,6 +84,34 @@ const isCompleted = computed(
 )
 
 /**
+ * 会话是否卡在"正在评价"状态。
+ *
+ * ## 为什么需要专门处理（实测缺陷 D76）
+ *
+ * "结束并生成报告"会先把会话推进到 `evaluating`，再调模型做整场评价。
+ * 若评价失败（上游超时、限流），会话就**停在 evaluating** ——
+ * 而这在设计上是**可重试**的（`finish_interview` 对 evaluating
+ * 直接放行，见 ADR-025）。
+ *
+ * 但界面此前完全没有区分这个状态：
+ *
+ * - 它照样显示"当前问题"和回答输入框
+ * - 用户以为还能继续答，输入并提交
+ * - 后端返回 **409 原始状态机错误**：
+ *   「非法状态转移：evaluating → waiting_for_answer；
+ *     允许的目标状态为 ['asking','failed','paused','summarizing']」
+ *
+ * 实测库里有 2 个会话这样卡了 5 天。用户看到的是
+ * "我明明能答题，为什么提交就报错" —— 而真正该做的是
+ * **重试生成报告**，界面却从没告诉他。
+ *
+ * 因此：evaluating 状态要**屏蔽回答区**，只留"重试生成报告"。
+ */
+const isEvaluating = computed(
+  () => session.value?.status === 'evaluating',
+)
+
+/**
  * 暂停后的恢复上下文（§10.6）。
  *
  * ## 它解决什么问题
@@ -285,22 +313,29 @@ onMounted(async () => {
           </div>
 
           <div class="row">
-            <button
-              v-if="session.status === 'paused'"
-              class="btn-ghost"
-              type="button"
-              @click="resume"
-            >
-              继续面试
-            </button>
-            <button
-              v-else
-              class="btn-ghost"
-              type="button"
-              @click="pause"
-            >
-              暂停
-            </button>
+            <!--
+              `evaluating` 状态不显示"暂停"。
+              那个状态下"暂停"也没有意义（面试已经结束了流程），
+              而显示它会让用户以为还能继续。
+            -->
+            <template v-if="!isEvaluating">
+              <button
+                v-if="session.status === 'paused'"
+                class="btn-ghost"
+                type="button"
+                @click="resume"
+              >
+                继续面试
+              </button>
+              <button
+                v-else
+                class="btn-ghost"
+                type="button"
+                @click="pause"
+              >
+                暂停
+              </button>
+            </template>
             <button
               class="btn-primary"
               type="button"
@@ -308,7 +343,11 @@ onMounted(async () => {
               @click="finish"
             >
               <span v-if="finishing" class="spinner" />
-              {{ finishing ? '正在生成报告…' : '结束并生成报告' }}
+              <template v-if="finishing">正在生成报告…</template>
+              <template v-else-if="isEvaluating">
+                重试生成报告
+              </template>
+              <template v-else>结束并生成报告</template>
             </button>
           </div>
 
@@ -381,8 +420,36 @@ onMounted(async () => {
         </div>
       </div>
 
+      <!--
+        评价未完成时的提示（D76）。
+
+        这个状态此前完全被当成"正常面试中"：照样显示题目与回答框，
+        用户提交后拿到的是原始状态机报错（409 非法状态转移）。
+        实测库里有会话这样卡了 5 天。
+
+        文案要说清三件事：发生了什么、数据还在不在、该点哪里。
+      -->
+      <div v-if="isEvaluating" class="alert alert-warn">
+        <div>
+          <strong>上次生成报告没有完成。</strong>
+          面试记录与作答都已保存，只是整场评价那一步失败了
+          （通常是上游模型服务临时不可用）。
+        </div>
+        <div style="margin-top: 6px">
+          点右上角的「重试生成报告」即可重新评价，
+          <strong>不会消耗面试额度</strong>（额度在开始面试时就已扣除）。
+          在重试成功之前不能再提交回答 —— 这场面试已经结束了流程。
+        </div>
+      </div>
+
       <!-- 当前问题 -->
-      <div v-if="current" class="card">
+      <!--
+        ⚠️ `evaluating` 时**不显示**回答区。
+        那个状态下后端会拒绝作答（evaluating → waiting_for_answer 非法），
+        而显示一个"能输入但提交必失败"的表单，
+        比不显示更糟：用户会以为是自己操作错了。
+      -->
+      <div v-if="current && !isEvaluating" class="card">
         <div class="row-between" style="margin-bottom: 12px">
           <h2>当前问题</h2>
           <!--
@@ -445,7 +512,14 @@ onMounted(async () => {
         <WaitingIndicator :active="submitting" />
       </div>
 
-      <div v-else class="card">
+      <!--
+        ⚠️ 必须是 `v-else-if="!isEvaluating"`，不能只用 `v-else`。
+
+        否则 `evaluating` 状态会落到这个分支，显示
+        "当前没有待回答的问题" —— 而实际上**是有**的，
+        只是我上面刻意隐藏了回答区。那会给出错误的解释。
+      -->
+      <div v-else-if="!isEvaluating" class="card">
         <p class="muted" style="margin: 0">
           当前没有待回答的问题。
         </p>

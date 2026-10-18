@@ -324,6 +324,40 @@ async def main():
             f"/interviews/{created_session_id}/start",
             json={"query": "考察后端与 RAG 实践经验"},
         )
+
+        # 上游不可用时**明确跳过**，而不是把它报成代码失败。
+        #
+        # 实测：门禁里这个套件报 26/27，而单独跑 28/28 ——
+        # 差别来自一次上游抖动（`/start` 返回 503）。
+        # 而后续所有断言都依赖首题，于是连锁失败，
+        # 失败信息看起来像"开始面试坏了"。
+        #
+        # 这与 D57 的约定一致（其它套件早就按 503 分流），
+        # 本套件此前遗漏了。
+        #
+        # ⚠️ 退出前必须**先清理**：直接 sys.exit 会留下
+        # e2e_xxx 测试用户，而那正是 D71（测试垃圾污染用户界面）
+        # 的来源。
+        if response.status_code == 503:
+            detail = ""
+            try:
+                detail = str(response.json().get("detail", ""))
+            except Exception:  # noqa: BLE001
+                pass
+
+            print()
+            print("  ⚠️ LLM 端点不可用，面试相关断言本次**未执行**")
+            print(f"     {detail[:160]}")
+            print("     这不是代码失败。稍后重跑本套件即可。")
+
+            if created_session_id:
+                await delete_session(created_session_id)
+
+            cleaned = await delete_test_user(username)
+            print(f"  已清理测试用户 {username}: {cleaned}")
+
+            return 2
+
         record(
             "开始面试返回 200",
             response.status_code == 200,
@@ -589,5 +623,13 @@ async def main():
 
     print("全部通过")
 
+    return 0
 
-asyncio.run(main())
+
+# ⚠️ 必须 `sys.exit(asyncio.run(main()))`，不能只 `asyncio.run(main())`。
+#
+# 后者会**丢弃 main 的返回值** —— 于是 `return 2`（"依赖不可用、
+# 未执行"）变成一个普通成功退出，门禁会把"没跑"当成"通过"。
+# 那比失败更危险：它会让人以为覆盖了实际没跑的东西。
+if __name__ == "__main__":
+    sys.exit(asyncio.run(main()))
