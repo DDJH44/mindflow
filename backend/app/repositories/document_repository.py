@@ -60,6 +60,31 @@ class DocumentRepository:
 
         return list(result.scalars().all())
 
+    async def get_indexed_document_types(
+        self,
+        project_id: int,
+    ) -> list[str]:
+        """返回项目下**有已索引资料**的文档类型（去重）。
+
+        为什么只算 `status == 'embedded'`：那表示向量已写入 Milvus，
+        检索才可能命中。只看"有文件"会把"上传了但索引失败"的类型
+        也算进去 —— 于是面试计划里会安排一个**检索不到任何东西**的
+        主题，出题退化成通用题，而用户看起来像"检索坏了"。
+
+        空项目返回空列表，调用方据此走通用题的兜底计划。
+        """
+
+        result = await self.session.execute(
+            select(Document.document_type)
+            .where(
+                Document.project_id == project_id,
+                Document.status == "embedded",
+            )
+            .distinct()
+        )
+
+        return [row for row in result.scalars().all() if row]
+
     async def create(
         self,
         name: str,

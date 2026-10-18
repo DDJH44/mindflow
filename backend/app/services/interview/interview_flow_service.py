@@ -3,8 +3,13 @@ from fastapi import HTTPException, status
 from app.repositories.interview_evaluation_repository import (
     InterviewEvaluationRepository,
 )
+from app.repositories.document_repository import DocumentRepository
 from app.repositories.interview_session_repository import (
     InterviewSessionRepository,
+)
+from app.services.interview import interview_plan
+from app.services.interview.context_builder import (
+    InterviewContextBuilder,
 )
 from app.services.interview.evaluation_service import (
     InterviewEvaluationService,
@@ -42,6 +47,37 @@ class InterviewFlowService:
         self.session_repository = InterviewSessionRepository(db)
         self.evaluation_repository = InterviewEvaluationRepository(db)
         self.session_service = InterviewSessionService(db)
+        self.document_repository = DocumentRepository(db)
+
+    async def _build_interview_plan(
+        self,
+        project_id: int,
+    ) -> interview_plan.InterviewPlan:
+        """按**该项目下真的有索引资料**的类型建立计划。
+
+        ⚠️ 为什么只算已索引的类型：若把一个"上传了但索引失败"的类型
+        排进计划，那一轮出题会检索不到任何东西，题目退化为通用题 ——
+        而用户看起来像"检索坏了"。这里的取数口径与"题目必须有依据"
+        是同一条底线。
+
+        顺序沿用 `InterviewContextBuilder.DOCUMENT_TYPES` 的固定次序，
+        而不是数据库返回顺序：计划要可复现，否则同样的资料在不同
+        机器上会排出不同的面试顺序。
+        """
+
+        available = set(
+            await self.document_repository.get_indexed_document_types(
+                project_id=project_id
+            )
+        )
+
+        ordered = [
+            document_type
+            for document_type in InterviewContextBuilder.DOCUMENT_TYPES
+            if document_type in available
+        ]
+
+        return interview_plan.build_plan(ordered)
 
     async def start_interview(
         self,
@@ -124,6 +160,24 @@ class InterviewFlowService:
                 )
             )
 
+        # 建立面试计划（按**有资料的材料类型**轮转）。
+        #
+        # 为什么要做：此前**从第二题起全是追问第一题的回答**，
+        # 于是整场面试都在第一次检索命中的那块材料上打转，
+        # 其它已上传的材料从未被问到（见 interview_plan 的模块说明）。
+        #
+        # 为什么计划在这里建：计划描述的是"这场面试打算覆盖什么"，
+        # 它必须在第一题之前确定 —— 否则第一题无法落在计划的第一项上。
+        plan = await self._build_interview_plan(
+            project_id=interview_session.project_id,
+        )
+
+        # 把第一题落到计划的第一项上（此时还没有任何主题被覆盖，
+        # `start_topic` 会取第一个未覆盖主题）。
+        first_topic = interview_plan.start_topic(plan)
+
+        interview_session.plan_snapshot = plan.to_dict()
+
         # 生成首题。索引与状态由 engine service 负责。
         question = await InterviewEngineService(
             self.db
@@ -139,6 +193,17 @@ class InterviewFlowService:
             ),
             question_type=question_type,
         )
+
+        # 首题已发出 → 它的主题算"覆盖"。
+        #
+        # 覆盖的语义是"**我们问过**"，不是"候选人答得好" ——
+        # 若按回答质量决定是否覆盖，答得差的人会被反复问同一主题，
+        # 面试就变成针对弱点的拷问，而不是评估。
+        interview_plan.mark_covered(plan, first_topic.id)
+
+        interview_session.plan_snapshot = plan.to_dict()
+
+        await self.session_repository.save(interview_session)
 
         refreshed = await self.session_repository.get_by_id(
             session_id

@@ -10,6 +10,10 @@ from app.services.interview.answer_analyzer import (
 from app.services.interview.follow_up_generator import (
     InterviewFollowUpGenerator,
 )
+from app.services.interview import interview_plan
+from app.services.interview.question_generator import (
+    InterviewQuestionGenerator,
+)
 from app.services.interview.interview_state_machine import (
     SessionStatus,
     TransitionTrigger,
@@ -59,6 +63,7 @@ class InterviewTurnService:
         self.session_service = InterviewSessionService(db)
         self.answer_analyzer = InterviewAnswerAnalyzer()
         self.follow_up_generator = InterviewFollowUpGenerator()
+        self.question_generator = InterviewQuestionGenerator(db)
         self.usage_service = UsageService(db)
 
     async def process_answer(
@@ -193,7 +198,45 @@ class InterviewTurnService:
                 detail=decision.detail,
             )
 
-        # 7. 生成并保存追问
+        # 7. 由**计划**决定下一步：继续追问 / 换主题 / 开新一轮。
+        #
+        # 为什么需要这一步：在计划之前，**从第二题起全是追问第一题的
+        # 回答**，整场面试都围绕第一次检索命中的那块材料打转，
+        # 其它已上传的材料从未被问到（见 interview_plan 的说明）。
+        #
+        # `plan` 为 None 表示这是**本功能之前创建的会话**（或快照被
+        # 改坏）。此时退化为原来的"只追问"行为 —— 旧会话照常能答完，
+        # 不该因为新增了计划而失效。
+        plan = interview_plan.InterviewPlan.from_dict(
+            interview_session.plan_snapshot
+        )
+
+        action = (
+            interview_plan.decide_next_action(plan)
+            if plan is not None
+            else interview_plan.ACTION_FOLLOW_UP
+        )
+
+        # 主题都问过一遍 → 开新一轮，而不是结束面试。
+        #
+        # 为什么不结束：`max_questions` 是用户设定的题量，
+        # 而主题数取决于"上传了几类材料"—— 那不该决定面试多长
+        # （见 `decide_next_action` 里被否掉的软性终止方案）。
+        if action == interview_plan.ACTION_NEW_PASS:
+            interview_plan.start_new_pass(plan)
+            action = interview_plan.ACTION_NEW_TOPIC
+
+        # 换主题：为下一个未覆盖主题生成一道**主题题**（不是追问）。
+        if action == interview_plan.ACTION_NEW_TOPIC:
+            return await self._ask_next_topic(
+                interview_session=interview_session,
+                plan=plan,
+                question=question,
+                saved_answer=saved_answer,
+                analysis=analysis,
+            )
+
+        # 7.1 继续追问（原有路径）。
         #
         # 追问前先查**月度题目额度**（只读）。与常规题目同理：
         # 追问同样是一次 LLM 调用，没额度就不该白花。
@@ -260,6 +303,14 @@ class InterviewTurnService:
         interview_session.questions_asked = (
             interview_session.questions_asked + 1
         )
+
+        # 记一次追问到计划里：下次决策据此判断"这个主题问够了没有"。
+        # 不记的话 `follow_ups_on_current` 永远是 0，
+        # 于是会**无限追问同一个主题**，永远不换题。
+        if plan is not None:
+            interview_plan.record_follow_up(plan)
+            interview_session.plan_snapshot = plan.to_dict()
+
         updated_session = await self.session_service.apply_transition(
             interview_session=interview_session,
             target_status=SessionStatus.ASKING,
@@ -271,6 +322,103 @@ class InterviewTurnService:
             "answer": saved_answer,
             "analysis": analysis,
             "follow_up_question": saved_follow_up,
+            "session_status": updated_session.status,
+            "finished": False,
+            "termination_reason": None,
+            "evaluation": None,
+        }
+
+    async def _ask_next_topic(
+        self,
+        *,
+        interview_session,
+        plan: interview_plan.InterviewPlan,
+        question,
+        saved_answer,
+        analysis,
+    ) -> dict:
+        """为下一个未覆盖主题生成一道**主题题**（不是追问）。
+
+        ## 为什么需要它
+
+        在此之前，回答完一题之后**只会生成追问**。于是整场面试
+        都在第一次检索命中的那块材料上打转，其它已上传的材料
+        （岗位要求、项目细节、代码）从未被问到 ——
+        而那正是"上传四类材料"本该带来的价值。
+
+        ## 顺序为什么是"先查额度 → 生成 → 再扣额度 → 落库"
+
+        与 `InterviewEngineService.generate_and_save_question` 保持
+        一致：第一次检查是**只读**的，目的是不让没额度的人白白
+        触发一次 LLM 调用；第二次 `consume` 是"先自增再判定"，
+        是本项目唯一的额度事实来源。
+
+        此时尚未提交任何业务数据，因此额度不足抛出的
+        `QuotaExceeded` 可以安全回滚 —— 不会留下"题目已存但计数被吞"。
+        """
+
+        topic = interview_plan.start_topic(plan)
+
+        direction = (
+            interview_session.target_role
+            or f"{interview_session.interview_type} 面试"
+        )
+
+        query = interview_plan.topic_query(plan, direction=direction)
+
+        await self.usage_service.ensure_available(
+            user_id=interview_session.user_id,
+            metric=UsageMetric.QUESTION_GENERATED,
+            quota=interview_session.user.monthly_question_quota,
+        )
+
+        generated = (
+            await self.question_generator.generate_question_with_evidence(
+                project_id=interview_session.project_id,
+                query=query,
+            )
+        )
+
+        await self.usage_service.consume(
+            user_id=interview_session.user_id,
+            metric=UsageMetric.QUESTION_GENERATED,
+            quota=interview_session.user.monthly_question_quota,
+        )
+
+        saved_question = await self.question_service.create_question(
+            session_id=interview_session.id,
+            question=generated["question"],
+            # `topic` 与 `follow_up` 分开：复盘时要能看出
+            # "这道题是在换新材料"还是"在深挖刚才的回答"。
+            question_type="topic",
+            question_index=question.question_index + 1,
+            context=query,
+            evidence_chunk_ids=generated["evidence_chunk_ids"],
+            is_general=generated["is_general"],
+        )
+
+        # 主题已问过 → 标记覆盖（覆盖 = 我们问过，不是"答得好"）。
+        interview_plan.mark_covered(plan, topic.id)
+
+        interview_session.plan_snapshot = plan.to_dict()
+        interview_session.questions_asked = (
+            interview_session.questions_asked + 1
+        )
+
+        updated_session = await self.session_service.apply_transition(
+            interview_session=interview_session,
+            target_status=SessionStatus.ASKING,
+            commit=True,
+            trigger=TransitionTrigger.QUESTION_GENERATED,
+        )
+
+        return {
+            "answer": saved_answer,
+            "analysis": analysis,
+            # 复用 `follow_up_question` 这个字段名：对前端来说
+            # "下一道要回答的题"是同一种东西，多一个字段会让
+            # 前端要判断两个来源。
+            "follow_up_question": saved_question,
             "session_status": updated_session.status,
             "finished": False,
             "termination_reason": None,

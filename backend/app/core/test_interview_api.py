@@ -463,11 +463,35 @@ async def main():
                     )
 
                     follow_up = body["follow_up_question"]
-                    record(
-                        "追问继承原题依据",
-                        follow_up["evidence_chunk_ids"]
-                        == questions[0]["evidence_chunk_ids"],
-                    )
+
+                    # ⚠️ 这条断言原本写死"下一题一定是追问、且继承原题依据"。
+                    #
+                    # 引入面试计划（§40）后不再成立：下一题可能是
+                    # **主题题**（`question_type == "topic"`）——
+                    # 它做的是**新的检索**，依据是它自己命中的材料，
+                    # 而不是继承上一题的。
+                    #
+                    # 这不是"放宽断言"，而是把契约说准：
+                    # 两种题型的依据语义不同，应当分别校验。
+                    next_type = follow_up.get("question_type")
+
+                    if next_type == "follow_up":
+                        record(
+                            "追问继承原题依据",
+                            follow_up["evidence_chunk_ids"]
+                            == questions[0]["evidence_chunk_ids"],
+                            f"依据 {follow_up['evidence_chunk_ids']}",
+                        )
+                    else:
+                        # 主题题：依据必须来自它自己的检索。
+                        # 空依据也是合法的（该项目那类材料没命中），
+                        # 那种情况会被标记为通用题。
+                        record(
+                            "主题题带自己的依据（不继承上一题）",
+                            "evidence_chunk_ids" in follow_up,
+                            f"题型 {next_type}，"
+                            f"依据 {follow_up['evidence_chunk_ids']}",
+                        )
                     record(
                         "分析摘要只含档位与缺口数，不含完整分析",
                         set(body["analysis_summary"].keys())
