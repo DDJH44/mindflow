@@ -241,6 +241,45 @@ export interface AbilityProfile {
   caveats: string[]
 }
 
+/**
+ * 「下一步做什么」的建议（闭环的入口）。
+ *
+ * 这张卡片的目的是**替用户决定下一步**，而不是罗列所有可能。
+ * 后端只给一条建议（给三条等于没有建议）。
+ */
+export interface NextStep {
+  /**
+   * 动作类型：
+   * - `start_first`    还没面过 → 开始第一场
+   * - `add_materials`  没有可用资料 → 先补资料
+   * - `practice_more`  样本不足 → 再多面几场（**不**下短板结论）
+   * - `focus_next`     样本够 → 针对弱项再面一场
+   */
+  action:
+    | 'start_first'
+    | 'add_materials'
+    | 'practice_more'
+    | 'focus_next'
+
+  title: string
+  reason: string
+
+  /** 具体要关注的点（0–2 条）。为空表示"还没有判断"。 */
+  focus: string[]
+
+  /**
+   * 可直接传给 `start` 的检索方向。
+   *
+   * 只有 `focus_next` 时非空 —— 其它动作不涉及"再面一场"。
+   */
+  query: string | null
+
+  /** 必须与建议一起展示的采样说明。 */
+  caveats: string[]
+
+  session_count: number
+}
+
 export interface ListInterviewsParams {
   /** 只看还没结束的面试 —— 用于「找回没做完的」。 */
   unfinished_only?: boolean

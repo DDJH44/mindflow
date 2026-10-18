@@ -55,6 +55,7 @@ from app.services.interview.interview_state_machine import (
 from app.services.interview.interview_turn_service import (
     InterviewTurnService,
 )
+from app.services.interview.next_steps import build_next_step
 from app.services.interview_session_service import InterviewSessionService
 from app.services.usage.usage_quota import (
     QuotaExceeded,
@@ -290,6 +291,87 @@ async def get_ability_profile(
         ],
         "sufficient_samples": profile.sufficient_samples,
         "caveats": profile.caveats,
+    }
+
+
+@router.get("/profile/next-step")
+async def get_next_step(
+    project_id: int | None = Query(
+        default=None,
+        description="只看某个项目下的面试（不传则跨全部项目）",
+    ),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """**下一步做什么**（闭环的入口）。
+
+    这个端点是"生态"的关键：在此之前，用户面完一场、看完报告，
+    产品就不再告诉他做什么 —— 四个页面各自独立，数据不流动。
+    首页因此永远是"从零开始点一场面试"。
+
+    现在首页可以显示一条**可执行**的建议：
+    - 没有资料 → 先补资料
+    - 还没面过 → 开始第一场
+    - 样本不足 → 再多面几场（**不**下"短板"结论）
+    - 样本够 → 针对弱项再面一场，并给出可直接用于
+      `POST /interviews/{id}/start` 的 `query`
+
+    ⚠️ 判断逻辑在 `app/services/interview/next_steps.py`（纯逻辑），
+    这里只负责取数与组装 —— 它依赖"样本少不下结论"这条既有原则。
+    """
+
+    project_names: dict[int, str] = {}
+
+    if project_id is not None:
+        project_repository = ProjectRepository(db)
+        projects = await project_repository.get_by_owner_id(
+            owner_id=current_user.id
+        )
+        project_names = {
+            project.id: project.name for project in projects
+        }
+
+    profile = await AbilityProfileService(db).build(
+        user_id=current_user.id,
+        project_id=project_id,
+        project_names=project_names,
+    )
+
+    # 资料是否可用：没有任何已索引的资料时，面试只能出通用题。
+    #
+    # 取**任意一个**项目的已索引类型即可 —— 这里要回答的是
+    # "这个人有没有可用资料"，而不是"某个项目齐不齐"。
+    document_repository = DocumentRepository(db)
+    projects = await ProjectRepository(db).get_by_owner_id(
+        owner_id=current_user.id
+    )
+
+    has_indexed_materials = False
+
+    for project in projects:
+        types = (
+            await document_repository.get_indexed_document_types(
+                project_id=project.id
+            )
+        )
+
+        if types:
+            has_indexed_materials = True
+            break
+
+    step = build_next_step(
+        profile,
+        has_indexed_materials=has_indexed_materials,
+    )
+
+    return {
+        "action": step.action,
+        "title": step.title,
+        "reason": step.reason,
+        "focus": step.focus,
+        "query": step.query,
+        "caveats": step.caveats,
+        "session_count": profile.session_count,
     }
 
 

@@ -12,7 +12,7 @@ import { useRouter } from 'vue-router'
 import { interviewApi, projectApi, usageApi } from '../api'
 import { ApiError } from '../api/http'
 import PageState from '../components/PageState.vue'
-import type { Project, Usage } from '../api/types'
+import type { NextStep, Project, Usage } from '../api/types'
 
 const router = useRouter()
 
@@ -30,6 +30,40 @@ const maxQuestions = ref(8)
 const newProjectName = ref('')
 const creatingProject = ref(false)
 const showProjectForm = ref(false)
+
+/**
+ * 「下一步做什么」—— 闭环的入口。
+ *
+ * 为什么首页需要它：在此之前首页只回答"怎么开一场面试"。
+ * 用户面完、看完报告，再回来时仍然是"从零开始点一场" ——
+ * 已积累的评价没有被用上，四个页面像四个独立功能。
+ *
+ * 判断逻辑全在服务端（`app/services/interview/next_steps.py`），
+ * 包括"样本少于 3 场时不给短板结论"这条原则。
+ * 前端**不重新推导** —— 那会让两边迟早不一致。
+ */
+const nextStep = ref<NextStep | null>(null)
+
+/**
+ * 建议卡的样式类。
+ *
+ * `focus_next` 是"可以立刻行动"的建议，用强调色；
+ * 其它三种都是"先做别的"，用中性色 —— 否则首页会有
+ * 太多同等的强提示，反而没有重点。
+ */
+const nextStepTone = computed(() =>
+  nextStep.value?.action === 'focus_next' ? 'accent' : 'plain',
+)
+
+async function loadNextStep() {
+  try {
+    nextStep.value = await interviewApi.nextStep()
+  } catch {
+    // 建议卡只是引导，取不到就不显示 ——
+    // 不该因为一个辅助接口失败而让首页报错。
+    nextStep.value = null
+  }
+}
 
 /**
  * 额度提示文案。
@@ -122,6 +156,9 @@ async function load() {
   } finally {
     loading.value = false
   }
+
+  // 建议卡单独取：它失败不影响主流程。
+  await loadNextStep()
 }
 
 async function createProject() {
@@ -155,7 +192,7 @@ async function createProject() {
  * `start` 才真正调模型生成首题（扣一场额度）。
  * 若某一步失败，留在草稿上是可恢复的 —— 用户可以回首页重来。
  */
-async function startInterview() {
+async function startInterview(focus?: string) {
   if (starting.value || !selectedProjectId.value) {
     return
   }
@@ -170,7 +207,9 @@ async function startInterview() {
       max_questions: maxQuestions.value,
     })
 
-    await interviewApi.start(session.id)
+    // `query` 为空时由后端退化为"目标岗位 → 面试类型"，
+    // 因此这里可以无条件传 —— 不会把检索方向变成空字符串。
+    await interviewApi.start(session.id, focus)
 
     await router.push({
       name: 'interview',
@@ -190,6 +229,25 @@ async function startInterview() {
   }
 }
 
+/**
+ * 按建议开一场**聚焦弱项**的面试。
+ *
+ * 与普通"开始面试"的唯一区别是把 `nextStep.query` 作为检索方向 ——
+ * 于是出题会偏向那些弱项涉及的材料。
+ *
+ * 为什么复用 `startInterview` 而不是复制一份：两者的差别只有
+ * 一个参数。复制会让"额度不足怎么办"这类处理有两份实现。
+ */
+function startFocusedInterview() {
+  const focus = nextStep.value?.query
+
+  if (!focus) {
+    return
+  }
+
+  void startInterview(focus)
+}
+
 onMounted(load)
 </script>
 
@@ -207,6 +265,97 @@ onMounted(load)
     </template>
 
     <template v-else>
+      <!--
+        「下一步」—— 闭环的入口，放在最上面。
+
+        为什么在额度之上：用户打开首页时第一个问题是
+        "我接下来该做什么"，而不是"我还剩多少额度"。
+        额度是约束，建议是行动 —— 行动应当先被看到。
+
+        只在有建议时显示；取不到（接口失败）就整块不出现，
+        首页仍然可用。
+      -->
+      <div
+        v-if="nextStep"
+        class="card next-step"
+        :class="`next-step--${nextStepTone}`"
+      >
+        <div class="row-between">
+          <h2 style="margin: 0">{{ nextStep.title }}</h2>
+          <span v-if="nextStep.session_count" class="tag">
+            已完成 {{ nextStep.session_count }} 场
+          </span>
+        </div>
+
+        <p
+          v-if="nextStep.reason"
+          class="muted"
+          style="margin: 8px 0 0"
+        >
+          {{ nextStep.reason }}
+        </p>
+
+        <!--
+          关注点单独列出来：它们会作为**检索方向**进入下一场，
+          用户有权看到自己将要被问什么方向。
+        -->
+        <div
+          v-if="nextStep.focus.length"
+          class="row-wrap"
+          style="margin-top: 10px; gap: 8px"
+        >
+          <span class="faint">下一场会聚焦：</span>
+          <span
+            v-for="item in nextStep.focus"
+            :key="item"
+            class="tag tag-accent"
+          >
+            {{ item }}
+          </span>
+        </div>
+
+        <div class="row" style="margin-top: 14px">
+          <button
+            v-if="nextStep.action === 'focus_next'"
+            class="btn-primary"
+            type="button"
+            :disabled="starting || !selectedProjectId || !canStart"
+            @click="startFocusedInterview"
+          >
+            <span v-if="starting" class="spinner" />
+            针对这些再面一场
+          </button>
+
+          <span
+            v-else-if="nextStep.action === 'practice_more'"
+            class="muted"
+          >
+            下面按正常流程开一场即可。
+          </span>
+
+          <RouterLink
+            v-else-if="nextStep.action === 'add_materials'"
+            class="link"
+            :to="{ name: 'home' }"
+          >
+            先上传资料（在上方项目里添加）
+          </RouterLink>
+        </div>
+
+        <!--
+          采样说明必须跟着建议一起出现。
+          只在下方折叠里给，等于让用户先看到结论再看免责声明 ——
+          那时他已经相信了。
+        -->
+        <p
+          v-if="nextStep.caveats.length"
+          class="faint"
+          style="margin: 10px 0 0"
+        >
+          {{ nextStep.caveats[nextStep.caveats.length - 1] }}
+        </p>
+      </div>
+
       <!-- 额度 -->
       <div
         class="alert"
@@ -365,7 +514,7 @@ onMounted(load)
             :disabled="
               starting || !selectedProjectId || !canStart
             "
-            @click="startInterview"
+            @click="startInterview()"
           >
             <span v-if="starting" class="spinner" />
             {{ starting ? '正在生成第一题…' : '开始面试' }}

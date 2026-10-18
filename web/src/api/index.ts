@@ -21,6 +21,7 @@ import type {
   InterviewSessionListResponse,
   InterviewStartResult,
   ListInterviewsParams,
+  NextStep,
   Project,
   StatusHistoryEntry,
   TokenResponse,
@@ -231,6 +232,21 @@ export const interviewApi = {
   async abilityProfile(projectId?: number) {
     const { data } = await http.get<AbilityProfile>(
       '/interviews/profile/ability',
+      { params: projectId ? { project_id: projectId } : {} },
+    )
+    return data
+  },
+
+  /**
+   * 「下一步做什么」—— 闭环的入口。
+   *
+   * 后端只给**一条**建议（给三条等于没有建议）。
+   * 判断逻辑全在服务端（含"样本少不下短板结论"这条原则），
+   * 前端不要自己再推一遍 —— 那会让两边迟早不一致。
+   */
+  async nextStep(projectId?: number) {
+    const { data } = await http.get<NextStep>(
+      '/interviews/profile/next-step',
       { params: projectId ? { project_id: projectId } : {} },
     )
     return data

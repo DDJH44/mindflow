@@ -1305,3 +1305,33 @@ button:disabled {
   padding-left: var(--sp-3);
   border-left: 2px solid var(--border);
 }
+/* ------------------------------------------------------ 下一步（闭环引导） */
+
+/*
+ * 首页顶部的「下一步」卡片。
+ *
+ * 为什么它比其他卡片更显眼：整张卡片的目的是**替用户决定下一步**，
+ * 而不是提供信息。若不显眼，它就会和"额度""项目"挤在一起，
+ * 用户仍然会直接从零点一场面试。
+ *
+ * 用左侧粗边框而不是整块底色：底色会和 alert 类混淆
+ * （alert 表示"需要注意的状态"，这里表示"建议的动作"）。
+ */
+.next-step {
+    border-left: 3px solid var(--border-strong);
+}
+
+.next-step--accent {
+    border-left-color: var(--accent);
+}
+
+/*
+ * 强调用的标签（"下一场会聚焦：…"）。
+ *
+ * 用色相区分而不是加粗：这些标签和普通 tag 排在一起，
+ * 靠字重很难分辨，而色相一眼就能看出"这几个是要动的东西"。
+ */
+.tag-accent {
+    background: var(--accent-soft, #fdf0e6);
+    color: var(--accent);
+}
