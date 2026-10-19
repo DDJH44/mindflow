@@ -152,7 +152,7 @@ curl.exe http://127.0.0.1:5173/api/health
 
 ```powershell
 cd D:\yuxi\MindFlow\backend
-uv run python -m app.core.doctor --llm
+uv run python -m scripts.doctor --llm
 ```
 
 它会报告 PostgreSQL / 数据库迁移版本 / Milvus 一致性级别 /
@@ -201,26 +201,26 @@ uv run python -m tests.ui_walkthrough
 uv run python -m app.evaluation.runner
 
 # 知识图谱：把材料抽成实体与关系（按需，不会自动跑）
-uv run python -m app.core.extract_knowledge --project <id> --dry-run
+uv run python -m scripts.extract_knowledge --project <id> --dry-run
 
 # 邀请码：签发 / 列出 / 撤销（部署时用，见 docs/DEPLOY.md）
-uv run python -m app.core.manage_invites create --count 5 --note "内测" --expires-days 14
-uv run python -m app.core.manage_invites list --unused
-uv run python -m app.core.manage_invites revoke <码>
+uv run python -m scripts.manage_invites create --count 5 --note "内测" --expires-days 14
+uv run python -m scripts.manage_invites list --unused
+uv run python -m scripts.manage_invites revoke <码>
 
 # 清理测试/测量脚本留下的垃圾（默认只列出）
-uv run python -m app.core.cleanup_test_projects
-uv run python -m app.core.cleanup_test_sessions
+uv run python -m scripts.cleanup_test_projects
+uv run python -m scripts.cleanup_test_sessions
 
 # 看数据集的覆盖情况（避免按错的维度规划扩充）
-uv run python -m app.core.audit_datasets
+uv run python -m scripts.audit_datasets
 
 # 检查卡在「正在评价」的会话。
 # 评价那一步失败（上游超时）会让会话停在 evaluating：
 # 用户在这个状态下无法作答也拿不到报告。界面已支持「重试生成报告」，
 # 服务器上可用本工具批量重试。
-uv run python -m app.core.check_stuck_sessions
-uv run python -m app.core.check_stuck_sessions --retry
+uv run python -m scripts.check_stuck_sessions
+uv run python -m scripts.check_stuck_sessions --retry
 ```
 
 ---

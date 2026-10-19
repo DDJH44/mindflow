@@ -589,7 +589,7 @@ async def purge_orphan_vectors() -> None:
     """清掉已无对应 chunk 的 Milvus 向量。"""
 
     try:
-        from app.core.cleanup_test_users import purge_orphan_vectors as run
+        from scripts.cleanup_test_users import purge_orphan_vectors as run
 
         purged = await run()
         if purged:

@@ -148,7 +148,7 @@ async def delete_test_user(username: str) -> bool:
 
     # 向量收尾：级联删除留下的向量会变成孤儿
     try:
-        from app.core.cleanup_test_users import purge_orphan_vectors
+        from scripts.cleanup_test_users import purge_orphan_vectors
 
         purged = await purge_orphan_vectors()
         if purged:

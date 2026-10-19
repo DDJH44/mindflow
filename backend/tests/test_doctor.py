@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from app.core import doctor
+from scripts import doctor
 from app.core.config import settings
 
 results: list[tuple[str, bool]] = []

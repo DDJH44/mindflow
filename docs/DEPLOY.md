@@ -210,7 +210,7 @@ sudo ss -tlnp | grep -E '5432|6379|19530|9000'
 
 ```bash
 docker compose --env-file .env.prod -f docker-compose.prod.yml exec backend \
-  uv run python -m app.core.manage_invites create \
+  uv run python -m scripts.manage_invites create \
   --count 5 --note "内测朋友" --expires-days 14
 ```
 
@@ -235,10 +235,10 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml exec backend \
 
 ```bash
 # 看还有多少可用
-... exec backend uv run python -m app.core.manage_invites list --unused
+... exec backend uv run python -m scripts.manage_invites list --unused
 
 # 撤销一条没用过的（已用过的不能删 —— 它是注册记录）
-... exec backend uv run python -m app.core.manage_invites revoke <码>
+... exec backend uv run python -m scripts.manage_invites revoke <码>
 ```
 
 ---
@@ -329,11 +329,11 @@ docker exec mindflow-postgres pg_dump -U mindflow mindflow \
 
 # 清理孤儿上传文件（文件存在但数据库里没有记录）
 docker compose --env-file .env.prod -f docker-compose.prod.yml exec backend \
-  uv run python -m app.core.cleanup_orphan_uploads
+  uv run python -m scripts.cleanup_orphan_uploads
 
 # 检查向量与数据库是否一致
 docker compose --env-file .env.prod -f docker-compose.prod.yml exec backend \
-  uv run python -m app.core.check_embedded_consistency
+  uv run python -m scripts.check_embedded_consistency
 ```
 
 ---
@@ -367,7 +367,7 @@ curl -s http://localhost/api/health
 
 # ④ 后端连得上数据库吗
 docker compose --env-file .env.prod -f docker-compose.prod.yml exec backend \
-  uv run python -m app.core.doctor
+  uv run python -m scripts.doctor
 
 # ⑤ 前端能到达后端吗
 curl -s http://localhost/api/auth/registration-mode

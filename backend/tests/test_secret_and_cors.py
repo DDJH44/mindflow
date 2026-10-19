@@ -101,7 +101,7 @@ async def main() -> int:
         result.check(
             "错误信息给出了生成命令",
             "generate_secret" in message,
-            "提示 `uv run python -m app.core.generate_secret`",
+            "提示 `uv run python -m scripts.generate_secret`",
         )
 
         # ================================================

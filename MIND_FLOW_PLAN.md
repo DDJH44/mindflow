@@ -498,7 +498,7 @@ Runner 必须：
 我此前一直盯着 `R@1 = 0.609` 并据此评判改进 —— **那是错的**：
 优化了一个产品不用的指标。
 
-**按产品口径测量**（`app/core/measure_context_k.py`）：
+**按产品口径测量**（`scripts/measure_context_k.py`）：
 
 | 每类型块数 | 产品指标 | 命中 | 四类型合计字符数 |
 | --- | --- | --- | --- |
@@ -547,7 +547,7 @@ Runner 必须：
 
 ### 顺带否定的方案：相似度阈值过滤
 
-`app/core/measure_retrieval_scores.py` 实测分数分布：
+`scripts/measure_retrieval_scores.py` 实测分数分布：
 
 | | 命中目标 | 未命中 |
 | --- | --- | --- |
@@ -1408,7 +1408,7 @@ PostgreSQL 与 Milvus 之间没有分布式事务，因而无法提供严格原�
 - `tests/test_milvus.py`：Qwen → Milvus 基础写入与搜索验证。
 - `tests/test_embedding_pipeline.py`：自动选择 pending Chunk，验证 Qwen → Milvus → DB `embedded` → 搜索可见性。
 - `tests/test_retrieval.py` / `test_retrieval_filter.py`：检索与过滤验证。
-- `app/core/cleanup_test_milvus.py`：清理临时测试向量 `999999`、`1000000`。
+- `scripts/cleanup_test_milvus.py`：清理临时测试向量 `999999`、`1000000`。
 
 **面试链路**
 
@@ -1516,27 +1516,27 @@ PostgreSQL 与 Milvus 之间没有分布式事务，因而无法提供严格原�
 - `python -m tests.test_ability_profile`：**能力画像**（21 项）——
   中位数 / 区间 / 极差、逐次趋势**按时间正序**、重复弱点识别、
   样本不足时不下结论、无数据的项目返回空画像、未认证 401。
-- `python -m app.core.cleanup_legacy_evaluations [--purge]`：
+- `python -m scripts.cleanup_legacy_evaluations [--purge]`：
   检查（默认）/ 清理"三组结构化内容全空"的评价。
   **默认只检查** —— 那些评价的 `feedback` 是真实内容，
   删掉不可逆；画像已通过过滤排除它们，通常不需要删。
-- `python -m app.core.repair_missing_chunks [--repair]`：
+- `python -m scripts.repair_missing_chunks [--repair]`：
   回填"有内容但没有文本块"的文档（历史数据，§27.10）。
   切块参数与上传流程严格一致，避免回填的文档与正常上传的
   文档在检索表现上不同。
-- `python -m app.core.cleanup_demo_sessions [--dry-run] [--keep 1,2]`：
+- `python -m scripts.cleanup_demo_sessions [--dry-run] [--keep 1,2]`：
   清理测试留下的面试会话。**默认保留会话 1、2**，
   且按 `user_id` 隔离 —— 真实用户的会话不会被碰。
 - `python -m tests.test_document_upload`：上传、切块、索引、幂等、删除（17 项）。
 - `python -m tests.test_e2e_http`：**端到端**，打 `127.0.0.1:5173/api`
   （即前端真正请求的地址），覆盖注册→建项目→上传→开始面试→逐题作答→报告→清理（26 项）。
   这是唯一同时验证后端进程、Vite 代理与全部前端端点的脚本。
-- `python -m app.core.check_orphan_vectors [--purge]`：Milvus 孤儿向量检查/清理（D52）。
+- `python -m scripts.check_orphan_vectors [--purge]`：Milvus 孤儿向量检查/清理（D52）。
   **清理测试用户或项目之后必须跑一次** —— 数据库的级联删除
   （`projects` → `documents` → `document_chunks`）**不会**碰 Milvus 里的向量。
   实测：清掉一个测试用户就产生 8 个孤儿向量，它们会占用 top-k 名额、
   静默降低召回。**清理顺序：先删用户/项目，再 purge 向量。**
-- `python -m app.core.check_embedded_consistency [--repair]`：
+- `python -m scripts.check_embedded_consistency [--repair]`：
   向量索引状态**双向**一致性检查（D54）——
   ① chunk 声称已嵌入但 Milvus 缺失；② 文档状态与 chunk 真实情况不符。
 - `python -m tests.ui_walkthrough`：**界面走查**（§27.8）。
@@ -1544,7 +1544,7 @@ PostgreSQL 与 Milvus 之间没有分布式事务，因而无法提供严格原�
   收集控制台错误。需要 `playwright`（在 `dependency-groups.dev` 里）与
   本机 ms-playwright 的 chromium 缓存；**不跑 `playwright install`**，
   而是指定已有的可执行文件，避免下载几百 MB。
-- `python -m app.core.cleanup_test_users` / `cleanup_test_data` /
+- `python -m scripts.cleanup_test_users` / `cleanup_test_data` /
   `cleanup_failed_documents`：清理验证脚本产生的测试数据。
   **这些脚本会创建真实数据，跑完必须清理**，否则开发库会被测试数据淹没。
   `cleanup_test_users` 里有 `PROTECTED` 白名单 ——
@@ -1593,7 +1593,7 @@ PostgreSQL 与 Milvus 之间没有分布式事务，因而无法提供严格原�
 
 ### 16.1 依赖健康检查（`doctor`）
 
-`uv run python -m app.core.doctor [--llm]`
+`uv run python -m scripts.doctor [--llm]`
 
 **为什么需要**：`/api/health` 只返回配置里写的服务名与环境，
 **不检查任何依赖** —— 后端返回 200 并不代表它能用。
@@ -3623,7 +3623,7 @@ embedded 端点的额度问题**不是临时故障**，重试无用。实测报�
 > **只有 `text-embedding-v4` 这个型号的免费额度用尽，
 > 同账号下的其它型号完全可用。**
 
-实测（`app/core/diagnose_embedding_quota.py`，只读）：
+实测（`scripts/diagnose_embedding_quota.py`，只读）：
 
 | 模型 | 状态 |
 | --- | --- |
@@ -3838,7 +3838,7 @@ embedded 端点的额度问题**不是临时故障**，重试无用。实测报�
 而它还没实现 —— 也就是说**现在抽出来的图谱没有任何消费者**。
 接进上传流程只会让索引变慢、多花钱，换不来可感知的收益。
 
-因此做成按需 CLI：`app/core/extract_knowledge.py`。
+因此做成按需 CLI：`scripts/extract_knowledge.py`。
 第 2 步开工时再决定何时跑、跑多少。
 
 #### 实测质量（在你自己的简历上，§30.5 要求的抽样核对）

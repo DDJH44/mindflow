@@ -100,7 +100,7 @@ def _check_secret_key() -> None:
             "占位密钥能被用来伪造任意用户的登录令牌 —— "
             "这不是「配置不完整」，是安全缺陷。\n"
             "生成一个真密钥：\n"
-            "    uv run python -m app.core.generate_secret\n"
+            "    uv run python -m scripts.generate_secret\n"
             "然后写进 .env 的 SECRET_KEY="
         )
 
@@ -108,13 +108,13 @@ def _check_secret_key() -> None:
         logger.warning(
             "SECRET_KEY 是占位值 —— 本地开发可以，"
             "**部署前必须换成随机值**（uv run python -m "
-            "app.core.generate_secret）"
+            "scripts.generate_secret）"
         )
     elif len(key) < 32:
         logger.warning(
             "SECRET_KEY 只有 %d 字符，熵可能不足；"
             "建议至少 32 字符（uv run python -m "
-            "app.core.generate_secret）",
+            "scripts.generate_secret）",
             len(key),
         )
 

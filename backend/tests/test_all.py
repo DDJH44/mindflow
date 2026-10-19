@@ -369,7 +369,7 @@ async def check_environment() -> bool:
     print("步骤 0：依赖健康检查")
     print("=" * 74)
 
-    from app.core import doctor
+    from scripts import doctor
 
     original = doctor.results
     doctor.results = []
@@ -414,7 +414,7 @@ async def check_environment() -> bool:
     # 而真因只有一个：忘了起服务。
     #
     # 那种噪音会让门禁的结论失去意义，因此这里也拦停。
-    from app.core import check_services
+    from scripts import check_services
 
     print()
     print("=" * 74)

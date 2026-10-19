@@ -186,7 +186,7 @@ from tests.test_all import check_environment
 asyncio.run(check_environment())
 
 p = subprocess.run(
-    [sys.executable, "-m", "app.core.probe_child_auth"],
+    [sys.executable, "-m", "scripts.probe_child_auth"],
     capture_output=True, text=True, encoding="utf-8", errors="replace",
     cwd=r"D:\\yuxi\\MindFlow\\backend",
 )

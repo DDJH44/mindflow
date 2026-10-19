@@ -28,7 +28,7 @@ from collections import Counter
 
 from sqlalchemy import event, text
 
-from app.core.cleanup_test_projects import TEST_PROJECT_PREFIX
+from scripts.cleanup_test_projects import TEST_PROJECT_PREFIX
 from app.database.session import AsyncSessionLocal, engine
 
 

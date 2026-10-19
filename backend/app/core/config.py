@@ -40,8 +40,8 @@ class Settings(BaseSettings):
     # 本地开发、测试、甚至部署都不会报错，
     # 直到有人用它伪造出合法的登录令牌。
     #
-    # 生成方式（见 `app/core/generate_secret.py`）：
-    #     uv run python -m app.core.generate_secret
+    # 生成方式（见 `scripts/generate_secret.py`）：
+    #     uv run python -m scripts.generate_secret
     #
     # 启动时会校验它（见 `main.py` 的 `_check_secret_key`）：
     # **非 development 环境下用占位值会拒绝启动**。
@@ -180,7 +180,7 @@ class Settings(BaseSettings):
     # 而一个 5MB 的扫描版 PDF 可能一个字都抽不出来（零成本）。
     # 反过来只看块数也不够：字节数决定磁盘占用。
     #
-    # ## 数值的依据（见 `app/core/measure_document_sizes.py`）
+    # ## 数值的依据（见 `scripts/measure_document_sizes.py`）
     #
     # 实测：评估语料约 2700 字符 / 6 块；真实简历 1752 字符 / 5 块；
     # 而测试残留的大文件达 844KB、曾切出上千块。
