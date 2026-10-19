@@ -28,7 +28,7 @@ class InterviewContextBuilder:
     # 上下文越长，模型越容易漏掉中间位置的信息。
     #
     # **为什么不做 LLM 重排**：实测重排在**产品指标上是净负收益**
-    # （救回 0 例、弄丢 1 例，`app/core/test_rerank_context.py`），
+    # （救回 0 例、弄丢 1 例，`tests/test_rerank_context.py`），
     # 而单次重排中位 19.6 秒。多取两块更好、更便宜、
     # 且不引入新的失败模式（重排超时、JSON 解析失败）。
     DEFAULT_LIMIT_PER_TYPE = 5

@@ -65,7 +65,7 @@
 3. **相对单位残留** —— 若有 `1.1em`，它随父级变化，
    "收敛到令牌"的假设就破了
 
-因此收敛时配了 `app/core/check_computed_fonts.py`：
+因此收敛时配了 `tests/check_computed_fonts.py`：
 在**真实浏览器**里读 `getComputedStyle`，断言
 七个令牌的解析值、关键元素的计算字号，以及
 **所有渲染元素**的字号都落在阶梯内。
@@ -84,7 +84,7 @@
 起因是用户的一句话："界面别扭 不太好看"。而这类反馈**不能靠读代码处理** ——
 CSS 令牌的值是抽象的，"好不好看"是渲染之后的事。
 
-于是加了 `app/core/capture_screens.py`：用 Playwright
+于是加了 `tests/capture_screens.py`：用 Playwright
 登录后逐页**截整页图**，并打印每页的**计算样式分布**
 （字号分布、背景色分布、圆角分布）。
 
@@ -108,7 +108,7 @@ CSS 令牌的值是抽象的，"好不好看"是渲染之后的事。
 **可复用的做法**：
 
 ```bash
-uv run python -m app.core.capture_screens
+uv run python -m tests.capture_screens
 # 产物：web/screenshots/*.png（已 gitignore）
 ```
 

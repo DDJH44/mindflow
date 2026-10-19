@@ -834,7 +834,7 @@ A=90  B=70  C=40  D=15
 | D35 | `_session_payload` **漏了新增字段**，终止原因读不到 | 模型加了 `termination_reason`，但路由的响应是内联手工构造的 dict，忘了同步 —— 库里写对了、接口读不到 | 补齐 `max_questions` / `questions_asked` / `termination_reason`。这也是"内联构造响应"的代价，已在 §11 记录 |
 | D36 | 配额"先判定再自增"在**并发**下会一起放行 | 两个请求同时读到 `used=9/quota=10`，都认为还有额度 —— 配额在并发下形同虚设。这是设计阶段自查发现的，不是跑出来的 | 改为**先自增再判定**（原子 UPSERT + RETURNING），被拒时回滚 |
 | D37 | 配额消费最初放在**创建会话**时，测试累积消耗导致脚本失败 | 一次失败的验证不是代码 bug，而是暴露了产品问题：创建 draft 草稿没有任何 LLM 调用却扣额度，"点了新建又没开始"白损失一场 | 消费点移到**开始面试**；同时让测试自备配额（先清空用量再设固定值），避免累计消耗 |
-| D38 | 测试脚本**不自带状态**，依赖"数据库恰好是什么样" | 预算验证在配额累计消耗后失败过一次。测试若依赖外部残留状态，失败原因会指向错误的地方 | 需要特定状态的脚本（如配额测试）在开头 prepare、结尾 restore；并抽出 `app/core/test_support.py` 共享脚手架 |
+| D38 | 测试脚本**不自带状态**，依赖"数据库恰好是什么样" | 预算验证在配额累计消耗后失败过一次。测试若依赖外部残留状态，失败原因会指向错误的地方 | 需要特定状态的脚本（如配额测试）在开头 prepare、结尾 restore；并抽出 `tests/test_support.py` 共享脚手架 |
 | D39 | 概率性测试失败时**误判为代码 bug** | 预算测试在配额耗尽时报"作答返回 409"，看起来像状态机坏了，实际是额度用完导致 `start` 未执行、会话停在 draft。**错误信息指向了错误的地方** | 测试自备配额后消除；并把这条记入 §22.3"先怀疑测试与环境，再怀疑实现" |
 | D40 | 为"让断言失败也清理"做缩进重构时**用脚本反复改文件，把文件改坏** | 先手工只缩进了部分行（SyntaxError），又用"缩进 < 12 补到 12"的启发式脚本破坏了相对层级，再整段平移一次，导致后续所有代码掉进 `else:` 分支 | 停止脚本化修改，读全文后**一次性重写**。教训：对已损坏的文件用启发式脚本补丁会放大破坏；此时应回到确定性的整体重写 |
 | D41 | 测试为"暂停"手工做了两次状态转移，**测试过程本身不自然** | 手工推到 `planned` 用的是 `unspecified` 触发原因，导致 `/start` 发现"已在 planned"、无中间步，`interview_started` 从未被记录、轨迹断言失败 | 测试让主会话走**用户真实路径**（`draft` → `/start` → `asking`），暂停改在 `asking` 上验证 |
@@ -1158,7 +1158,7 @@ draft
   - `InterviewEngineService`：生成问题成功 → `planned`/`asking` → `asking`
   - `InterviewTurnService`：答题成功 → `asking → waiting_for_answer → evaluating → asking`
   - `InterviewEvaluationService`：评价落库成功 → `evaluating → summarizing → completed`
-- ✅ 端到端流程验证：`app/core/test_interview_flow.py`（20 项断言）
+- ✅ 端到端流程验证：`tests/test_interview_flow.py`（20 项断言）
 
 ### 10.4 状态推进的规则（ADR-025）
 
@@ -1395,8 +1395,8 @@ PostgreSQL 与 Milvus 之间没有分布式事务，因而无法提供严格原�
 | 集成测试 | PostgreSQL、Qwen、Milvus 真实链路 | ✅ 已有 Embedding / Milvus / Retrieval 验证脚本 |
 | RAG Evaluation | 离线召回质量与过滤正确性 | ✅ Runner 已实现，5 份基线报告（见 §8.4） |
 | Interview Evaluation | 面试引擎的缺口识别、追问质量与评分稳定性 | 🟡 框架已可用（见 §8A），样本量不足，词面去重有上限 |
-| 面试流程 E2E | 状态机推进、资料依据、落库一致性 | ✅ `app/core/test_interview_flow.py`（20 项） |
-| 面试 API | 路由、认证与所有权、请求校验、状态码、暂停/恢复 | ✅ `app/core/test_interview_api.py`（49 项） |
+| 面试流程 E2E | 状态机推进、资料依据、落库一致性 | ✅ `tests/test_interview_flow.py`（20 项） |
+| 面试 API | 路由、认证与所有权、请求校验、状态码、暂停/恢复 | ✅ `tests/test_interview_api.py`（49 项） |
 | API 测试 | JWT、项目隔离、上传、错误响应 | 🟡 面试域已覆盖；项目与文档域仍待补 |
 | 回归测试 | 每次调整 chunk、embedding、索引或提示词后防退化 | 🟡 RAG 有基线可比；面试侧因评分波动过大（§8A.5），暂不可作为门禁 |
 
@@ -1404,41 +1404,41 @@ PostgreSQL 与 Milvus 之间没有分布式事务，因而无法提供严格原�
 
 **RAG / 索引链路**
 
-- `app/core/test_embedding.py`：Embedding 基础验证。
-- `app/core/test_milvus.py`：Qwen → Milvus 基础写入与搜索验证。
-- `app/core/test_embedding_pipeline.py`：自动选择 pending Chunk，验证 Qwen → Milvus → DB `embedded` → 搜索可见性。
-- `app/core/test_retrieval.py` / `test_retrieval_filter.py`：检索与过滤验证。
+- `tests/test_embedding.py`：Embedding 基础验证。
+- `tests/test_milvus.py`：Qwen → Milvus 基础写入与搜索验证。
+- `tests/test_embedding_pipeline.py`：自动选择 pending Chunk，验证 Qwen → Milvus → DB `embedded` → 搜索可见性。
+- `tests/test_retrieval.py` / `test_retrieval_filter.py`：检索与过滤验证。
 - `app/core/cleanup_test_milvus.py`：清理临时测试向量 `999999`、`1000000`。
 
 **面试链路**
 
-- `app/core/test_create_interview_session.py`：创建干净的测试会话。
-- `app/core/test_interview_flow.py`：**端到端流程验证**（20 项断言）——
+- `tests/test_create_interview_session.py`：创建干净的测试会话。
+- `tests/test_interview_flow.py`：**端到端流程验证**（20 项断言）——
   状态机在业务链路中的推进、非法转移被拒且不改库、
   资料依据捕获与继承、`completed` 终态、被拒操作不写脏数据。
   需要 PostgreSQL + Milvus + LLM，**不参与评分统计**。
-- `app/core/test_interview_api.py`：**API 层验证**（49 项断言）——
+- `tests/test_interview_api.py`：**API 层验证**（49 项断言）——
   用真实 JWT 通过 ASGI 直接调用 HTTP 端点，
   覆盖认证与所有权（401/404）、请求校验（422）、
   非法转移（409）、暂停/恢复全链路、从 `draft` 与从 `planned`
   两条开始路径、答题与追问、结束与评价、终态拒绝作答。
   这一层测的是 service 层测不到的东西：路由、序列化、状态码。
   需要 PostgreSQL + Milvus + LLM，**不参与评分统计**。
-- `app/core/test_status_history.py`：**状态轨迹验证**（30 项断言）——
+- `tests/test_status_history.py`：**状态轨迹验证**（30 项断言）——
   触发原因枚举覆盖、失败的转移不留轨迹、`/start` 的两个中间步、
   一轮答题的三个中间态逐步可见、暂停/恢复、评价完成、
   轨迹无自转移且首尾相接、删除会话时级联删除。
   需要 PostgreSQL + Milvus + LLM，**不参与评分统计**。
-- `app/core/test_question_quota.py`：**按题计量验证**（26 项断言）——  两份额度的纯逻辑与受限方判定、
+- `tests/test_question_quota.py`：**按题计量验证**（26 项断言）——  两份额度的纯逻辑与受限方判定、
   **核心漏洞用例**（单场预算 30 + 月度额度 3 → 第 4 题被 429 挡住）、
   追问计入额度、额度耗尽后新会话也无法开始、被拒后用量不上涨。
   **不需要 Milvus**，只需 PostgreSQL + LLM。
-- `app/core/test_support.py`：**验证脚本的共享脚手架** ——
+- `tests/test_support.py`：**验证脚本的共享脚手架** ——
   `grant_quota` / `reset_quota` / `get_used` / `delete_sessions`。
   凡依赖特定库状态的脚本，自己 prepare、自己 restore（见 D38/D39）。
   注意 `grant_quota` **同时设置两份额度**：只设场次会让
   "题目额度先耗尽"悄悄挡住测试。
-- `app/core/test_usage_quota.py`：**用量与配额验证**（26 项断言）——
+- `tests/test_usage_quota.py`：**用量与配额验证**（26 项断言）——
   决策器与账期纯逻辑、账期补零、零额度语义、
   创建草稿不扣额度、开始面试扣额度、配额耗尽返回 429、
   被拒后用量回滚且会话仍为 draft、只读查询不改变用量、
@@ -1446,17 +1446,17 @@ PostgreSQL 与 Milvus 之间没有分布式事务，因而无法提供严格原�
   **不需要 Milvus**，只调一次 LLM，因此比其它脚本快得多。
   运行前会清空本账期用量并把配额设为测试值，结束时恢复 ——
   否则前一次运行的累计消耗会让它失败（见 D38）。
-- `app/core/test_question_budget.py`：**题目预算与终止条件验证**
+- `tests/test_question_budget.py`：**题目预算与终止条件验证**
   （31 项断言）—— 决策器纯逻辑（含越界夹取）、预算内会生成追问、
   预算耗尽时自动结束并带回评价、终止原因持久化、结束后拒绝作答、
   协议边界（超限 422 / 最大值 / 默认值）、
   轨迹记录 `budget_exhausted` 而非 `user_finished`。
   需要 PostgreSQL + Milvus + LLM，**不参与评分统计**。
-- `app/core/test_interview_engine.py`：完整链路（生成问题 → 回答 → 分析 → 追问 → 整场评价）。
-- `app/core/test_interview_turn.py`：单轮 Turn 链路。
-- `app/core/test_answer_analyzer.py` / `test_follow_up_generator.py`：分析器与追问生成器。
-- `app/core/test_evaluator.py` / `test_evaluation_service.py`：整场评价与落库。
-- `app/core/test_interview_session_repository.py`：会话问题与回答联合查询。
+- `tests/test_interview_engine.py`：完整链路（生成问题 → 回答 → 分析 → 追问 → 整场评价）。
+- `tests/test_interview_turn.py`：单轮 Turn 链路。
+- `tests/test_answer_analyzer.py` / `test_follow_up_generator.py`：分析器与追问生成器。
+- `tests/test_evaluator.py` / `test_evaluation_service.py`：整场评价与落库。
+- `tests/test_interview_session_repository.py`：会话问题与回答联合查询。
 
 **评估框架（可重复运行、带自测）**
 
@@ -1474,46 +1474,46 @@ PostgreSQL 与 Milvus 之间没有分布式事务，因而无法提供严格原�
 
 **资料与向量（需要 Docker + Milvus）**
 
-- `python -m app.core.make_test_fixtures`：生成解析测试样本
-  （`app/core/fixtures/`）。**测试不该依赖"碰巧留在磁盘上的文件"** ——
+- `python -m tests.make_test_fixtures`：生成解析测试样本
+  （`tests/fixtures/`）。**测试不该依赖"碰巧留在磁盘上的文件"** ——
   曾经因为把用户的真实简历当样本、清理后测试就崩了。
-- `python -m app.core.test_document_parsing`：解析与清洗规则（16 项，不碰数据库）。
+- `python -m tests.test_document_parsing`：解析与清洗规则（16 项，不碰数据库）。
   关键断言是**中文去空格与英文保空格这对矛盾**。
-- `python -m app.core.test_resume_upload`：上传全链路（14 项）——
+- `python -m tests.test_resume_upload`：上传全链路（14 项）——
   可选文本 PDF 能上传并索引、图片型 DOCX 被明确拒绝、
   **失败后不留记录也不留文件**。
-- `python -m app.core.test_paused_finish`：**暂停会话能否结束**（10 项，需数据库）。
+- `python -m tests.test_paused_finish`：**暂停会话能否结束**（10 项，需数据库）。
   覆盖：有/无 `resume_status`、有未答题/已答过、无任何题目、
   以及**重复结束返回 409**。这是 D56 的回归防护。
-- `python -m app.core.test_interview_list`：**面试历史列表**（21 项）——
+- `python -m tests.test_interview_list`：**面试历史列表**（21 项）——
   结构、按更新时间倒序、`unfinished_only` 过滤、项目过滤、分页、
   `answered_count` 与 `questions_asked` 的区别、所有权隔离、参数校验。
-- `python -m app.core.test_interview_evidence`：**资料依据片段**（16 项）——
+- `python -m tests.test_interview_evidence`：**资料依据片段**（16 项）——
   片段内容与来源、**顺序与 `evidence_chunk_ids` 一致**、截断标记、
   资料被删除时明确报出失效依据、以及越权防护
   （他人的会话 / 别的会话的 question_id 都返回 404）。
-- `python -m app.core.test_llm_error_mapping`：**上游 LLM 失败的映射**（8 项，D57）。
+- `python -m tests.test_llm_error_mapping`：**上游 LLM 失败的映射**（8 项，D57）。
   需要额外起一个指向不可达 LLM 的后端（见该文件头部说明），
   断言 LLM 失败返回 503 且业务异常（409/404/401）不被误判。
-- `python -m app.core.test_chunk_guard`：**切块守卫**（4 项）。
+- `python -m tests.test_chunk_guard`：**切块守卫**（4 项）。
   需要另起一个 `upload_with_broken_chunker`（把 `split_text`
   打成永远返回空），断言"有内容却切不出块"返回 400 且
   **不留下静默死档**。
-- `python -m app.core.test_doctor`：**依赖健康检查自身**（4 项）。
+- `python -m tests.test_doctor`：**依赖健康检查自身**（4 项）。
   断言依赖正常时不误报、四项外部依赖不可达时**全部**报 FAIL、
   恢复配置后不残留假故障 —— 一个永远报 OK 的检查比没有更糟。
-- `python -m app.core.test_async_indexing`：**异步文档索引**（16 项）——
+- `python -m tests.test_async_indexing`：**异步文档索引**（16 项）——
   上传 202 且立即返回、入队幂等、worker 推进状态、
   **并发领取零重复**、租约恢复（含"未过期不被抢走"）、
   重试上限、无 chunk 不排队。
-- `python -m app.core.test_embedding_batching`：**嵌入分批与自适应上限**（16 项）。
+- `python -m tests.test_embedding_batching`：**嵌入分批与自适应上限**（16 项）。
   用**打桩客户端**（不依赖真实端点）验证：上限解析、
   大批量自动分批、**顺序未错位**、初始猜测过大时从报错自学、
   与批量无关的 400 原样抛出。
-- `python -m app.core.test_logging`：**请求上下文与日志**（11 项）。
+- `python -m tests.test_logging`：**请求上下文与日志**（11 项）。
   `X-Request-ID` 存在且每请求不同、上游 ID 被沿用、
   404/401 也带 ID、日志行含 request_id / user / session。
-- `python -m app.core.test_ability_profile`：**能力画像**（21 项）——
+- `python -m tests.test_ability_profile`：**能力画像**（21 项）——
   中位数 / 区间 / 极差、逐次趋势**按时间正序**、重复弱点识别、
   样本不足时不下结论、无数据的项目返回空画像、未认证 401。
 - `python -m app.core.cleanup_legacy_evaluations [--purge]`：
@@ -1527,8 +1527,8 @@ PostgreSQL 与 Milvus 之间没有分布式事务，因而无法提供严格原�
 - `python -m app.core.cleanup_demo_sessions [--dry-run] [--keep 1,2]`：
   清理测试留下的面试会话。**默认保留会话 1、2**，
   且按 `user_id` 隔离 —— 真实用户的会话不会被碰。
-- `python -m app.core.test_document_upload`：上传、切块、索引、幂等、删除（17 项）。
-- `python -m app.core.test_e2e_http`：**端到端**，打 `127.0.0.1:5173/api`
+- `python -m tests.test_document_upload`：上传、切块、索引、幂等、删除（17 项）。
+- `python -m tests.test_e2e_http`：**端到端**，打 `127.0.0.1:5173/api`
   （即前端真正请求的地址），覆盖注册→建项目→上传→开始面试→逐题作答→报告→清理（26 项）。
   这是唯一同时验证后端进程、Vite 代理与全部前端端点的脚本。
 - `python -m app.core.check_orphan_vectors [--purge]`：Milvus 孤儿向量检查/清理（D52）。
@@ -1539,7 +1539,7 @@ PostgreSQL 与 Milvus 之间没有分布式事务，因而无法提供严格原�
 - `python -m app.core.check_embedded_consistency [--repair]`：
   向量索引状态**双向**一致性检查（D54）——
   ① chunk 声称已嵌入但 Milvus 缺失；② 文档状态与 chunk 真实情况不符。
-- `python -m app.core.ui_walkthrough`：**界面走查**（§27.8）。
+- `python -m tests.ui_walkthrough`：**界面走查**（§27.8）。
   用 Playwright 加载真实前端、走完五页、截图到 `docs/ui-shots/`、
   收集控制台错误。需要 `playwright`（在 `dependency-groups.dev` 里）与
   本机 ms-playwright 的 chromium 缓存；**不跑 `playwright install`**，
@@ -1627,7 +1627,7 @@ PostgreSQL 与 Milvus 之间没有分布式事务，因而无法提供严格原�
 
 ### 16.2 回归门禁（`test_all`）
 
-`uv run python -m app.core.test_all [--offline] [--filter NAME]`
+`uv run python -m tests.test_all [--offline] [--filter NAME]`
 
 **为什么需要**：有 14 个验证套件，逐个跑既慢又容易漏；
 而"这次改动破坏了什么"必须有**单一的、可信的**答案。
@@ -2006,11 +2006,11 @@ completeness A=17  B=4   B+=9  C=20 D=10
 - [x] **把业务动作接入状态机**：已完成（ADR-025）。
       生成问题→`asking`、答题→`evaluating`→`asking`、评价→`completed`；
       规则是"只在外层调用成功后才推进状态"。
-- [x] **端到端流程验证**：`app/core/test_interview_flow.py`（20 项断言）。
+- [x] **端到端流程验证**：`tests/test_interview_flow.py`（20 项断言）。
 - [x] **答题 / 暂停 / 复盘的 API 层**：已完成（§11）。
       新增 6 个端点：`detail` / `pause` / `resume` / `answer` /
       `questions` / `finish`，并新增 `InterviewFlowService` 承担流程编排。
-- [x] **API 层验证**：`app/core/test_interview_api.py`（49 项断言），
+- [x] **API 层验证**：`tests/test_interview_api.py`（49 项断言），
       用真实 JWT 覆盖认证、所有权、校验、暂停恢复、开始与完整链路。
 - [x] **开始面试的 API 入口**（`POST /{id}/start`）：已完成。
       MVP 的"完成一轮文字面试"现在**通过 HTTP 全程可走通**：
@@ -2904,7 +2904,7 @@ LLM 调用或检索动作：
 
 ### 25.6 验证
 
-`app/core/test_question_quota.py`（26 项断言）：
+`tests/test_question_quota.py`（26 项断言）：
 
 - 纯逻辑：默认值、两份额度上限不同、零额度语义、受限方判定
 - **核心漏洞用例**：单场预算设 30、月度题目额度设 3 →
@@ -3151,7 +3151,7 @@ Strong          立刻可见 10 次中命中 10 次
 **接口测试与类型检查看不到"页面长什么样"** —— Vue 挂载失败、布局错位、
 文案写错、按钮点不动，只有真的渲染一次才能发现。
 
-为此新增 `app/core/ui_walkthrough.py`：用 Playwright 驱动本机 chromium
+为此新增 `tests/ui_walkthrough.py`：用 Playwright 驱动本机 chromium
 真实加载前端，走完 **登录 → 首页 → 资料页 → 面试页 → 报告页**，
 截图到 `docs/ui-shots/`，并收集控制台错误与页面异常。
 
@@ -3542,7 +3542,7 @@ worker 领走任务后崩溃，任务会永远停在 `running`。
 
 ### 28.7 验证
 
-`uv run python -m app.core.test_async_indexing`（16 项）：
+`uv run python -m tests.test_async_indexing`（16 项）：
 上传返回 202 且 < 5 秒、入队幂等、worker 推进到 `embedded`、
 **6 个并发 worker 抢 3 个任务零重复**、过期租约被恢复、
 **未过期租约不被抢走**、重试上限后标 `failed`、
@@ -4202,7 +4202,7 @@ D58（历史页把答过题的会话显示成"草稿"）**就是只靠人眼看�
 
 #### 关键教训：**视觉问题必须截图看**
 
-新增 `app/core/capture_screens.py`（Playwright 逐页截图 +
+新增 `tests/capture_screens.py`（Playwright 逐页截图 +
 计算样式分布）。它抓到了三个**只有看图才能发现**的问题：
 
 | 问题 | 为什么读代码发现不了 |

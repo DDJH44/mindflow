@@ -62,7 +62,7 @@ Thumbs.db
 # 视觉审查截图（capture_screens 生成）
 #
 # 这些是**检查产物**，不是交付物：随时可以用
-#   uv run python -m app.core.capture_screens
+#   uv run python -m tests.capture_screens
 # 重新生成，因此不入库 —— 否则每次调样式都会产生
 # 几百 KB 的二进制 diff，而 git 对图片的 diff 毫无意义。
 web/screenshots/

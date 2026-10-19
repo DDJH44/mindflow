@@ -48,7 +48,7 @@
 若换一个时区不是 UTC 的服务器，SQL 侧会写入本地时间的朴素值，
 与 Python 侧的 UTC **混存**，而两边看起来都"正常"。
 
-`app/core/test_time_convention.py` 会把这一点断言出来：
+`tests/test_time_convention.py` 会把这一点断言出来：
 **数据库时区必须是 UTC**，否则明确报错而不是静默混存。
 """
 

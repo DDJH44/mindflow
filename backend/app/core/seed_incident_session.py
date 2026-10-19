@@ -17,7 +17,7 @@
 跑完会打印会话 id，供截图使用：
 
     uv run python -m app.core.seed_incident_session
-    uv run python -m app.core.capture_screens --report-id <id>
+    uv run python -m tests.capture_screens --report-id <id>
 
 ✅ 这条会话完成后可用 `cleanup_test_sessions.py` 清理吗？
 **不能** —— 它有作答记录，而那个工具的判据是"0 题 0 答"。
@@ -144,7 +144,7 @@ async def main() -> int:
         print(f"    （解析锚点失败：{exc}）")
 
     print()
-    print(f"  截图：uv run python -m app.core.capture_screens "
+    print(f"  截图：uv run python -m tests.capture_screens "
           f"--report-id {session_id}")
     print(f"  清理：DELETE FROM interview_sessions WHERE id = {session_id};")
 

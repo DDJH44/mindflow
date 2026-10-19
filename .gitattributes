@@ -1,0 +1,8 @@
+# 二进制样本禁止任何行尾转换。
+#
+# 背景：tests/fixtures/text_resume.pdf 是生成器产出的最小 PDF，
+# 恰好不含 NUL 字节 —— git 的二进制探测认不出它，
+# autocrlf=true 的机器上重新检出时 LF→CRLF 会直接损坏文件。
+# （实测 2026-10-19：git 对它报 "LF will be replaced by CRLF"）
+*.pdf binary
+*.docx binary

@@ -167,10 +167,10 @@ uv run python -m app.core.doctor --llm
 cd D:\yuxi\MindFlow\backend
 
 # 快速回归：跳过所有需要外部模型的套件（约 40 秒）
-uv run python -m app.core.test_all --offline
+uv run python -m tests.test_all --offline
 
 # 全量回归（需要 LLM 与 Embedding 都可用）
-uv run python -m app.core.test_all
+uv run python -m tests.test_all
 ```
 
 门禁会**先检查环境**，并且对三类问题分别处理：
@@ -195,7 +195,7 @@ cd D:\yuxi\MindFlow\backend
 
 # 界面走查：真实浏览器跑一遍七个页面，截图到 docs/ui-shots/
 # 含 D58 / D55 / D56 的交互回归
-uv run python -m app.core.ui_walkthrough
+uv run python -m tests.ui_walkthrough
 
 # 检索评估：自带语料，跑完输出 Recall@1/3/5 与 MRR
 uv run python -m app.evaluation.runner
