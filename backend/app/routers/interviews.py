@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.dependencies import get_current_user
 from app.core.llm_errors import UpstreamLLMError, is_llm_error
 from app.core.logging import get_logger
+from app.core.vector_store_errors import is_vector_store_error
 from app.database.session import get_db
 from app.models.user import User
 from app.repositories.document_chunk_repository import (
@@ -213,6 +214,32 @@ def _llm_error_or_none(exc: Exception) -> HTTPException | None:
         detail=(
             f"调用模型失败（{type(exc).__name__}）：{detail[:200]}。"
             "这是上游模型服务的临时问题，稍后重试即可。"
+        ),
+    )
+
+
+def _vector_store_error_or_none(exc: Exception) -> HTTPException | None:
+    """把向量库（Milvus）不可用映射成 503，并说明额度已退。
+
+    为什么需要（2026-10-20 实测事故）：Milvus 容器没在运行时，
+    start 在检索阶段抛 `grpc._channel._InactiveRpcError`，
+    不命中任何 except 分支 → 裸 500 "Internal Server Error"。
+    用户端表现为"点击开始没反应"，而真实原因（依赖不可用）
+    被掩盖 —— 与 D57 修 LLM 裸 500 同一判断标准。
+
+    判据集中在 `is_vector_store_error`（app/core），
+    与 `is_llm_error` 同模式：类名 + MRO + 异常链。
+    """
+
+    if not is_vector_store_error(exc):
+        return None
+
+    return HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail=(
+            "向量库暂时不可用（检索服务无法连接）。"
+            "这是部署环境的临时问题，稍后重试即可，"
+            "本次不消耗额度。"
         ),
     )
 
@@ -880,7 +907,12 @@ async def start_interview(
         # 上游 LLM 超时/连接失败/额度耗尽走这里（D57）：
         # 它既不是 ValueError 也不是 RuntimeError，不接住就会变成
         # 裸 500，用户看到 "Internal Server Error" 而不知是上游问题。
-        mapped = _llm_error_or_none(exc)
+        # 向量库不可用同理（2026-10-20 事故：Milvus 没起时
+        # `grpc._InactiveRpcError` 裸 500）。
+        mapped = (
+            _llm_error_or_none(exc)
+            or _vector_store_error_or_none(exc)
+        )
 
         await db.rollback()
 
@@ -1101,12 +1133,15 @@ async def submit_answer(
             detail=str(exc),
         ) from exc
     except Exception as exc:
-        # 上游 LLM 超时/连接失败（D57）。
+        # 上游 LLM 超时/连接失败（D57）；向量库不可用同理。
         #
         # 这里**不回滚**：回答与分析可能已经在同一事务里提交，
         # 回滚会丢掉用户刚提交的作答 —— 那比"少一条追问"更糟。
         # 因此只把错误讲清楚，让用户知道作答已保存、可稍后继续。
-        mapped = _llm_error_or_none(exc)
+        mapped = (
+            _llm_error_or_none(exc)
+            or _vector_store_error_or_none(exc)
+        )
 
         if mapped is None:
             raise

@@ -131,7 +131,7 @@ def main() -> int:
     # 自检：解析结果是否符合预期
     import asyncio
 
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
     from app.services.document_parser import (
         DocumentParser,

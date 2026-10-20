@@ -118,6 +118,10 @@ SUITES: tuple[tuple[str, bool], ...] = (
     # 多次采样全失败时抛的是聚合错误，而它的 MRO 里没有
     # OpenAIError —— 只修单次路径的话，上游超时仍是裸 500。
     ("test_llm_error_aggregate", False),
+    # 向量库不可用 → 503（2026-10-20 事故：Milvus 没起时
+    # `grpc._InactiveRpcError` 裸 500，用户只看到"点击没反应"）。
+    # 含真实 gRPC 异常的复现，不靠模拟类名。
+    ("test_vector_store_errors", False),
     ("test_document_upload", True),
     ("test_resume_upload", True),
     # 会调用模型的套件

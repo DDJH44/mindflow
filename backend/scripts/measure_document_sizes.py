@@ -151,7 +151,7 @@ async def main() -> int:
     # 相对包根推导，不硬编码盘符 ——
     # 硬编码在容器里会变成"目录不存在"，而那会被误读成
     # "磁盘上没有上传文件"（本工具的结论会因此失真）。
-    upload_dir = Path(__file__).resolve().parents[2] / "uploads"
+    upload_dir = Path(__file__).resolve().parents[1] / "uploads"
 
     if not upload_dir.exists():
         print("  上传目录不存在")

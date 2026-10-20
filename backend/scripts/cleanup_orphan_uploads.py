@@ -58,9 +58,9 @@ from app.database.session import AsyncSessionLocal
 # 静默通过会让人以为已经清理过了。
 #
 # 改为相对本文件的包根推导：
-#   scripts/cleanup_orphan_uploads.py → parents[2] = backend/
+#   scripts/cleanup_orphan_uploads.py → parents[1] = backend/
 # 本地与容器（WORKDIR=/app）都成立。
-UPLOAD_DIR = Path(__file__).resolve().parents[2] / "uploads"
+UPLOAD_DIR = Path(__file__).resolve().parents[1] / "uploads"
 
 
 async def collect() -> tuple[list[Path], list[Path]]:

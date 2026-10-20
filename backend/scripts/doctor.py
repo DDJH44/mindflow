@@ -103,7 +103,7 @@ async def check_migrations() -> None:
         from alembic.config import Config
         from alembic.script import ScriptDirectory
 
-        backend_dir = Path(__file__).resolve().parents[2]
+        backend_dir = Path(__file__).resolve().parents[1]
 
         config = Config(str(backend_dir / "alembic.ini"))
         config.set_main_option(
