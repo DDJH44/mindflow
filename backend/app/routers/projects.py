@@ -10,6 +10,7 @@ from app.core.dependencies import get_current_user
 from app.database.session import get_db
 from app.models.user import User
 from app.repositories.document_repository import DocumentRepository
+from app.repositories.knowledge_repository import KnowledgeRepository
 from app.repositories.project_repository import ProjectRepository
 from app.schemas.project import (
     ProjectCreateRequest,
@@ -27,6 +28,19 @@ DOCUMENT_TYPE_LABELS: dict[str, str] = {
     "jd": "岗位要求",
     "project": "项目材料",
     "code": "代码",
+}
+
+# 知识图谱实体种类的中文名（展示用）。
+KNOWLEDGE_ENTITY_TYPE_LABELS: dict[str, str] = {
+    "person": "人物",
+    "skill": "技能",
+    "technology": "技术",
+    "system": "系统",
+    "organization": "组织",
+    "role": "角色",
+    "experience": "经历",
+    "achievement": "成果",
+    "other": "其他",
 }
 
 
@@ -241,6 +255,87 @@ async def get_project_readiness(
         "other_total": other_total,
         "other_indexed": other_indexed,
         "advice": advice,
+    }
+
+
+@router.get("/{project_id}/knowledge-graph")
+async def get_project_knowledge_graph(
+    project_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """这个项目的知识图谱（资料抽出的实体与关系）。
+
+    ## 它是什么
+
+    资料不再只是"被检索的文本"—— 它们变成了**可见的知识网络**：
+    哪些技术被提到、它们之间是什么关系、哪些是核心节点。
+    这是"资料 → 面试"之外的第二条消费路径。
+
+    ## 为什么是只读快照而不是实时抽取
+
+    抽取要过模型（每段一次调用）。因此图谱由
+    `scripts.extract_knowledge` 按需生成，端点只负责读 ——
+    实时抽取会让打开项目页慢十几秒，还多花钱。
+
+    图谱为空（还没跑过抽取）时 `entities` 为空列表，
+    前端整块不显示 —— 而不是显示"知识图谱加载失败"。
+    """
+
+    project = await ProjectRepository(db).get_by_id_and_owner(
+        project_id=project_id,
+        owner_id=current_user.id,
+    )
+
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="项目不存在",
+        )
+
+    entities, relations = await KnowledgeRepository(db).get_graph(
+        project_id=project_id
+    )
+
+    # 实体名 → id（关系里只有 id，前端展示要名字）
+    name_by_id = {entity.id: entity.name for entity in entities}
+
+    # degree（连接数）在 Python 里数 —— 数据量见 get_graph 的说明
+    degree: dict[int, int] = {}
+
+    for relation in relations:
+        degree[relation.subject_id] = (
+            degree.get(relation.subject_id, 0) + 1
+        )
+        degree[relation.object_id] = (
+            degree.get(relation.object_id, 0) + 1
+        )
+
+    return {
+        "entities": [
+            {
+                "id": entity.id,
+                "name": entity.name,
+                "type": entity.entity_type,
+                "type_label": KNOWLEDGE_ENTITY_TYPE_LABELS.get(
+                    entity.entity_type, entity.entity_type
+                ),
+                "degree": degree.get(entity.id, 0),
+            }
+            # 度数降序、同名稳定 —— 核心节点先被看到
+            for entity in sorted(
+                entities,
+                key=lambda item: (-degree.get(item.id, 0), item.name),
+            )
+        ],
+        "relations": [
+            {
+                "subject": name_by_id.get(relation.subject_id, "?"),
+                "predicate": relation.predicate,
+                "object": name_by_id.get(relation.object_id, "?"),
+            }
+            for relation in relations
+        ],
     }
 
 

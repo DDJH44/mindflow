@@ -36,6 +36,9 @@
 用法：
     uv run python -m scripts.cleanup_test_projects
     uv run python -m scripts.cleanup_test_projects --purge
+    # 按 id 精确指定（名字不在测试模式里的历史遗留）
+    uv run python -m scripts.cleanup_test_projects \
+        --project-id 1 --project-id 2 --purge
 """
 
 import argparse
@@ -67,43 +70,78 @@ LEGACY_TEST_NAMES = (
 E2E_PROJECT_PATTERN = "E2E 项目%"
 
 
-async def collect() -> list[dict]:
-    """列出候选的测试项目，附带内容摘要。"""
+async def collect(
+    explicit_ids: list[int] | None = None,
+) -> list[dict]:
+    """列出候选的测试项目，附带内容摘要。
+
+    `explicit_ids`：按 id 精确指定（用于名字不在任何模式里的
+    历史遗留 —— 例如早期手动建的重复项目）。为空时按名字模式找。
+    """
 
     async with AsyncSessionLocal() as db:
-        rows = list(
-            (
-                await db.execute(
-                    text(
-                        """
-                        SELECT
-                            p.id,
-                            p.name,
-                            u.username,
-                            p.created_at,
-                            (SELECT count(*) FROM documents d
-                             WHERE d.project_id = p.id) AS documents,
-                            (SELECT count(*) FROM document_chunks c
-                             JOIN documents d ON d.id = c.document_id
-                             WHERE d.project_id = p.id) AS chunks,
-                            (SELECT count(*) FROM interview_sessions s
-                             WHERE s.project_id = p.id) AS sessions
-                        FROM projects p
-                        JOIN users u ON u.id = p.owner_id
-                        WHERE p.name LIKE :prefix
-                           OR p.name = ANY(:legacy)
-                           OR p.name LIKE :e2e
-                        ORDER BY p.id
-                        """
-                    ),
-                    {
-                        "prefix": f"{TEST_PROJECT_PREFIX}%",
-                        "legacy": list(LEGACY_TEST_NAMES),
-                        "e2e": E2E_PROJECT_PATTERN,
-                    },
-                )
-            ).all()
-        )
+        if explicit_ids:
+            rows = list(
+                (
+                    await db.execute(
+                        text(
+                            """
+                            SELECT
+                                p.id,
+                                p.name,
+                                u.username,
+                                p.created_at,
+                                (SELECT count(*) FROM documents d
+                                 WHERE d.project_id = p.id) AS documents,
+                                (SELECT count(*) FROM document_chunks c
+                                 JOIN documents d ON d.id = c.document_id
+                                 WHERE d.project_id = p.id) AS chunks,
+                                (SELECT count(*) FROM interview_sessions s
+                                 WHERE s.project_id = p.id) AS sessions
+                            FROM projects p
+                            JOIN users u ON u.id = p.owner_id
+                            WHERE p.id = ANY(:ids)
+                            ORDER BY p.id
+                            """
+                        ),
+                        {"ids": explicit_ids},
+                    )
+                ).all()
+            )
+        else:
+            rows = list(
+                (
+                    await db.execute(
+                        text(
+                            """
+                            SELECT
+                                p.id,
+                                p.name,
+                                u.username,
+                                p.created_at,
+                                (SELECT count(*) FROM documents d
+                                 WHERE d.project_id = p.id) AS documents,
+                                (SELECT count(*) FROM document_chunks c
+                                 JOIN documents d ON d.id = c.document_id
+                                 WHERE d.project_id = p.id) AS chunks,
+                                (SELECT count(*) FROM interview_sessions s
+                                 WHERE s.project_id = p.id) AS sessions
+                            FROM projects p
+                            JOIN users u ON u.id = p.owner_id
+                            WHERE p.name LIKE :prefix
+                               OR p.name = ANY(:legacy)
+                               OR p.name LIKE :e2e
+                            ORDER BY p.id
+                            """
+                        ),
+                        {
+                            "prefix": f"{TEST_PROJECT_PREFIX}%",
+                            "legacy": list(LEGACY_TEST_NAMES),
+                            "e2e": E2E_PROJECT_PATTERN,
+                        },
+                    )
+                ).all()
+            )
 
     return [
         {
@@ -205,6 +243,16 @@ async def main() -> int:
         action="store_true",
         help="连有面试会话的项目一起删（危险）",
     )
+    parser.add_argument(
+        "--project-id",
+        type=int,
+        action="append",
+        default=None,
+        help=(
+            "按 id 精确指定项目（可多次）。用于名字不在"
+            "任何测试模式里的历史遗留 —— 仍受会话安全闸保护"
+        ),
+    )
 
     args = parser.parse_args()
 
@@ -212,7 +260,7 @@ async def main() -> int:
     print("测试项目清理")
     print("=" * 76)
 
-    projects = await collect()
+    projects = await collect(args.project_id)
 
     if not projects:
         print()

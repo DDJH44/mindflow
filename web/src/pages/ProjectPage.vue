@@ -19,6 +19,7 @@ import PageState from '../components/PageState.vue'
 import type {
   DocumentItem,
   DocumentType,
+  KnowledgeGraph,
   Project,
   ProjectReadiness,
 } from '../api/types'
@@ -36,6 +37,15 @@ const documents = ref<DocumentItem[]>([])
  * 都在问简历 —— 那看起来像"面试质量不行"，实际是资料没准备好。
  */
 const readiness = ref<ProjectReadiness | null>(null)
+
+/**
+ * 知识图谱快照（资料抽出的实体与关系）。
+ *
+ * 资料的第二条消费路径：不再只是"被检索的文本"，
+ * 而是可见的知识网络。为空（还没跑过抽取）时整块不显示 ——
+ * 图谱不是资料的必备状态，不该占位或报"加载失败"。
+ */
+const graph = ref<KnowledgeGraph | null>(null)
 
 const loading = ref(true)
 const error = ref('')
@@ -186,16 +196,19 @@ async function load() {
   error.value = ''
 
   try {
-    const [detail, list, check] = await Promise.all([
+    const [detail, list, check, knowledge] = await Promise.all([
       projectApi.detail(props.id),
       documentApi.list(props.id),
       // 资料体检：与列表一起取，避免页面上出现"资料已加载但体检还没到"
       // 的空档。失败时返回 null（只是不显示提示，不影响用资料）。
       projectApi.readiness(props.id).catch(() => null),
+      // 知识图谱：同样只是展示，失败不影响主流程。
+      projectApi.knowledgeGraph(props.id).catch(() => null),
     ])
     project.value = detail
     documents.value = list
     readiness.value = check
+    graph.value = knowledge
 
     // 进入页面时如果还有未完成的索引（例如用户上次没等就关了
     // 页面），也要继续刷新 —— 否则他会看到一个永远不变的
@@ -413,6 +426,75 @@ onMounted(load)
           还没有可被检索的资料。<strong>上传并完成索引后</strong>，
           面试才会依据你的资料出题；否则只会问通用问题。
         </template>
+      </div>
+
+      <!--
+        知识网络：资料抽出的实体与关系。
+
+        资料的第二条消费路径 —— 上传的不再只是"被检索的文本"，
+        而是一张可见的知识网络。抽取由 scripts.extract_knowledge
+        按需生成（过模型、有成本），因此这里是**只读快照**：
+        没跑过抽取就不显示，不占位、不报错。
+      -->
+      <div v-if="graph && graph.entities.length" class="card">
+        <div class="row-between">
+          <h2 style="margin: 0">知识网络</h2>
+          <span class="faint">
+            {{ graph.entities.length }} 个实体 ·
+            {{ graph.relations.length }} 条关系
+          </span>
+        </div>
+
+        <!--
+          实体按度数降序（服务端已排）：核心节点先被看到。
+          度数入标签：连线最多的就是这份材料的技术重心。
+        -->
+        <div class="row-wrap" style="margin-top: 12px; gap: 8px">
+          <span
+            v-for="entity in graph.entities"
+            :key="entity.id"
+            class="tag"
+            :class="
+              entity.type === 'technology' ? 'tag-accent' : ''
+            "
+            :title="entity.type_label"
+          >
+            {{ entity.name }}
+            <span v-if="entity.degree" class="faint">
+              ·{{ entity.degree }}
+            </span>
+          </span>
+        </div>
+
+        <p class="faint" style="margin: 10px 0 0">
+          数字是提及关系的数量（越高越核心）。目前由维护脚本按需生成，
+          上传新资料后不会自动更新。
+        </p>
+
+        <!-- 关系：只列前 10 条，全部列出长材料会淹没页面 -->
+        <div
+          v-if="graph.relations.length"
+          style="margin-top: 12px"
+        >
+          <ul class="bullet-list">
+            <li
+              v-for="(relation, index) in graph.relations.slice(0, 10)"
+              :key="index"
+              class="muted"
+            >
+              {{ relation.subject }}
+              <span class="faint">—{{ relation.predicate }}→</span>
+              {{ relation.object }}
+            </li>
+          </ul>
+          <p
+            v-if="graph.relations.length > 10"
+            class="faint"
+            style="margin: 6px 0 0"
+          >
+            …其余 {{ graph.relations.length - 10 }} 条略。
+          </p>
+        </div>
       </div>
 
       <!-- 上传 -->

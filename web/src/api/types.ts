@@ -316,6 +316,28 @@ export interface FocusSuggestion {
 }
 
 /**
+ * 项目知识图谱：资料抽出的实体与关系（只读快照）。
+ *
+ * 图谱由 scripts.extract_knowledge 按需生成 —— 为空表示
+ * 还没跑过抽取，前端整块不显示。
+ */
+export interface KnowledgeGraph {
+  entities: {
+    id: number
+    name: string
+    type: string
+    type_label: string
+    /** 连接数（核心节点先被展示）。 */
+    degree: number
+  }[]
+  relations: {
+    subject: string
+    predicate: string
+    object: string
+  }[]
+}
+
+/**
  * 资料体检：这个项目的资料能不能支撑一场有依据的面试。
  *
  * 面试只检索四类材料（简历 / 岗位要求 / 项目材料 / 代码），

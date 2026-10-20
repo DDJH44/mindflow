@@ -21,6 +21,7 @@ import type {
   InterviewSession,
   InterviewSessionListResponse,
   InterviewStartResult,
+  KnowledgeGraph,
   ListInterviewsParams,
   NextStep,
   Project,
@@ -113,6 +114,18 @@ export const projectApi = {
   async readiness(id: number) {
     const { data } = await http.get<ProjectReadiness>(
       `/projects/${id}/readiness`,
+    )
+    return data
+  },
+
+  /**
+   * 项目的知识图谱（只读快照，由 scripts.extract_knowledge 生成）。
+   *
+   * 实体为空 = 还没跑过抽取 —— 调用方整块不显示。
+   */
+  async knowledgeGraph(id: number) {
+    const { data } = await http.get<KnowledgeGraph>(
+      `/projects/${id}/knowledge-graph`,
     )
     return data
   },
