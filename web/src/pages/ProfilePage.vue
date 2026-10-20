@@ -17,7 +17,12 @@ import { computed, onMounted, ref } from 'vue'
 
 import { interviewApi, projectApi } from '../api'
 import { ApiError } from '../api/http'
-import type { AbilityProfile, Project } from '../api/types'
+import type {
+  AbilityProfile,
+  NextStep,
+  Project,
+} from '../api/types'
+import { useFocusedInterview } from '../composables/useFocusedInterview'
 import PageState from '../components/PageState.vue'
 import Sparkline from '../components/Sparkline.vue'
 
@@ -31,6 +36,46 @@ const selectedProjectId = ref<number | null>(null)
 const hasData = computed(
   () => (profile.value?.session_count ?? 0) > 0,
 )
+
+/**
+ * 「下一步」建议 —— 与首页同一个接口、同一份服务端判断
+ * （含"少于 3 场不下短板结论"），按当前项目筛选取数。
+ *
+ * 放在画像页的原因：用户在这里看到弱项时最想立刻练 ——
+ * "看完弱项 → 跳首页 → 自己配置一场"是两步浪费。
+ */
+const nextStep = ref<NextStep | null>(null)
+
+const { starting, startError, startFocused } = useFocusedInterview()
+
+/** 画像页的"再面一场"是否可直接开始（需要具体项目）。 */
+const canStartFromProfile = computed(
+  () =>
+    nextStep.value?.action === 'focus_next' &&
+    selectedProjectId.value !== null,
+)
+
+async function loadNextStep() {
+  try {
+    nextStep.value = await interviewApi.nextStep(
+      selectedProjectId.value ?? undefined,
+    )
+  } catch {
+    // 建议卡只是引导，取不到就不显示。
+    nextStep.value = null
+  }
+}
+
+async function startFocusedFromProfile() {
+  if (selectedProjectId.value === null) {
+    return
+  }
+
+  await startFocused({
+    projectId: selectedProjectId.value,
+    query: nextStep.value?.query ?? null,
+  })
+}
 
 function formatDate(value: string): string {
   const date = new Date(value)
@@ -59,6 +104,10 @@ async function load() {
   } finally {
     loading.value = false
   }
+
+  // 建议卡单独取：它失败不影响画像本身。
+  // （切换项目筛选时 load 会重跑，建议随之刷新。）
+  await loadNextStep()
 }
 
 async function filterByProject(projectId: number | null) {
@@ -158,6 +207,90 @@ onMounted(load)
           :style="index ? 'margin-top: 8px' : ''"
         >
           {{ caveat }}
+        </div>
+
+        <!--
+          「下一步」建议 —— 与首页同一接口、同一判断。
+
+          放在维度卡片**之前**：用户在画像页的核心诉求是
+          "我接下来练什么"，维度数据是它的依据 —— 行动先于依据
+          被看到（与首页"建议在额度之上"同一逻辑）。
+
+          画像页特有的约束：「再面一场」需要具体项目，而画像
+          默认聚合**全部项目** —— 未选项目时按钮降级为提示，
+          而不是替用户猜一个项目。
+        -->
+        <div
+          v-if="nextStep && nextStep.action !== 'start_first'"
+          class="card next-step"
+          :class="{
+            'next-step--accent':
+              nextStep.action === 'focus_next',
+          }"
+        >
+          <h2 style="margin: 0">{{ nextStep.title }}</h2>
+
+          <p
+            v-if="nextStep.reason"
+            class="muted"
+            style="margin: 8px 0 0"
+          >
+            {{ nextStep.reason }}
+          </p>
+
+          <div
+            v-if="nextStep.focus.length"
+            class="row-wrap"
+            style="margin-top: 10px; gap: 8px"
+          >
+            <span class="faint">下一场会聚焦：</span>
+            <span
+              v-for="item in nextStep.focus"
+              :key="item"
+              class="tag tag-accent"
+            >
+              {{ item }}
+            </span>
+          </div>
+
+          <div class="row" style="margin-top: 14px">
+            <button
+              v-if="nextStep.action === 'focus_next'"
+              class="btn-primary"
+              type="button"
+              :disabled="starting || !canStartFromProfile"
+              @click="startFocusedFromProfile"
+            >
+              <span v-if="starting" class="spinner" />
+              {{ starting ? '正在生成第一题…' : '针对这些再面一场' }}
+            </button>
+
+            <span
+              v-if="
+                nextStep.action === 'focus_next' &&
+                  selectedProjectId === null
+              "
+              class="faint"
+            >
+              在上方选择一个项目后即可开始。
+            </span>
+
+            <RouterLink
+              v-else-if="nextStep.action === 'add_materials'"
+              class="link"
+              :to="{ name: 'home' }"
+            >
+              先上传资料
+            </RouterLink>
+          </div>
+
+          <p
+            v-if="startError"
+            class="alert alert-warn"
+            style="margin: 10px 0 0"
+          >
+            {{ startError }}
+          </p>
         </div>
 
         <!-- 维度卡片 -->

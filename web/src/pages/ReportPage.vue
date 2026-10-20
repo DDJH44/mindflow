@@ -12,7 +12,8 @@ import { computed, onMounted, ref } from 'vue'
 
 import { interviewApi } from '../api'
 import { ApiError } from '../api/http'
-import type { InterviewDetail } from '../api/types'
+import type { FocusSuggestion, InterviewDetail } from '../api/types'
+import { useFocusedInterview } from '../composables/useFocusedInterview'
 import EvidencePanel from '../components/EvidencePanel.vue'
 import PageState from '../components/PageState.vue'
 
@@ -33,6 +34,46 @@ function toggleEvidence(questionId: number) {
 const evaluation = computed(() => detail.value?.evaluation ?? null)
 const session = computed(() => detail.value?.session ?? null)
 const questions = computed(() => detail.value?.questions ?? [])
+
+/**
+ * 下一场的聚焦方向（服务端从**本场**评价推导）。
+ *
+ * 与首页 `NextStep` 的区别：那边聚合多场、受"样本少不下结论"
+ * 约束；这里只回看这一场 —— 报告页本来就展示了本场弱项，
+ * "下一场重点考察它们"一场也成立。判断在服务端，前端不推导。
+ */
+const focusSuggestion = ref<FocusSuggestion | null>(null)
+
+const { starting, startError, startFocused } = useFocusedInterview()
+
+async function loadFocusSuggestion() {
+  try {
+    focusSuggestion.value = await interviewApi.focusSuggestion(props.id)
+  } catch {
+    // 聚焦建议只是引导，取不到就不显示 ——
+    // 不该因为一个辅助接口失败而让报告页报错。
+    focusSuggestion.value = null
+  }
+}
+
+/**
+ * 按本场的聚焦方向再开一场。
+ *
+ * 项目、岗位、题目上限**继承本场** —— "再面一场"的语义是
+ * 同样的设置下换方向重考，而不是回到首页从零配置。
+ */
+async function startFocusedFromReport() {
+  if (!session.value) {
+    return
+  }
+
+  await startFocused({
+    projectId: session.value.project_id,
+    targetRole: session.value.target_role,
+    maxQuestions: session.value.max_questions,
+    query: focusSuggestion.value?.query ?? null,
+  })
+}
 
 const scores = computed(() => {
   const value = evaluation.value
@@ -149,6 +190,9 @@ async function load() {
   } finally {
     loading.value = false
   }
+
+  // 聚焦建议单独取：它失败不影响报告本身。
+  await loadFocusSuggestion()
 }
 
 onMounted(load)
@@ -252,6 +296,60 @@ onMounted(load)
               {{ item }}
             </li>
           </ul>
+        </div>
+
+        <!--
+          下一步：把这一场暴露的不足直接带进下一场。
+
+          这是"报告 → ？"那一环在**报告页**的落点 —— 在此之前
+          看完报告只能跳首页从零配置。项目 / 岗位 / 题目上限
+          继承本场，聚焦方向由服务端从本场评价推导。
+
+          没有评价、或辅助接口失败时 `query` 为空 → 整块不显示，
+          报告页仍然完整。
+        -->
+        <div
+          v-if="evaluation && focusSuggestion?.query"
+          class="card next-step next-step--accent"
+        >
+          <h2 style="margin: 0">针对这场暴露的不足再面一场</h2>
+
+          <div
+            class="row-wrap"
+            style="margin-top: 10px; gap: 8px"
+          >
+            <span class="faint">下一场会聚焦：</span>
+            <span
+              v-for="item in focusSuggestion.focus"
+              :key="item"
+              class="tag tag-accent"
+            >
+              {{ item }}
+            </span>
+          </div>
+
+          <div class="row" style="margin-top: 14px">
+            <button
+              class="btn-primary"
+              type="button"
+              :disabled="starting"
+              @click="startFocusedFromReport"
+            >
+              <span v-if="starting" class="spinner" />
+              {{ starting ? '正在生成第一题…' : '再面一场' }}
+            </button>
+            <span v-if="starting" class="faint">
+              生成问题需要调用模型，通常需要十几秒。
+            </span>
+          </div>
+
+          <p
+            v-if="startError"
+            class="alert alert-warn"
+            style="margin: 10px 0 0"
+          >
+            {{ startError }}
+          </p>
         </div>
       </template>
 

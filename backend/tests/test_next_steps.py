@@ -38,6 +38,7 @@ from app.services.interview.next_steps import (
     ACTION_FOCUS_NEXT,
     ACTION_PRACTICE_MORE,
     ACTION_START_FIRST,
+    build_focus_from_report,
     build_next_step,
 )
 
@@ -234,6 +235,86 @@ def main() -> int:
         "focus 最多 2 条",
         len(step.focus) <= 2,
         f"{len(step.focus)} 条",
+    )
+
+    # ================================================
+    print()
+    print("=" * 78)
+    print("⑥ 报告页聚焦：单场回顾（build_focus_from_report）")
+    print("=" * 78)
+
+    # 与 build_next_step 的边界：单场内容回顾**不受**
+    # "少于 3 场不下结论"约束 —— 那条约束的是跨场能力归因。
+    # 报告页本来就展示了这一场的弱项，"下场重点考察它们"
+    # 一场也成立。
+    report_focus = build_focus_from_report(
+        overall_score=15,
+        technical_score=35,
+        project_score=60,
+        communication_score=75,
+        weaknesses=[
+            "未说明 chunk_id 与 metadata 的映射",
+            "第二条弱项不应该进入聚焦（只取第一条）",
+        ],
+    )
+
+    result.check(
+        "单场也给出聚焦方向（无需 3 场样本）",
+        report_focus is not None,
+        "None" if report_focus is None else "有",
+    )
+
+    if report_focus is not None:
+        result.check(
+            "「综合」最低但不被选（聚合分不可练）",
+            "综合" not in report_focus.focus
+            and "聚合" not in report_focus.query,
+            f"focus={report_focus.focus}",
+        )
+        result.check(
+            "选本场最低的可练维度（技术）",
+            "技术" in report_focus.focus,
+            f"focus={report_focus.focus}",
+        )
+        result.check(
+            "维度进入 query 时用可检索短语，不是「技术」两个字",
+            "实现细节" in report_focus.query,
+            report_focus.query,
+        )
+        result.check(
+            "首条弱项原文进入 focus 与 query",
+            any("chunk_id" in item for item in report_focus.focus)
+            and "chunk_id" in report_focus.query,
+            f"focus={report_focus.focus}",
+        )
+        result.check(
+            "第二条弱项不进入（只取第一条，多条用户消化不了）",
+            "第二条" not in report_focus.query,
+            report_focus.query,
+        )
+        result.check(
+            "focus 最多 2 条（一个维度 + 一条弱项）",
+            len(report_focus.focus) <= 2,
+            f"{len(report_focus.focus)} 条",
+        )
+
+    # 维度分数是评价的必填项 → 函数**总有**维度方向、不返回 None。
+    # 这里验证弱项为空时：不崩溃、focus 退化为只剩维度一条。
+    no_weakness = build_focus_from_report(
+        overall_score=50,
+        technical_score=50,
+        project_score=50,
+        communication_score=50,
+        weaknesses=[],
+    )
+
+    result.check(
+        "弱项为空时仍有维度方向（不崩溃、不返回 None）",
+        no_weakness is not None
+        and len(no_weakness.focus) == 1,
+        "None"
+        if no_weakness is None
+        else f"focus={no_weakness.focus}",
     )
 
     print()

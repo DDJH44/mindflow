@@ -281,6 +281,21 @@ export interface NextStep {
 }
 
 /**
+ * 报告页的内联聚焦建议（单场回顾）。
+ *
+ * 与 `NextStep` 的区别：`NextStep` 聚合多场画像（受"样本少
+ * 不下结论"约束）；这个只回看**这一场**的评价 —— 最弱可练
+ * 维度 + 首条弱项原文。判断逻辑全在服务端
+ * （`next_steps.build_focus_from_report`），前端不自行推导。
+ */
+export interface FocusSuggestion {
+  /** 可直接传给 `start` 的检索方向。无评价时为 null。 */
+  query: string | null
+  /** 给用户看的聚焦点（维度名 + 弱项原文）。 */
+  focus: string[]
+}
+
+/**
  * 资料体检：这个项目的资料能不能支撑一场有依据的面试。
  *
  * 面试只检索四类材料（简历 / 岗位要求 / 项目材料 / 代码），

@@ -93,6 +93,22 @@ class NextStep:
     caveats: list[str] = field(default_factory=list)
 
 
+@dataclass
+class FocusSuggestion:
+    """从**单场**报告推出的聚焦方向（报告页内联 CTA 用）。
+
+    与 `NextStep` 的区别：`NextStep` 聚合多场（受"样本少不下结论"
+    约束），这里只回看**这一场**的内容 —— 因此哪怕用户只面过一场，
+    报告页也能说"下一场重点考察 X"。
+    """
+
+    # 可直接传给 `POST /interviews/{id}/start` 的检索方向
+    query: str
+
+    # 给用户看的聚焦点（维度名 + 弱项原文）
+    focus: list[str]
+
+
 def _weakest_dimension(
     profile: AbilityProfile,
 ) -> DimensionProfile | None:
@@ -234,4 +250,73 @@ def build_next_step(
         focus=focus,
         query=query,
         caveats=list(profile.caveats),
+    )
+
+
+# 报告页 CTA 用的维度展示名（与画像页 / 报告页的中文口径一致）。
+_REPORT_DIMENSION_LABELS = {
+    "technical_score": "技术",
+    "project_score": "项目",
+    "communication_score": "沟通",
+}
+
+
+def build_focus_from_report(
+    *,
+    overall_score: int,
+    technical_score: int,
+    project_score: int,
+    communication_score: int,
+    weaknesses: list[str],
+) -> FocusSuggestion | None:
+    """从**单场**评价构造下一场的聚焦方向（报告页内联 CTA）。
+
+    ## 与 `build_next_step` 的边界（为什么两者不合并）
+
+    `build_next_step` 回答"**你这个人**该练什么" —— 那是跨场的能力
+    归因，受"少于 3 场不下短板结论"约束（§8A.9：同输入重复评分
+    极差 10–20 分，两场差异可能只是波动）。
+
+    本函数回答"**这场暴露了什么**" —— 单场内容回顾。报告页本来就
+    在展示这一场的弱项，"下一场重点考察它们"不依赖统计，一场也
+    成立。把两者混在一起会让报告页在只有一场时也拿不到聚焦方向
+    （或者反过来，让首页基于单场就下"你最弱"的结论）。
+
+    ## 信号（与 `build_next_step` 同源，但口径是本场）
+
+    1. **本场最低的可练维度**（排除「综合」—— 聚合分不可练，
+       这是 `_weakest_dimension` 已论证过的）。维度分数是评价
+       schema 的必填项，因此**总有**这条信号 —— 函数不返回 None。
+       （平分时取声明顺序的第一个，即「技术」。）
+    2. **弱项原文的第一条** —— 具体缺口本身就是好的检索词，
+       且只取一条（多条并列用户消化不了）。可为空。
+    """
+
+    scores = {
+        "technical_score": technical_score,
+        "project_score": project_score,
+        "communication_score": communication_score,
+    }
+
+    focus: list[str] = []
+    query_parts: list[str] = []
+
+    # 三个可练维度必有分数 —— 直接取最低者。
+    weakest_key = min(scores, key=lambda key: scores[key])
+    focus.append(_REPORT_DIMENSION_LABELS.get(weakest_key, weakest_key))
+    query_parts.append(
+        DIMENSION_FOCUS_QUERY.get(weakest_key, weakest_key)
+    )
+
+    if weaknesses:
+        top = weaknesses[0].strip()
+
+        if top:
+            focus.append(top)
+            # 弱项原文描述的是资料里的某个技术点，直接作为检索词
+            query_parts.append(top)
+
+    return FocusSuggestion(
+        query="重点考察：" + "；".join(query_parts),
+        focus=focus,
     )

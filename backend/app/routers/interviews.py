@@ -55,7 +55,10 @@ from app.services.interview.interview_state_machine import (
 from app.services.interview.interview_turn_service import (
     InterviewTurnService,
 )
-from app.services.interview.next_steps import build_next_step
+from app.services.interview.next_steps import (
+    build_focus_from_report,
+    build_next_step,
+)
 from app.services.interview_session_service import InterviewSessionService
 from app.services.usage.usage_quota import (
     QuotaExceeded,
@@ -605,6 +608,59 @@ async def get_interview_detail(
             interview_session
         ),
     }
+
+
+@router.get(
+    "/{interview_id}/focus-suggestion",
+)
+async def get_focus_suggestion(
+    interview_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """**这一场暴露了什么** → 下一场的聚焦方向（报告页内联 CTA）。
+
+    与 `/profile/next-step` 的边界（两处判断都在
+    `app/services/interview/next_steps.py`，前端不自行推导）：
+
+    - `next-step` 聚合**多场**画像，受"少于 3 场不下短板结论"约束；
+    - 这里只回看**本场**评价（最弱可练维度 + 首条弱项原文），
+      因此哪怕用户只面过一场，报告页也能给出
+      "下一场重点考察 X" —— 单场内容回顾不依赖统计。
+
+    没有评价时 `query` 为 null（前端整块不显示）；
+    有评价则必有方向 —— 维度分数是评价的必填项。
+    """
+
+    interview_session = await _load_owned_session(
+        interview_id=interview_id,
+        db=db,
+        current_user=current_user,
+    )
+
+    if not interview_session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="面试会话不存在",
+        )
+
+    evaluation = await InterviewFlowService(db).get_latest_evaluation(
+        session_id=interview_id
+    )
+
+    if evaluation is None:
+        return {"query": None, "focus": []}
+
+    # `get_latest_evaluation` 返回 dict（与 detail 端点同一来源）。
+    suggestion = build_focus_from_report(
+        overall_score=evaluation["overall_score"],
+        technical_score=evaluation["technical_score"],
+        project_score=evaluation["project_score"],
+        communication_score=evaluation["communication_score"],
+        weaknesses=evaluation["weaknesses"],
+    )
+
+    return {"query": suggestion.query, "focus": suggestion.focus}
 
 
 @router.get(

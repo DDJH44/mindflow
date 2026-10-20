@@ -11,6 +11,7 @@ import type {
   AbilityProfile,
   DocumentItem,
   DocumentType,
+  FocusSuggestion,
   InterviewAnswerResult,
   InterviewDetail,
   InterviewEvaluation,
@@ -277,6 +278,20 @@ export const interviewApi = {
   async detail(id: number) {
     const { data } = await http.get<InterviewDetail>(
       `/interviews/${id}/detail`,
+    )
+    return data
+  },
+
+  /**
+   * **这一场暴露了什么** → 下一场的聚焦方向（报告页内联 CTA）。
+   *
+   * 单场内容回顾，不受"样本少不下结论"约束 —— 判断在服务端
+   * （`build_focus_from_report`），前端拿到 `query` 直接传给
+   * `start` 即可。无评价时 `query` 为 null。
+   */
+  async focusSuggestion(id: number) {
+    const { data } = await http.get<FocusSuggestion>(
+      `/interviews/${id}/focus-suggestion`,
     )
     return data
   },
