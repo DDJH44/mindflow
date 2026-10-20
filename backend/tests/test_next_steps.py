@@ -40,6 +40,7 @@ from app.services.interview.next_steps import (
     ACTION_START_FIRST,
     build_focus_from_report,
     build_next_step,
+    build_progress_note,
 )
 
 
@@ -315,6 +316,165 @@ def main() -> int:
         "None"
         if no_weakness is None
         else f"focus={no_weakness.focus}",
+    )
+
+    # ================================================
+    print()
+    print("=" * 78)
+    print("⑦ 进步卡：不把评分波动说成能力进步")
+    print("=" * 78)
+
+    # 前后半各 2 场、提升 17.5（>= 波动下界 10）→ 应给出叙事。
+    improving = AbilityProfile(
+        session_count=4,
+        dimensions=[
+            # 综合分给最大提升：不该被选中（聚合分不可练）
+            dimension("overall_score", "综合", 30, count=4),
+            # 技术：前半 [35, 45] 中位 40 → 后半 [55, 60] 中位 57.5
+            # history 需要显式构造（dimension() 工具不填 history）
+            DimensionProfile(
+                key="technical_score",
+                label="技术",
+                count=4,
+                median=50,
+                minimum=35,
+                maximum=60,
+                latest=60,
+                history=[35, 45, 55, 60],
+            ),
+        ],
+    )
+
+    note = build_progress_note(improving)
+
+    result.check(
+        "4 场、提升 15 → 给出进步叙事",
+        note is not None,
+        "None" if note is None else "有",
+    )
+
+    if note is not None:
+        result.check(
+            "「综合」提升最大但不被选中",
+            note.dimension_label == "技术",
+            note.dimension_label,
+        )
+        result.check(
+            "前后半中位数算对（40 → 57.5，提升 18）",
+            note.early_median == 40
+            and note.recent_median == 57.5
+            and note.delta == 18,
+            f"{note.early_median} → {note.recent_median}（{note.delta}）",
+        )
+        result.check(
+            "警示文案必须随叙事一起返回",
+            "波动" in note.caveat,
+            note.caveat[:40],
+        )
+
+    # 样本不足：3 场（1+2 拆分是波动不是趋势）→ None。
+    too_few = AbilityProfile(
+        session_count=3,
+        dimensions=[
+            DimensionProfile(
+                key="technical_score",
+                label="技术",
+                count=3,
+                median=50,
+                minimum=30,
+                maximum=70,
+                latest=70,
+                history=[30, 60, 70],
+            ),
+        ],
+    )
+
+    result.check(
+        "维度只有 3 场（拆 1+2）→ 不给叙事",
+        build_progress_note(too_few) is None,
+    )
+
+    # 提升不足波动下界（8 < 10）→ None。
+    noisy = AbilityProfile(
+        session_count=4,
+        dimensions=[
+            DimensionProfile(
+                key="technical_score",
+                label="技术",
+                count=4,
+                median=50,
+                minimum=40,
+                maximum=58,
+                latest=58,
+                history=[45, 48, 52, 55],
+            ),
+        ],
+    )
+
+    result.check(
+        "提升 8（在波动范围内）→ 不说变强",
+        build_progress_note(noisy) is None,
+    )
+
+    # 下降 → None（下降由弱项卡承担，进步卡只报提升）。
+    declining = AbilityProfile(
+        session_count=4,
+        dimensions=[
+            DimensionProfile(
+                key="technical_score",
+                label="技术",
+                count=4,
+                median=50,
+                minimum=30,
+                maximum=60,
+                latest=30,
+                history=[60, 55, 35, 30],
+            ),
+        ],
+    )
+
+    result.check(
+        "分数在下降 → 进步卡不出现（弱项卡会接住它）",
+        build_progress_note(declining) is None,
+    )
+
+    # 多维度达标 → 只取提升最大的。
+    two_dims = AbilityProfile(
+        session_count=6,
+        dimensions=[
+            DimensionProfile(
+                key="technical_score",
+                label="技术",
+                count=6,
+                median=50,
+                minimum=30,
+                maximum=65,
+                latest=65,
+                history=[30, 35, 45, 50, 60, 65],
+            ),
+            DimensionProfile(
+                key="communication_score",
+                label="沟通",
+                count=6,
+                median=55,
+                minimum=40,
+                maximum=70,
+                latest=70,
+                history=[45, 50, 55, 58, 62, 65],
+            ),
+        ],
+    )
+
+    best_note = build_progress_note(two_dims)
+
+    result.check(
+        "两个维度都达标 → 只报提升最大的（技术 +25 而非沟通 +12）",
+        best_note is not None
+        and best_note.dimension_label == "技术"
+        and best_note.delta == 25,
+        "None"
+        if best_note is None
+        else f"{best_note.dimension_label} +{best_note.delta}",
     )
 
     print()

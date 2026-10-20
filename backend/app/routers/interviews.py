@@ -59,6 +59,7 @@ from app.services.interview.interview_turn_service import (
 from app.services.interview.next_steps import (
     build_focus_from_report,
     build_next_step,
+    build_progress_note,
 )
 from app.services.interview_session_service import InterviewSessionService
 from app.services.usage.usage_quota import (
@@ -394,6 +395,12 @@ async def get_next_step(
         has_indexed_materials=has_indexed_materials,
     )
 
+    # 进步叙事与建议共用同一个画像 —— 二者是同一闭环的两半：
+    # "该练什么"（建议卡）与"练有效果"（进步卡）。
+    # 判断同样全在服务端（build_progress_note），
+    # 含"样本少/提升不足波动下界就不说变强"的保护。
+    progress = build_progress_note(profile)
+
     return {
         "action": step.action,
         "title": step.title,
@@ -402,6 +409,15 @@ async def get_next_step(
         "query": step.query,
         "caveats": step.caveats,
         "session_count": profile.session_count,
+        "progress": None
+        if progress is None
+        else {
+            "dimension_label": progress.dimension_label,
+            "early_median": progress.early_median,
+            "recent_median": progress.recent_median,
+            "delta": progress.delta,
+            "caveat": progress.caveat,
+        },
     }
 
 

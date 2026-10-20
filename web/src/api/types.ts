@@ -278,6 +278,26 @@ export interface NextStep {
   caveats: string[]
 
   session_count: number
+
+  /**
+   * 进步叙事（"练有效果"），与建议（"该练什么"）互补。
+   *
+   * 为 null 表示没有可信的进步信号 —— 服务端宁缺毋滥：
+   * 样本少于 4 场、或提升不足评分波动下界（10 分）时不说变强
+   * （§8A.9：同输入重复评分极差 10–20 分）。
+   */
+  progress: ProgressNote | null
+}
+
+/** 一条「在变强」的叙事（首页进步卡）。 */
+export interface ProgressNote {
+  dimension_label: string
+  early_median: number
+  recent_median: number
+  /** 提升幅度（recent - early）。 */
+  delta: number
+  /** 必须与叙事一起展示的采样说明。 */
+  caveat: string
 }
 
 /**

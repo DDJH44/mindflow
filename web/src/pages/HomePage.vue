@@ -356,6 +356,36 @@ onMounted(load)
         </p>
       </div>
 
+      <!--
+        进步卡：「练有效果」—— 与上方建议卡（"该练什么"）互补。
+
+        为什么值得放首页：这里此前只有"剩多少额度"和"该练什么"，
+        从没有"你比之前强了"。用户留下来的理由恰恰是看到自己在变强。
+
+        判断全在服务端（build_progress_note）：样本少于 4 场、
+        提升不足波动下界（10 分）时整块不显示 —— 宁缺毋滥，
+        把波动说成进步，用户分数回落时会觉得被糊弄。
+      -->
+      <div
+        v-if="nextStep?.progress"
+        class="card next-step"
+      >
+        <h2 style="margin: 0">在变强</h2>
+
+        <p style="margin: 8px 0 0">
+          「{{ nextStep.progress.dimension_label }}」的中位数从
+          {{ nextStep.progress.early_median }} 升到
+          {{ nextStep.progress.recent_median }}
+          <span class="tag tag-accent" style="margin-left: 6px">
+            +{{ nextStep.progress.delta }}
+          </span>
+        </p>
+
+        <p class="faint" style="margin: 8px 0 0">
+          {{ nextStep.progress.caveat }}
+        </p>
+      </div>
+
       <!-- 额度 -->
       <div
         class="alert"

@@ -67,6 +67,19 @@ DIMENSION_FOCUS_QUERY: dict[str, str] = {
     "communication_score": "表达是否切题、有条理、能补充细节",
 }
 
+# 进步叙事的展示门槛。
+#
+# 两个数都必须比看起来需要的更保守，原因相同：
+# 同一份回答重复评分的实测极差有 10–20 分（§8A.9）。
+#
+# - 维度至少 4 场：前后半各至少 2 场，两边的中位数才有意义；
+#   3 场拆成 1+2，前半的单场分数就是中位数 —— 那不是趋势，是波动。
+# - 提升至少 10 分：达到典型波动的下界。低于它，"变强"和
+#   "这次模型心情好"无法区分 —— 把后者说成前者，用户下一次
+#   分数回落时会觉得被糊弄了。
+PROGRESS_MIN_SAMPLES = 4
+PROGRESS_DELTA_THRESHOLD = 10
+
 
 @dataclass
 class NextStep:
@@ -320,3 +333,103 @@ def build_focus_from_report(
         query="重点考察：" + "；".join(query_parts),
         focus=focus,
     )
+
+
+@dataclass
+class ProgressNote:
+    """一段「在变强」的叙事（首页进步卡）。
+
+    为什么值得做：首页此前只有"你还剩多少额度"和"你该练什么"，
+    从没有"你比之前强了" —— 用户留下来的理由恰恰是看到自己在变强。
+
+    与 `NextStep` 的分工：NextStep 报弱项（该练什么），
+    这里报提升（练有效果）。**下降不报** —— 下降的维度会自然
+    成为 NextStep 的弱项建议，两张卡互补、不重复。
+    """
+
+    # 维度中文名（如「技术」）
+    dimension_label: str
+
+    # 前半样本的中位数
+    early_median: float
+
+    # 后半样本的中位数
+    recent_median: float
+
+    # 提升幅度（recent - early，必 >= PROGRESS_DELTA_THRESHOLD）
+    delta: int
+
+    # 必须与叙事一起展示的采样说明
+    caveat: str
+
+
+def _median(values: list[int]) -> float:
+    """中位数（与画像口径一致：中位数不被单次极端值拖走）。"""
+
+    ordered = sorted(values)
+    middle = len(ordered) // 2
+
+    if len(ordered) % 2:
+        return float(ordered[middle])
+
+    return (ordered[middle - 1] + ordered[middle]) / 2
+
+
+def build_progress_note(
+    profile: AbilityProfile,
+) -> ProgressNote | None:
+    """从画像的逐场分数里找一条**可信**的进步叙事。
+
+    ## 规则（每条都为了"不把波动说成进步"）
+
+    1. 场次不足 `MIN_INFORMATIVE_COUNT`（3）→ 不展示。
+    2. 维度样本不足 `PROGRESS_MIN_SAMPLES`（4）→ 该维度不参与
+       （3 场拆 1+2，前半的中位数就是单场分数 —— 那是波动不是趋势）。
+    3. 前后半中位数的差 < `PROGRESS_DELTA_THRESHOLD`（10）→ 不展示
+       （达到典型评分波动的下界才配叫"变强"）。
+    4. 多个维度达标 → 只取提升最大的一个。一张卡只讲一件事。
+    5. 「综合」不参与 —— 聚合分不是可练的能力（与 `_weakest_dimension`
+       同一原则）。
+
+    返回 None 表示"没有可信的进步信号" —— 前端整块不显示，
+    **宁缺毋滥**：没有进步卡只是少一块装饰，错误的进步卡会
+    让用户在分数回落时觉得被糊弄。
+    """
+
+    if profile.session_count < MIN_INFORMATIVE_COUNT:
+        return None
+
+    best: ProgressNote | None = None
+
+    for dimension in profile.dimensions:
+        if dimension.key == "overall_score":
+            continue
+
+        history = list(dimension.history)
+
+        if len(history) < PROGRESS_MIN_SAMPLES:
+            continue
+
+        # 奇数场时前半少一场（早期样本更少是常态，不值得为它写规则）
+        half = len(history) // 2
+        early_median = _median(history[:half])
+        recent_median = _median(history[half:])
+
+        delta = round(recent_median - early_median)
+
+        if delta < PROGRESS_DELTA_THRESHOLD:
+            continue
+
+        if best is None or delta > best.delta:
+            best = ProgressNote(
+                dimension_label=dimension.label,
+                early_median=early_median,
+                recent_median=recent_median,
+                delta=delta,
+                caveat=(
+                    "分数有 10–20 分的采样波动（同一份回答重复评分的"
+                    "实测极差，§8A.9），趋势要结合多次面试一起看。"
+                ),
+            )
+
+    return best
