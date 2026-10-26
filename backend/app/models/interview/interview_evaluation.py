@@ -95,6 +95,21 @@ class InterviewEvaluation(Base):
         default=dict,
     )
 
+    # 可追溯结论：每条优势/不足/建议带上"依据第几轮回答"。
+    #
+    # 与 `scoring_details` 分开存，因为两者回答**不同问题**：
+    # - `scoring_details`：这个**分数**是怎么来的（锚点、采样明细）
+    # - `findings`：这句**结论**凭什么这么说（依据哪几轮）
+    #
+    # 混在一个 JSON 里会让"只读结论"的代码也不得不知道评分口径。
+    #
+    # 可空：本功能之前的记录没有它，UI 据此隐藏该区块 ——
+    # 与 `analysis_snapshot` 的处理一致（历史是事实，不伪造）。
+    findings: Mapped[list | None] = mapped_column(
+        JSON,
+        nullable=True,
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=utc_now,

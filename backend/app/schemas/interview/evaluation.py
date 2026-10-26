@@ -71,6 +71,63 @@ ANCHOR_LABELS: dict[str, str] = {
 }
 
 
+class Finding(BaseModel):
+    """一条**可追溯**的结论。
+
+    ## 为什么需要它
+
+    报告此前只有三组字符串：优势、不足、建议。它们读起来像结论，
+    但**没有出处** —— 用户问"你凭什么说我技术深度不够"，
+    界面答不出来。
+
+    而可追溯性对"练习"这件事是刚需：一句"回答缺少取舍依据"
+    如果不能指到具体哪一轮，用户只能把这句评价当成主观印象。
+
+    ## 为什么让模型给出处，而不是事后用相似度匹配
+
+    事后匹配（把结论文本和每轮回答做语义相似度）看起来省事，
+    但它会**编造归属**：两条无关的文本也会算出一个"最相似"，
+    而那正是本项目在弱点聚合里已经明确拒绝的做法
+    （见 `ability_profile_service` 的"弱点不做自动归类"）。
+
+    模型在生成结论时**确实知道**它指的是哪一轮。让它直接报轮次，
+    再由本地**严格校验**（超范围、非数字一律丢弃），
+    比事后猜可靠得多。
+
+    ## `verified` 的含义
+
+    - `True`：模型给了轮次，且**全部**在有效范围内
+    - `False`：模型没给，或给的轮次越界（已丢弃）
+
+    UI 必须区分显示：把"模型没标出处"的结论渲染成带出处的样子，
+    等于伪造可信度。
+    """
+
+    kind: str = Field(
+        description="strength / weakness / suggestion 之一",
+    )
+    text: str = Field(description="结论本身，一句话")
+    # ⚠️ 刻意**不加** `list[int]` 类型约束。
+    #
+    # 实测后果：约束成 `list[int]` 时，模型只要把轮次写成
+    # `"第2轮"`，Pydantic 就会在**解析阶段**抛
+    # `int_parsing` 错误 —— 而那是**整份评价**的解析失败，
+    # 于是会话卡在 evaluating（正是 D76 那个场景）：
+    # 一条脏的出处，毁掉整场评价。
+    #
+    # 因此类型放宽，由 `_validate_findings` 逐值过滤：
+    # 非整数、布尔、越界一律丢弃，且**不影响其它字段**。
+    # 宽容解析 + 严格校验，比严格解析 + 全盘失败更合适这里。
+    turns: list = Field(
+        default_factory=list,
+        description="该结论依据的轮次编号（从 1 开始）",
+    )
+    verified: bool = Field(
+        default=False,
+        description="出处是否有效（由本地校验填写，模型不应伪造）",
+    )
+
+
 class InterviewEvaluationResult(BaseModel):
     """一次完整面试的评价结果。
 
@@ -182,6 +239,14 @@ class InterviewEvaluationResult(BaseModel):
     feedback: str = Field(
         default="",
         description="对本次面试表现的总体评价",
+    )
+
+    findings: list[Finding] = Field(
+        default_factory=list,
+        description=(
+            "可追溯的结论（优势/不足/建议各带出处轮次）。"
+            "模型负责给出处，`verified` 由本地校验填写"
+        ),
     )
 
     # ---------------- 采样记录 ----------------

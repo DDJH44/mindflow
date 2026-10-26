@@ -118,6 +118,36 @@ export interface InterviewQuestion {
   analysis: AnswerAnalysisSnapshot | null
 }
 
+/**
+ * 一条**可追溯**的评价结论。
+ *
+ * 报告里的优势/不足/建议此前只有文字、没有出处 —— 用户问
+ * "你凭什么说我技术深度不够"，界面答不出来。
+ */
+export interface EvaluationFinding {
+  kind: 'strength' | 'weakness' | 'suggestion'
+
+  /**
+   * 结论原文。
+   *
+   * ⚠️ 后端**强制**它逐字取自对应的那组列表（不原样引用就丢弃），
+   * 因此前端可以直接按文本精确匹配把出处挂到条目上 ——
+   * 不需要模糊匹配，也就不会把出处挂错条目。
+   */
+  text: string
+
+  /** 依据的轮次（从 1 开始，对应报告里的"第 N 题"）。 */
+  turns: number[]
+
+  /**
+   * 出处是否有效。
+   *
+   * `false` = 模型没给出处，或给的轮次越界（已丢弃）。
+   * 必须区分显示 —— 把没出处的结论渲染成有出处，等于伪造可信度。
+   */
+  verified: boolean
+}
+
 export interface InterviewEvaluation {
   id: number
   overall_score: number
@@ -129,6 +159,13 @@ export interface InterviewEvaluation {
   suggestions: string[]
   feedback: string
   scoring_details?: Record<string, unknown>
+  /**
+   * 可追溯结论。
+   *
+   * `null`/`undefined` 表示记录早于该功能 → 不渲染出处，
+   * 列表照常显示。
+   */
+  findings?: EvaluationFinding[] | null
   created_at?: string
 }
 

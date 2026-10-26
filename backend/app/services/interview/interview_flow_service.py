@@ -316,6 +316,10 @@ class InterviewFlowService:
             "suggestions": list(evaluation.suggestions or []),
             "feedback": evaluation.feedback,
             "scoring_details": evaluation.scoring_details or {},
+            # 可追溯结论。**None 与 [] 含义不同**：
+            # None = 记录早于该功能（UI 整块隐藏）；
+            # []   = 有该功能，但这次没有带出处的结论。
+            "findings": evaluation.findings,
             "created_at": evaluation.created_at,
         }
 

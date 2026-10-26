@@ -15,6 +15,7 @@ import { ApiError } from '../api/http'
 import type { FocusSuggestion, InterviewDetail } from '../api/types'
 import { useFocusedInterview } from '../composables/useFocusedInterview'
 import EvidencePanel from '../components/EvidencePanel.vue'
+import TurnCitations from '../components/TurnCitations.vue'
 import PageState from '../components/PageState.vue'
 
 const props = defineProps<{ id: number }>()
@@ -25,6 +26,48 @@ const error = ref('')
 
 /** 当前展开了资料依据的问题 id。 */
 const openEvidenceId = ref<number | null>(null)
+
+/**
+ * 结论 → 出处轮次。
+ *
+ * 后端**强制** `finding.text` 逐字取自 strengths/weaknesses/suggestions，
+ * 因此这里可以精确匹配。**不要**改成模糊匹配：模糊匹配会把出处
+ * 挂到错误的条目上，而那比没有出处更糟。
+ */
+const findingIndex = computed(() => {
+  const map = new Map<string, number[]>()
+
+  for (const finding of detail.value?.evaluation?.findings ?? []) {
+    if (!finding.verified || !finding.turns.length) {
+      continue
+    }
+
+    map.set(`${finding.kind}::${finding.text.trim()}`, finding.turns)
+  }
+
+  return map
+})
+
+function turnsOf(
+  kind: 'strength' | 'weakness' | 'suggestion',
+  text: string,
+): number[] {
+  return findingIndex.value.get(`${kind}::${text.trim()}`) ?? []
+}
+
+/**
+ * 跳到某一题的问答记录。
+ *
+ * 用 `scrollIntoView` 而不是锚点跳转：锚点跳转会把 URL 加上
+ * `#q-3`，刷新后仍停在中间，而报告页本来只有一屏内容。
+ */
+function jumpToQuestion(turn: number) {
+  const target = document.getElementById(`q-${turn}`)
+
+  if (target) {
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+}
 
 function toggleEvidence(questionId: number) {
   openEvidenceId.value =
@@ -274,6 +317,10 @@ onMounted(load)
           <ul class="bullet-list">
             <li v-for="(item, index) in evaluation.strengths" :key="index">
               {{ item }}
+              <TurnCitations
+                :turns="turnsOf('strength', item)"
+                @jump="jumpToQuestion"
+              />
             </li>
           </ul>
         </div>
@@ -284,6 +331,10 @@ onMounted(load)
           <ul class="bullet-list">
             <li v-for="(item, index) in evaluation.weaknesses" :key="index">
               {{ item }}
+              <TurnCitations
+                :turns="turnsOf('weakness', item)"
+                @jump="jumpToQuestion"
+              />
             </li>
           </ul>
         </div>
@@ -294,6 +345,10 @@ onMounted(load)
           <ul class="bullet-list">
             <li v-for="(item, index) in evaluation.suggestions" :key="index">
               {{ item }}
+              <TurnCitations
+                :turns="turnsOf('suggestion', item)"
+                @jump="jumpToQuestion"
+              />
             </li>
           </ul>
         </div>
@@ -361,8 +416,15 @@ onMounted(load)
           没有记录到问答。
         </div>
 
+        <!--
+          每一题带 `id="q-N"`，供上面三组结论的「第 N 题」小标签跳转。
+          N 用 `question_index + 1`，与展示文案、以及后端评价时拼的
+          「第 N 轮」编号**保持同一口径** —— 三处不一致会让跳转落到
+          另一道题上，而那种错误看起来像"出处标错了"。
+        -->
         <div
           v-for="item in questions"
+          :id="`q-${item.question_index + 1}`"
           :key="item.id"
           class="history-item"
         >

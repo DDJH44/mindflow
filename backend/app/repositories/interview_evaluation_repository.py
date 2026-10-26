@@ -21,6 +21,7 @@ class InterviewEvaluationRepository:
         weaknesses: list[str] | None = None,
         suggestions: list[str] | None = None,
         scoring_details: dict | None = None,
+        findings: list[dict] | None = None,
     ) -> InterviewEvaluation:
         """写入一条整场评价。
 
@@ -44,6 +45,10 @@ class InterviewEvaluationRepository:
             weaknesses=list(weaknesses or []),
             suggestions=list(suggestions or []),
             scoring_details=dict(scoring_details or {}),
+            # 可追溯结论。None 与 [] 在 UI 上含义不同：
+            # NULL 表示「这条记录早于该功能」（整块隐藏），
+            # [] 表示「有该功能但这次一条结论都没带出处」。
+            findings=findings,
         )
 
         self.session.add(evaluation)

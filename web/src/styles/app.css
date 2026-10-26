@@ -1335,3 +1335,34 @@ button:disabled {
     background: var(--accent-soft, #fdf0e6);
     color: var(--accent);
 }
+/* ------------------------------------------------------ 结论的出处 */
+
+/*
+ * 「依据 第 2 题」——把结论指回具体的回答。
+ *
+ * 为什么做成一排小按钮而不是超链接：链接的默认观感（蓝色下划线）
+ * 在报告里会和"资料依据"这类操作混在一起。这里的出处是**辅助**，
+ * 视觉权重应当低于结论文字本身。
+ */
+.turn-citations {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 8px;
+    vertical-align: baseline;
+}
+
+.turn-chip {
+    padding: 1px 7px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: var(--text-dim);
+    font-size: var(--fs-xs);
+    cursor: pointer;
+}
+
+.turn-chip:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}

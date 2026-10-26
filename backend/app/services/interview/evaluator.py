@@ -172,12 +172,32 @@ class InterviewEvaluator:
         seed: int | None = None,
         repeats: int = DEFAULT_SAMPLES,
         turn_count: int | None = None,
+        max_turn: int | None = None,
     ) -> InterviewEvaluationResult:
         """评价一次完整面试。
 
-        `turn_count`：有效作答轮次（有回答的题数）。
+        `turn_count`：**有效作答**轮次（有回答的题数）。
         传进来后，轮次很少时提示词会显式说明"样本量有限" ——
         否则 1 题的评价也会被说成"整场综合表现"。
+
+        `max_turn`：提示词里**出现过的最大的轮次编号**（= 题目总数，
+        含未作答的题）。
+
+        ## 为什么两者必须分开（实测踩过）
+
+        第一版只传了 `turn_count`，并用它做出处的上界校验。于是：
+
+        - 提示词里第 2 轮是「未回答」，模型**看得到**它，因此引用第 2 轮
+          是合法的；
+        - 而 `turn_count` = 有效作答数 = 1，于是第 2 轮被判为越界丢弃；
+        - 结果 **3 条结论全部 `verified` 为 False** —— 功能静默失效，
+          报告上一个出处都不显示。
+
+        两个数回答的是不同问题：
+        - `turn_count`：这次评价的**样本**有多大（措辞要据此收敛）
+        - `max_turn`：模型**能引用**的范围有多大（校验据此判定）
+
+        省略时退化为 `turn_count`，保持旧调用方的行为不变。
         """
 
         if not interview_content.strip():
@@ -227,6 +247,40 @@ class InterviewEvaluator:
                 ),
             )
 
+        # 出处校验：**必须在"单次采样提前返回"之前**。
+        #
+        # 位置踩过两次坑：
+        # ① 第一版插在 `_evaluate_once` 里，而那个函数没有 `turn_count`
+        #    参数 —— 编译通过、导入正常，只有真跑评价才抛 NameError，
+        #    且被"采样失败"的日志包着，看起来像上游抖动。
+        # ② 第二版插在 `if len(samples) == 1: return` **之后** ——
+        #    而线上 `repeats=1`，于是校验在真实路径上**从不执行**：
+        #    `verified` 保持默认 False，报告上一个出处都不显示。
+        #    功能看起来"做了"，实际是死的。
+        #
+        # 教训：新逻辑要放在**所有出口之前**，否则线上路径可能绕过它。
+        for sample_index, sample in enumerate(samples):
+            before = len(sample.findings or [])
+
+            sample.findings = _validate_findings(
+                sample,
+                # 上界用**题目总数**，不是有效作答数 ——
+                # 见 evaluate 的 docstring：混用会让出处全部作废。
+                turn_count=(
+                    max_turn if max_turn is not None else turn_count
+                ),
+            )
+
+            # 记录"给了 5 条、能用的只有 2 条"这类损耗。
+            if before != len(sample.findings):
+                logger.info(
+                    "可追溯结论（第 %d 次采样）：给出 %d 条，"
+                    "校验后保留 %d 条（未原样引用或轮次越界的已丢弃）",
+                    sample_index + 1,
+                    before,
+                    len(sample.findings),
+                )
+
         if len(samples) == 1:
             # 单次采样也要记录，否则无法区分
             # "只跑了一次" 与 "采样记录缺失"。
@@ -235,7 +289,6 @@ class InterviewEvaluator:
                 _scores_of(samples[0])
             ]
             return samples[0]
-
         return _aggregate_samples(samples)
 
     async def _evaluate_once(
@@ -293,7 +346,6 @@ class InterviewEvaluator:
                 "模型未返回任何评分锚点，无法派生分数；"
                 f"原始内容前 300 字符: {result[:300]!r}"
             )
-
         return evaluation
 
     @staticmethod
@@ -351,7 +403,14 @@ class InterviewEvaluator:
     "strengths": [],
     "weaknesses": [],
     "suggestions": [],
-    "feedback": ""
+    "feedback": "",
+    "findings": [
+        {{
+            "kind": "strength | weakness | suggestion",
+            "text": "结论本身，一句话",
+            "turns": [1, 2]
+        }}
+    ]
 }}
 
 要求：
@@ -363,8 +422,147 @@ class InterviewEvaluator:
 - strengths、weaknesses、suggestions 必须是字符串数组。
 - feedback 必须是简洁的中文总结。
 - 所有评价必须基于候选人的实际回答。
+- **findings 是可追溯结论**：把 strengths / weaknesses /
+  suggestions 里最关键的几条各自配上**依据的轮次编号**
+  （面试内容里每轮都有「第 N 轮」标记）。
+  - `text` 必须**逐字复制**上述三组里的某一条原文，不要改写 ——
+    系统靠原文匹配把出处挂到对应条目上，改写会导致出处丢失。
+  - `kind` 必须与那一组对应：strength / weakness / suggestion。
+  - `turns` 只能填**真实存在的轮次**，不要编造。
+  - 一条结论依据多轮时全部列出，例如 [1, 3]。
+  - **真的找不到出处时填空数组 []**，不要为了凑数乱填 ——
+    系统会校验，越界的轮次会被丢弃。
 - 只能返回 JSON。
 """.strip()
+
+
+def _validate_findings(
+    evaluation,
+    turn_count: int | None,
+) -> list:
+    """校验结论的出处，返回清理后的列表。
+
+    ## 规则
+
+    1. **`text` 必须原样取自** `strengths` / `weaknesses` / `suggestions`
+       之一（按 `kind` 对应）。不原样引用的一律丢弃。
+    2. 轮次必须是整数且落在 `[1, turn_count]` 内 —— 其余丢弃。
+       模型偶尔会给出 `0`、`5`（这轮不存在）、甚至 `"第2轮"` 这类字符串。
+    3. 去重并排序，让 UI 的"第 1、3 轮"稳定。
+    4. `verified` 由**本地**填写：只有"给了出处且全部合法"才是 True。
+       让模型自己填等于让它自证。
+
+    ## 为什么必须原样引用（这一条最容易做错）
+
+    报告页要把出处挂在**那三组列表的条目上**。若模型把同一条结论
+    改写了几个字，UI 就匹配不上 —— 结果是要么丢出处，要么用
+    模糊匹配，而模糊匹配会**把出处挂到错误的条目上**（那比没有更糟）。
+
+    因此宁可不给，也不猜。
+
+    实测动机：第一版只校验了轮次范围，没有校验文本一致性。
+    那会让"模型写了 5 条 findings，UI 只挂上 2 条"这种静默损耗
+    无从发现 —— 现在不匹配就丢弃并记数（见 `evaluate` 的日志）。
+
+    ## 为什么越界就丢弃而不是夹取到范围内
+
+    夹取（把第 5 轮压成第 3 轮）会**伪造出处**：用户点过去看到的是
+    另一轮，而那一轮可能根本没有这个问题。丢弃 + `verified=False`
+    是诚实的：这条结论没找到可靠出处。
+
+    `turn_count` 为 None 时不做范围校验（调用方没给轮数），
+    此时仍过滤非正整数的轮次 —— 那些一定不合法。
+    """
+
+    # kind → 允许引用的原文列表
+    allowed: dict[str, set[str]] = {
+        "strength": {
+            " ".join(str(item).split())
+            for item in (evaluation.strengths or [])
+        },
+        "weakness": {
+            " ".join(str(item).split())
+            for item in (evaluation.weaknesses or [])
+        },
+        "suggestion": {
+            " ".join(str(item).split())
+            for item in (evaluation.suggestions or [])
+        },
+    }
+
+    cleaned: list = []
+    seen: set[tuple[str, str]] = set()
+
+    for finding in evaluation.findings or []:
+        text = " ".join(str(getattr(finding, "text", "")).split())
+
+        if not text:
+            continue
+
+        kind = str(getattr(finding, "kind", "") or "").strip().lower()
+
+        # 未知种类无法归类，也一定不在上面三组里
+        if kind not in allowed:
+            continue
+
+        # 必须原样来自对应的那一组
+        if text not in allowed[kind]:
+            continue
+
+        raw_turns = getattr(finding, "turns", None) or []
+        valid_turns: list[int] = []
+
+        for value in raw_turns:
+            # 只接受真正的整数：`True` 在 Python 里是 int 的子类，
+            # 必须显式排除，否则 `[true]` 会被当成第 1 轮。
+            #
+            # 纯数字字符串（`"2"`）也接受 —— 模型偶尔会把数字加引号。
+            # 但 `"第2轮"` 这类**不**做正则抽取：那等于替模型猜它的意思，
+            # 猜错就会把出处挂到错误的轮次上。
+            if isinstance(value, bool):
+                continue
+
+            if isinstance(value, str):
+                stripped = value.strip()
+
+                if not stripped.isdigit():
+                    continue
+
+                value = stripped
+
+            try:
+                index = int(value)
+            except (TypeError, ValueError):
+                continue
+
+            if index < 1:
+                continue
+
+            if turn_count is not None and index > turn_count:
+                continue
+
+            if index not in valid_turns:
+                valid_turns.append(index)
+
+        key = (kind, text)
+
+        if key in seen:
+            continue
+
+        seen.add(key)
+
+        cleaned.append(
+            finding.model_copy(
+                update={
+                    "kind": kind,
+                    "text": text,
+                    "turns": sorted(valid_turns),
+                    "verified": bool(valid_turns),
+                }
+            )
+        )
+
+    return cleaned
 
 
 def _scores_of(
@@ -391,6 +589,7 @@ def _aggregate_samples(
     - strengths / weaknesses / suggestions：取并集并去重，
       保留出现过的所有信息，不因某次遗漏而丢失。
     - feedback 与 anchor_reason：取最长的一条，通常信息量最大。
+    - findings：按 (kind, text) 合并，出处取**交集**。
     """
 
     def merge_unique(items: list[list[str]]) -> list[str]:
@@ -400,6 +599,47 @@ def _aggregate_samples(
                 if item not in merged:
                     merged.append(item)
         return merged
+
+    def merge_findings(groups: list[list]) -> list:
+        """合并多轮采样的结论。
+
+        出处取**交集**而不是并集 —— 理由是"出处要对用户负责"：
+
+        - 若两次采样都说"技术深度不足"但指的轮次不同，
+          说明**它们自己都没把握**。此时并集会把两轮都标上，
+          用户点过去大概率有一轮看不到问题 —— 那比少给一个
+          出处更糟。
+        - 交集为空时保留该结论但不带出处（`verified=False`），
+          界面据此显示"未标注出处"，不伪装成可追溯。
+
+        单次采样（线上默认）时交集就是它自己的出处，行为不变。
+        """
+
+        merged: dict[tuple[str, str], list] = {}
+
+        for group in groups:
+            for finding in group:
+                key = (finding.kind, finding.text)
+
+                if key not in merged:
+                    merged[key] = finding
+                    continue
+
+                previous = merged[key]
+                agreed = [
+                    turn
+                    for turn in previous.turns
+                    if turn in finding.turns
+                ]
+
+                merged[key] = previous.model_copy(
+                    update={
+                        "turns": sorted(agreed),
+                        "verified": bool(agreed),
+                    }
+                )
+
+        return list(merged.values())
 
     def majority(values: list[str]) -> str:
         return Counter(values).most_common(1)[0][0]
@@ -437,6 +677,7 @@ def _aggregate_samples(
             [s.suggestions for s in samples]
         ),
         feedback=longest([s.feedback for s in samples]),
+        findings=merge_findings([s.findings for s in samples]),
         sample_count=len(samples),
         sampled_scores=[_scores_of(s) for s in samples],
     )

@@ -89,6 +89,10 @@ class InterviewEvaluationService:
             interview_content=interview_content,
             repeats=online_evaluation_samples(),
             turn_count=turn_count,
+            # 出处的上界是"题目总数"（含未作答），与提示词里的
+            # 「第 N 轮」编号口径一致 —— 否则模型引用未作答的那一轮
+            # 会被误判为越界（实测导致全部出处作废）。
+            max_turn=len(rows),
         )
 
         saved_evaluation = await self.evaluation_repository.create(
@@ -106,6 +110,12 @@ class InterviewEvaluationService:
             scoring_details=self._build_scoring_details(
                 evaluation=evaluation,
             ),
+            # 可追溯结论。`verified` 已在 evaluator 里由本地校验填好
+            # （不是模型自己声明的）—— 这里只负责原样落库。
+            findings=[
+                finding.model_dump()
+                for finding in evaluation.findings
+            ],
         )
 
         # 评价已成功落库，此时才推进状态：
@@ -150,11 +160,27 @@ class InterviewEvaluationService:
 
     @staticmethod
     def _build_interview_content(rows) -> str:
-        """把会话的问答拼成评价用的文本。"""
+        """把会话的问答拼成评价用的文本。
+
+        ## 为什么每轮要带「第 N 轮」标记
+
+        可追溯结论（`findings`）要引用"这条结论依据第几轮"，而模型
+        只能引用**它看得见的东西**。此前问答是裸文本，于是模型只能说
+        "候选人第 2 个回答里…" —— 而"第 2 个"到底按有回答的轮次算、
+        还是按题目顺序算，它和系统**对不上**，校验时就会把合法出处
+        当成越界丢掉。
+
+        显式编号把"轮次"变成文本里的事实，引用因此可校验。
+
+        ⚠️ 编号从 1 开始，且**包含未作答的题** —— 与前端"第 N 题"
+        的展示口径一致。若只数有回答的轮次，中间空一题会让编号与
+        界面错位，用户点过去会看到另一题。
+        """
 
         interview_parts = []
 
-        for question, answer in rows:
+        for index, (question, answer) in enumerate(rows, start=1):
+            interview_parts.append(f"【第 {index} 轮】")
             interview_parts.append(
                 f"问题：{question.question}"
             )
