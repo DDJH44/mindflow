@@ -89,6 +89,14 @@ async def main() -> int:
         action="store_true",
         help="只抽取并打印，不落库",
     )
+    parser.add_argument(
+        "--reset",
+        action="store_true",
+        help=(
+            "抽取前先清空该范围内已有的实体与关系（重建）。"
+            "归一化/过滤规则变了以后需要重建，因为旧行是按旧规则生成的"
+        ),
+    )
     args = parser.parse_args()
 
     if args.project is None and args.document is None:
@@ -116,6 +124,72 @@ async def main() -> int:
         print()
         print("  没有可处理的片段（需要文档状态为 embedded）")
         return 1
+
+    # -------------------------------------------------- 重建
+    #
+    # 图谱是**派生数据**：它完全由"材料 + 归一化规则"决定。
+    # 因此规则一变（别名、谓词归一、隐私过滤），旧行就是**错的**，
+    # 应当整批重建，而不是指望增量抽取把它们修正过来 ——
+    # 增量只会新增按新规则生成的行，旧行原地不动。
+    #
+    # 实测：加别名之前抽出的 `MindFlow AI 面试助手` 节点，
+    # 在加了别名之后依然存在，于是合并后的 `MindFlow` 与它并存，
+    # 图看起来"更碎"而不是更好。
+    if args.reset:
+        from sqlalchemy import delete, text as sql_text
+
+        from app.models.knowledge_graph import (
+            KnowledgeEntity,
+            KnowledgeRelation,
+        )
+
+        async with AsyncSessionLocal() as db:
+            if args.project is not None:
+                scope = sql_text(
+                    "SELECT id FROM projects WHERE id = :p"
+                ).bindparams(p=args.project)
+
+                relation_stmt = delete(KnowledgeRelation).where(
+                    KnowledgeRelation.project_id == args.project
+                )
+                entity_stmt = delete(KnowledgeEntity).where(
+                    KnowledgeEntity.project_id == args.project
+                )
+            else:
+                # 按文档反查其所属项目
+                project_row = (
+                    await db.execute(
+                        sql_text(
+                            "SELECT project_id FROM documents "
+                            "WHERE id = :d"
+                        ),
+                        {"d": args.document},
+                    )
+                ).scalar_one_or_none()
+
+                if project_row is None:
+                    print("  找不到该文档所属项目")
+                    return 1
+
+                relation_stmt = delete(KnowledgeRelation).where(
+                    KnowledgeRelation.project_id == project_row
+                )
+                entity_stmt = delete(KnowledgeEntity).where(
+                    KnowledgeEntity.project_id == project_row
+                )
+
+            # 先删关系（外键指向实体），再删实体
+            deleted_relations = (
+                await db.execute(relation_stmt)
+            ).rowcount or 0
+            deleted_entities = (await db.execute(entity_stmt)).rowcount or 0
+
+            await db.commit()
+
+        print(
+            f"  已重建：清空旧关系 {deleted_relations} 条、"
+            f"旧实体 {deleted_entities} 个"
+        )
 
     service = KnowledgeExtractionService()
 

@@ -1,4 +1,4 @@
-"""知识图谱第 1 步：从材料片段里抽取实体与关系（§30.3）。
+﻿"""知识图谱第 1 步：从材料片段里抽取实体与关系（§30.3）。
 
 ## 一次调用同时抽实体与关系
 
@@ -22,6 +22,11 @@
 from pydantic import BaseModel, Field
 
 from app.core.logging import get_logger
+from app.services.knowledge.normalization import (
+    canonical_entity_name,
+    canonical_predicate,
+    should_drop_relation,
+)
 from app.core.model_json import (
     ModelJSONParseError,
     parse_model_json,
@@ -175,7 +180,9 @@ class KnowledgeExtractionService:
         seen: set[tuple[str, str]] = set()
 
         for entity in result.entities:
-            name = entity.name.strip()
+            # 别名归一：先把不同指称换成同一个规范名，
+            # 否则同一实体在图里碎成多个节点（见 normalization 模块）。
+            name = canonical_entity_name(entity.name.strip())
 
             if not name:
                 continue
@@ -202,11 +209,22 @@ class KnowledgeExtractionService:
         seen_relations: set[tuple[str, str, str]] = set()
 
         for relation in result.relations:
-            subject = relation.subject.strip()
-            predicate = relation.predicate.strip()
-            obj = relation.object.strip()
+            # 关系的两端也要走别名，否则"实体叫 MindFlow、关系里写
+            # MindFlow AI 面试助手"会让下面的引用校验把它丢掉。
+            subject = canonical_entity_name(relation.subject.strip())
+            obj = canonical_entity_name(relation.object.strip())
+
+            # 谓词归一：同义写法合并，让关系能被程序按谓词聚合。
+            predicate = canonical_predicate(relation.predicate.strip())
 
             if not subject or not predicate or not obj:
+                continue
+
+            # 隐私过滤：联系方式类关系一律不入库。
+            #
+            # 面试不会问手机号，所以它对产品零价值；而「知识网络」
+            # 会把它原样展示 —— 等于把简历里的隐私又抄一份到别处。
+            if should_drop_relation(subject, predicate, obj):
                 continue
 
             # 自环没有意义（"PostgreSQL 使用 PostgreSQL"）

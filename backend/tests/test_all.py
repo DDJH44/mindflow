@@ -63,6 +63,18 @@ SUITES: tuple[tuple[str, bool], ...] = (
     ("test_usage_quota", True),
     ("test_quota_refund", False),
     ("test_knowledge_extraction", True),
+    # 知识图谱**落库层**：去重键（归一化名）、幂等、类型先到先得、
+    # 悬空关系防护。
+    #
+    # ⚠️ 此前它没被登记 —— 364 行断言自己跑是 8/8 通过，
+    # 但门禁里只有 `test_knowledge_extraction`（抽取层）。
+    # 于是仓库层的回归（去重键被改坏、关系指向不存在的实体）
+    # **门禁看不到**。一个通过的套件不被运行，等于不存在。
+    ("test_knowledge_repository", False),
+    # 实体/关系质量规则：别名合并、谓词归一、隐私过滤。
+    # 它们决定"什么能进图谱"，且不依赖模型 —— 改坏了不会报错，
+    # 只会让图悄悄变错（例如联系方式被展示在界面上）。
+    ("test_knowledge_quality", False),
     # 上传体积上限：四条防线分别在请求头、读取流、字符数、块数。
     # 必须走**真实 HTTP**，否则会绕过第一层（头部早退）。
     ("test_upload_limits", True),

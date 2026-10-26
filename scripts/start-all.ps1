@@ -62,10 +62,43 @@ function Wait-Port($Port, $Seconds) {
     return $false
 }
 
+# 探测 Docker 引擎版本。引擎未运行时返回空字符串。
+#
+# ## 为什么必须包一层（实测崩溃点）
+#
+# 本脚本顶部是 `$ErrorActionPreference = "Stop"`，而 PowerShell 5.1
+# 会把**原生命令的 stderr** 当成 `NativeCommandError`。于是：
+#
+#     $engine = docker info --format "{{.ServerVersion}}" 2>$null
+#
+# 在引擎没起来时**直接终止整个脚本** —— 尽管写了 `2>$null`。
+# 结果是脚本死在"启动 Docker Desktop"那一行**之前**，
+# 而那个分支恰好就是为本场景准备的（脚本头注释："每次隔一段
+# 时间回来，Docker 引擎…"）。实测：关机一天后运行，
+# 只说一句 `failed to connect to the docker API` 就退出，
+# 用户只能手动去开 Docker Desktop。
+#
+# 因此把这类**探测性**调用统一包进来：期间放宽为 `Continue`，
+# 恢复后返回输出。全局设置仍是 `Stop`（后面真正的失败要能被发现）。
+function Get-DockerEngine {
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+
+    try {
+        $version = docker info --format "{{.ServerVersion}}" 2>$null
+        $code = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $previous
+    }
+
+    if ($code -ne 0) { return "" }
+    return ("$version").Trim()
+}
+
 # ---------------------------------------------------------------- Docker
 Write-Step "1/4 Docker 引擎"
 
-$engine = docker info --format "{{.ServerVersion}}" 2>$null
+$engine = Get-DockerEngine
 
 if (-not $engine) {
     Write-Host "    引擎未运行，正在启动 Docker Desktop…"
@@ -82,7 +115,7 @@ if (-not $engine) {
     # Docker Desktop 启动较慢（实测 10–60 秒）
     for ($i = 1; $i -le 60; $i++) {
         Start-Sleep -Seconds 5
-        $engine = docker info --format "{{.ServerVersion}}" 2>$null
+        $engine = Get-DockerEngine
         if ($engine) { break }
     }
 }
@@ -126,7 +159,12 @@ if ($composeExit -ne 0) {
 Write-Host "    等待 Milvus 就绪…"
 Start-Sleep -Seconds 22
 
+# `docker ps` 同样可能因引擎中途退出而写 stderr，
+# 在 `Stop` 下会打断脚本。它只是取状态，不该致命。
+$previousPreference = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
 $containers = docker ps --format "{{.Names}}|{{.Status}}"
+$ErrorActionPreference = $previousPreference
 
 if (-not $containers) {
     Write-Bad "容器列表为空"
