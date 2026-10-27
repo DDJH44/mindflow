@@ -1,4 +1,4 @@
-﻿"""回归门禁：一次跑完全部验证套件并给出统一结论。
+"""回归门禁：一次跑完全部验证套件并给出统一结论。
 
 **为什么需要它**：目前有 13 个验证套件，逐个跑既慢又容易漏；
 而"这次改动到底破坏了什么"必须有一个**单一的、可信的**答案。
@@ -75,6 +75,10 @@ SUITES: tuple[tuple[str, bool], ...] = (
     # 它们决定"什么能进图谱"，且不依赖模型 —— 改坏了不会报错，
     # 只会让图悄悄变错（例如联系方式被展示在界面上）。
     ("test_knowledge_quality", False),
+    # 门禁自己的失败报告：失败时能不能说清"哪条断言断了"。
+    # 原先把计数放在标签前面，于是标签永远显示不出来 ——
+    # 门禁不会误报，但会变得没用。
+    ("test_gate_reporting", False),
     # 可追溯结论：出处校验、聚合取交集、落库往返。
     # 关键断言是"宁可不给出处，也不给错出处" ——
     # 报告里指错一轮会让整份报告显得不可信。
@@ -323,9 +327,51 @@ def run_suite(name: str) -> tuple[str, str, float]:
                 failure = line.strip()
                 break
 
-    reason = extract_counts(output) or failure or f"退出码 {code}"
+    reason = build_failure_reason(output, code)
 
     return FAIL, reason, elapsed
+
+
+def build_failure_reason(output: str, code: int) -> str:
+    """失败时那一行该显示什么。
+
+    ## 优先级（这里原先写反过）
+
+    第一版是：
+
+        reason = extract_counts(output) or failure or f"退出码 {code}"
+
+    `extract_counts` 返回 "3/4" 这类**非空字符串**，于是它总是先命中，
+    而后面辛苦找到的**失败断言标签**永远显示不出来 —— 门禁只说
+    "3/4"，不说"哪条断言失败"。实测排查时两次都得重跑去定位。
+
+    正确的优先级：**标签 > 计数 > 退出码**。
+    计数本身已经在左列显示了，重复一遍等于浪费这一行的信息量。
+    """
+
+    label = ""
+
+    for line in output.splitlines():
+        if "[FAIL]" in line:
+            label = line.split("[FAIL]")[-1].strip()
+            break
+
+    if not label:
+        for line in reversed(output.splitlines()):
+            if "Error" in line or "Traceback" in line:
+                label = line.strip()
+                break
+
+    counts = extract_counts(output)
+
+    # 标签与计数都要：标签说明"哪条断了"，计数说明"断了几条"。
+    if label and counts:
+        return f"{counts} · {label[:110]}"
+
+    if label:
+        return label[:110]
+
+    return counts or f"退出码 {code}"
 
 
 async def check_embedding_available() -> tuple[bool, str]:
@@ -478,6 +524,55 @@ async def check_environment() -> bool:
     return True
 
 
+async def snapshot_empty_drafts() -> set[int]:
+    """当前"空草稿会话"的 id 集合。
+
+    空草稿 = 状态仍是 planned/created、且**一道题都没有**。
+    这种会话没有任何内容，只会在历史页里显示成"未完成的面试"。
+
+    为什么要快照 id 而不是计数：门禁运行期间用户可能自己新建一个
+    草稿，那不该被算作泄漏。比 id 集合能区分"新出现的"与"本来就有的"。
+    """
+
+    from sqlalchemy import text as sql_text
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    from app.core.config import settings
+
+    # ⚠️ **不能**用全局的 `AsyncSessionLocal`。
+    #
+    # 门禁里有多处 `asyncio.run(...)`，而复用的连接池会留下
+    # "绑定在上一个已关闭事件循环上"的连接。下一次 `asyncio.run`
+    # 取到它时，`pool_pre_ping` 会在旧 transport 上写数据：
+    #
+    #     AttributeError: 'NoneType' object has no attribute 'send'
+    #
+    # 因此这里自建引擎、用完销毁 —— 一个只读快照不值得复用池。
+    engine = create_async_engine(settings.database_url)
+
+    try:
+        async with engine.connect() as connection:
+            rows = (
+                await connection.execute(
+                    sql_text(
+                        """
+                        SELECT s.id FROM interview_sessions s
+                        WHERE s.status IN ('planned', 'created')
+                          AND s.questions_asked = 0
+                          AND NOT EXISTS (
+                              SELECT 1 FROM interview_questions q
+                              WHERE q.session_id = s.id
+                          )
+                        """
+                    )
+                )
+            ).all()
+    finally:
+        await engine.dispose()
+
+    return {row[0] for row in rows}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="回归门禁：跑完全部验证套件",
@@ -562,6 +657,9 @@ def main() -> int:
 
     outcomes: list[tuple[str, str, str, float]] = []
 
+    # 开跑前记下"空草稿"的 id，跑完对比 —— 见文件末尾的泄漏检测。
+    drafts_before = asyncio.run(snapshot_empty_drafts())
+
     for name, _needs_embedding in selected:
         status, detail, elapsed = run_suite(name)
         outcomes.append((name, status, detail, elapsed))
@@ -603,7 +701,41 @@ def main() -> int:
         for name, reason in MANUAL_SUITES:
             print(f"  - {name}: {reason}")
 
+    # -------------------------------------------------- 泄漏检测
+    #
+    # 实测动机：`test_question_quota` 有条清理按 `target_role` 删会话，
+    # 而它后来新增的一条"新开会话被额度挡住"没传 target_role ——
+    # 于是每跑一次门禁就在**用户的真实项目**里留一个空草稿，
+    # 多日累积到 29 个，历史页被"未完成的面试"淹没。
+    #
+    # 它不报错、不拦停，属于最容易被忽略的一类污染。
+    # 因此这里显式对比，并且**让它拦停门禁** —— 一个慢慢变脏的
+    # 数据库不会自己恢复，而人多半不会主动去数草稿。
+    drafts_after = asyncio.run(snapshot_empty_drafts())
+    leaked = sorted(drafts_after - drafts_before)
+
     print()
+
+    if leaked:
+        print("=" * 74)
+        print("⚠️ 门禁泄漏了空草稿会话")
+        print("=" * 74)
+        print(
+            f"  新增 {len(leaked)} 个：{leaked}"
+        )
+        print()
+        print("  这意味着某个套件建了会话但没清理 —— 它会长久留在")
+        print("  用户的历史页里，显示成「未完成的面试」。")
+        print()
+        print("  先清理：uv run python -m scripts.cleanup_test_sessions --purge")
+        print("  再定位：逐个跑可疑套件并对比草稿数；清理要么按**登记的")
+        print("  id** 删，要么按明确的测试项目删 —— **不要**按 target_role")
+        print("  这类「看起来像测试数据」的字段删 —— 既有泄漏也有误删风险。")
+        print()
+        print("  （若这个草稿是你在门禁运行期间自己新建的，忽略本段即可）")
+        print()
+        print("门禁未通过（数据被污染）")
+        return 1
 
     if failed:
         print("门禁未通过")

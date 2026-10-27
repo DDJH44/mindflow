@@ -134,6 +134,9 @@ async def main():
 
     session_id = None
 
+    # 本套件创建过的所有会话 id。清理按 id 删，不按 target_role。
+    created_session_ids: list[int] = []
+
     try:
         async with httpx.AsyncClient(
             transport=transport,
@@ -188,6 +191,9 @@ async def main():
                 },
             )
             session_id = response.json()["id"]
+            # 登记每一条自己建的会话，清理时按 id 精确删除 ——
+            # 见 finally 里的说明（按 target_role 删既有泄漏也有误删风险）。
+            created_session_ids.append(session_id)
             record(
                 "单场预算设为 30",
                 response.json().get("max_questions") == 30,
@@ -349,6 +355,7 @@ async def main():
                 json={"project_id": PROJECT_ID},
             )
             blocked_id = response.json()["id"]
+            created_session_ids.append(blocked_id)
             response = await client.post(
                 f"/api/interviews/{blocked_id}/start",
                 json={"query": "额度已满"},
@@ -360,14 +367,23 @@ async def main():
             )
 
     finally:
+        # 按 **id** 精确清理，不按 target_role。
+        #
+        # 原来按 `target_role = '后端工程师（按题计量验证）'` 删，有两个问题：
+        # ① **会泄漏**：本套件后来新增的"新开会话被额度挡住"那条，
+        #    创建时只传了 project_id、没有 target_role，于是清理漏掉它，
+        #    每跑一次门禁就在用户的项目里留一个空草稿（实测 29 个）。
+        # ② **会误删**：若用户恰好有一个同 target_role 的会话，
+        #    也会被这条 SQL 删掉 —— 测试不该按"像测试数据"来删用户数据。
         async with AsyncSessionLocal() as db:
-            await db.execute(
-                text(
-                    "DELETE FROM interview_sessions "
-                    "WHERE target_role IN "
-                    "('后端工程师（按题计量验证）')"
+            if created_session_ids:
+                await db.execute(
+                    text(
+                        "DELETE FROM interview_sessions "
+                        "WHERE id = ANY(:ids)"
+                    ),
+                    {"ids": created_session_ids},
                 )
-            )
             await db.commit()
 
         await reset_quota(USER_ID)
